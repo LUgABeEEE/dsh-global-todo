@@ -175,8 +175,26 @@ function makeAgents() {
   }
 }
 
-/** Wait for the plugin's fire-and-forget bookkeeping to settle. */
-const settle = () => new Promise((resolve) => setTimeout(resolve, 40))
+/**
+ * Poll until `check` passes.
+ *
+ * The plugin's bookkeeping is fire-and-forget, so a test does have to wait for it — but a
+ * fixed sleep waits for the machine, which is how a 300 ms sleep reached CI and lost the
+ * race on the slower runner. This waits for the *result* the assertions are about, and
+ * gives up loudly instead of guessing.
+ *
+ * @param {() => boolean | Promise<boolean>} check
+ * @param {string} what - what we are waiting for, named in the failure
+ * @param {number} [timeoutMs]
+ */
+async function waitFor(check, what, timeoutMs = 5000) {
+  const deadline = Date.now() + timeoutMs
+  for (;;) {
+    if (await check()) return
+    if (Date.now() >= deadline) assert.fail(`waited ${timeoutMs}ms for ${what}`)
+    await new Promise((resolve) => setTimeout(resolve, 5))
+  }
+}
 
 test('the plugin mounts, registers its surfaces, and survives a full round trip', async () => {
   const dir = await mkdtemp(path.join(tmpdir(), 'gt-smoke-'))
@@ -293,10 +311,11 @@ test('the automatic collect switch asks the person\'s conversation once, then ho
     const userMessage = { type: 'user/message', seq: 1, data: { source: { kind: 'user' } } }
     const turnEnd = { type: 'turn/end', seq: 5, data: { turn: 1, reason: { kind: 'completed' } } }
 
-    // Off until a person turns it on: a clean turn must change nothing.
+    // Off until a person turns it on: a clean turn must change nothing. There is nothing
+    // to wait for here — the listener decides synchronously and only an ask is async, so a
+    // turn this feature must ignore cannot be "about to" send something.
     host.emit('session/event', session('session-person'), userMessage)
     host.emit('session/event', session('session-person'), turnEnd)
-    await settle()
     assert.equal(person.sent.length, 0, 'automatic collect is off by default')
 
     const settingsRoute = host.state.routes.get('/api/global-todo/settings')
@@ -308,25 +327,36 @@ test('the automatic collect switch asks the person\'s conversation once, then ho
     assert.equal(JSON.parse(posted.body).data.settings.autoCollect, true)
 
     host.emit('session/event', session('session-person'), turnEnd)
-    await settle()
+    await waitFor(() => person.sent.length === 1, 'the automatic ask to go out')
     assert.equal(person.sent.length, 1, 'the conversation must be asked exactly once')
     assert.match(JSON.stringify(person.sent[0]), /全局待办/)
 
     // Inside the cooldown it stays quiet, and a conversation nobody is in is never asked.
+    // The cooldown is booked before the ask goes out, so both repeats below are judged
+    // synchronously — waiting would only be waiting for the machine.
     host.emit('session/event', session('session-person'), turnEnd)
     host.emit('session/event', session('session-other'), turnEnd)
-    await settle()
     assert.equal(person.sent.length, 1, 'the cooldown must hold')
     assert.equal(agents.sessions.has('session-other'), false)
 
     // The switch is on the Host, so it survives the panel and is reported by health.
-    const healthRoute = host.state.routes.get('/api/global-todo/health')
-    const healthRes = makeRes()
-    await healthRoute.handler(makeReq({ url: '/api/global-todo/health' }), healthRes)
-    const payload = JSON.parse(healthRes.body)
-    assert.equal(payload.data.settings.autoCollect, true)
-    assert.equal(payload.data.autoCollect.error, null)
-    assert.equal(payload.data.autoCollect.lastAsk.sessionId, 'session-person')
+    // `lastAsk` is written *after* the ask resolves, so wait for the record rather than
+    // for a duration that happens to be long enough.
+    const health = async () => {
+      const res = makeRes()
+      await host.state.routes
+        .get('/api/global-todo/health')
+        .handler(makeReq({ url: '/api/global-todo/health' }), res)
+      return JSON.parse(res.body).data
+    }
+    await waitFor(
+      async () => (await health()).autoCollect.lastAsk?.sessionId === 'session-person',
+      'the ask to be recorded',
+    )
+    const data = await health()
+    assert.equal(data.settings.autoCollect, true)
+    assert.equal(data.autoCollect.error, null)
+    assert.equal(data.autoCollect.lastAsk.sessionId, 'session-person')
   } finally {
     await rm(dir, { recursive: true, force: true })
   }
@@ -385,11 +415,18 @@ test('the tracked conversation survives a restart', async () => {
       seq: 1,
       data: { source: { kind: 'user' } },
     })
-    await new Promise((resolve) => setTimeout(resolve, 50))
+    // The id reaches the disk through a fire-and-forget write, and a restart reads that
+    // file once, at mount. So the file has to be there *before* the second Host starts,
+    // otherwise the restart is judging a log that was still in the air.
+    const recentFile = path.join(dir, 'recent-session.json')
+    await waitFor(
+      async () => (await readFile(recentFile, 'utf8').catch(() => '')).includes('session-person'),
+      'the tracked conversation to reach the disk',
+    )
 
     const second = makeHost({ tools: {}, webServer: {} })
     apply(second.ctx, { storePath: file, requireExistingFiles: false })
-    await new Promise((resolve) => setTimeout(resolve, 50))
+    await waitFor(async () => (await read(second)) === 'session-person', 'the restart to remember the conversation')
     assert.equal(await read(second), 'session-person', 'the restart must not forget the conversation')
   } finally {
     await rm(dir, { recursive: true, force: true })

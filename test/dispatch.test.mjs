@@ -165,7 +165,8 @@ test('a new-session hand-off mounts the preset, groups the session and sends the
     assert.equal(typeof options.setup, 'function')
     await options.setup({})
     assert.deepEqual(mounted, [{ agentCtx: {}, id: 'default-preset' }])
-    await new Promise((resolve) => setTimeout(resolve, 10))
+    // No wait for `attached`: `dispatch` awaits the workspace placement and the attach
+    // before it resolves, so nothing about it is still in flight at this point.
     assert.deepEqual(attached, ['/home/me/projects/demo'])
 
     const agent = agents.sessions.get(options.sessionId)
