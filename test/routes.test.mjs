@@ -94,6 +94,7 @@ test('the route surface is exactly the documented one', async () => {
     assert.deepEqual(
       env.routes.map((route) => route.path.replace(`${ROUTE_BASE}/`, '')).sort(),
       [
+        'assign',
         'capture',
         'create',
         'diagnostics',

@@ -96,6 +96,11 @@ Your list is not touched by install or uninstall: it lives outside the plugin, a
   it. The toolbar keeps a "collect from this chat" fallback, shown only when the current
   conversation has no group yet. A conversation that is not running is resumed first, like a
   hand-off.
+- **Batch assignment** — switch on `选择`, tick a few todos, and one click sends each one to the
+  conversation that wrote it, else to a same-workspace conversation, else to a target you pick.
+  That is an attempt order: an unloadable target means the next one is tried. Anything with
+  nowhere to go comes back with a picker rather than being sent somewhere unchosen, and one
+  failure does not abort the batch.
 - **Search syntax** — `tag:release` (or `#ops`), `is:overdue`, `is:active`, `has:link`,
   `has:note`, `level:p0`, plus free words combined with AND (which also match note text). A
   search without a colon behaves exactly as it always did.

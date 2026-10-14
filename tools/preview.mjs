@@ -533,6 +533,9 @@ function checkRenderedPanel(html, detail) {
   expect(html.includes('is:overdue'), 'the search syntax hint is missing')
   expect(detail.includes('进展记录'), 'the notes section is missing from the detail')
   expect(detail.includes('已按四段式重写'), 'a note body is missing from the detail')
+  // Multi-select is a mode beside the switch, and its marker must not appear unasked.
+  expect(html.includes('>选择<'), 'the selection mode switch is missing')
+  expect(!html.includes('class="gt-pick"'), 'selection markers must not show until the mode is on')
   // The automatic collect switch is Host state, so it must be visible in the panel —
   // and visibly *on* in this fixture.
   expect(/data-on="1"[^>]*>\s*自动获取/.test(html), 'the automatic collect switch is not shown as on')

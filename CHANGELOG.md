@@ -45,6 +45,13 @@ panel that hands work over and records how it finished.
 
 ### Added
 
+- **Batch assignment (「一键分配」)**. Turn on 「选择」 in the toolbar, tick a few todos, and one
+  click sends each of them to the best target available for it — **the conversation that wrote
+  it**, then a conversation in the **same workspace** (a candidate the panel works out from its
+  own recency and archive data, which the Host cannot see), then a **target you choose** for the
+  rest. Those are an attempt order, not a preference: a target that cannot be loaded is the
+  reason the next one exists. Whatever still has nowhere to go is reported back and offered a
+  picker instead of being sent somewhere nobody chose, and one failure does not abort the batch.
 - **An automatic collect switch** (panel chip `自动获取`, `POST /api/global-todo/settings`). When
   it is on, a conversation you are in that finishes a clean turn and has not been asked for a
   while is asked once whether anything needs following up. It is off until a person turns it on,

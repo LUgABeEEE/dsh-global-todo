@@ -40,9 +40,14 @@ function makeAgents() {
     // records the call and can be told to fail.
     resumed: [],
     resumeFails: false,
+    /** Sessions that exist in persistence; resuming anything else fails, as it does live. */
+    known: new Set(['session-dormant', 'session-workspace', 'session-live', 'session-origin', 'session-chosen']),
     async resume(options) {
       this.resumed.push(options.resumeSessionId)
       if (this.resumeFails) throw new Error('persistence unavailable')
+      if (this.known !== undefined && this.known.has(options.resumeSessionId) === false) {
+        throw new Error(`session "${options.resumeSessionId}" not found`)
+      }
       const sent = []
       const agent = {
         id: options.resumeSessionId,
@@ -624,6 +629,76 @@ test('capturing from a conversation that cannot be loaded fails instead of guess
       },
     )
     assert.equal(agents.sessions.get('session-here').sent.length, 0, 'no silent substitution')
+  } finally {
+    await env.cleanup()
+  }
+})
+
+test('a batch assignment prefers each todo\'s own conversation, then a candidate, then the choice', async () => {
+  const agents = makeAgents()
+  const env = await harness({}, { agents }, { getRecentSession: () => '' })
+  try {
+    liveSession(agents, 'session-origin', { cwd: '/repo' })
+    liveSession(agents, 'session-workspace', { cwd: '/repo' })
+    liveSession(agents, 'session-chosen', { cwd: '/repo' })
+    // Written by an agent, so it carries an origin.
+    const fromAgent = await env.service.create(
+      { title: '回原对话' },
+      { by: 'agent', origin: { dir: '/repo', sessionId: 'session-origin' } },
+    )
+    // Written by an agent but its conversation is gone: the caller's candidate is next.
+    const orphan = await env.service.create(
+      { title: '同工作区' },
+      { by: 'agent', origin: { dir: '/repo', sessionId: 'session-gone' } },
+    )
+    const human = await env.service.create({ title: '只能由人选' }, { by: 'human' })
+
+    const result = await env.dispatcher.assignMany({
+      ids: [fromAgent.id, orphan.id, human.id],
+      items: [{ id: fromAgent.id }, { id: orphan.id, sessionId: 'session-workspace' }, { id: human.id }],
+      target: { mode: 'current', sessionId: 'session-chosen' },
+    })
+    assert.deepEqual(
+      result.assigned.map((entry) => [entry.id, entry.sessionId, entry.via]).sort(),
+      [
+        [fromAgent.id, 'session-origin', 'origin'],
+        [orphan.id, 'session-workspace', 'workspace'],
+        [human.id, 'session-chosen', 'chosen'],
+      ].sort(),
+    )
+    assert.deepEqual(result.unmatched, [])
+    assert.equal(result.counts.byOrigin, 1)
+    assert.equal(result.counts.byWorkspace, 1)
+    assert.equal(result.counts.byChoice, 1)
+    assert.equal(agents.sessions.get('session-origin').sent.length, 1)
+  } finally {
+    await env.cleanup()
+  }
+})
+
+test('a batch assignment reports what nothing could be found for, and survives one failure', async () => {
+  const agents = makeAgents()
+  const env = await harness({}, { agents }, { getRecentSession: () => '' })
+  try {
+    liveSession(agents, 'session-live', { cwd: '/repo' })
+    const orphan = await env.service.create({ title: '没有来源' }, { by: 'human' })
+    const doomed = await env.service.create(
+      { title: '来源加载不了' },
+      { by: 'agent', origin: { dir: '/repo', sessionId: 'session-unloadable' } },
+    )
+    const ok = await env.service.create(
+      { title: '正常' },
+      { by: 'agent', origin: { dir: '/repo', sessionId: 'session-live' } },
+    )
+    agents.resumeFails = true
+
+    const result = await env.dispatcher.assignMany({ ids: [orphan.id, doomed.id, ok.id] })
+    assert.deepEqual(result.unmatched, [orphan.id], 'no origin and no candidate means the user chooses')
+    assert.equal(result.errors.length, 1)
+    assert.equal(result.errors[0].id, doomed.id)
+    assert.equal(result.assigned.length, 1, 'one failure must not abort the batch')
+    assert.equal(result.assigned[0].id, ok.id)
+    assert.equal(result.counts.requested, 3)
   } finally {
     await env.cleanup()
   }
