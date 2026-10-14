@@ -108,6 +108,10 @@ panel that hands work over and records how it finished.
 
 ### Added
 
+- **`全选` in selection mode.** Tick everything the panel is currently showing (collapsed groups
+  included — their todos are still what the user means), and the same control becomes
+  `取消全选` once everything is selected.
+
 - **Batch assignment (「一键分配」)**. Turn on 「选择」 in the toolbar, tick a few todos, and one
   click sends each of them to the best target available for it — **the conversation that wrote
   it**, then a conversation in the **same workspace** (a candidate the panel works out from its

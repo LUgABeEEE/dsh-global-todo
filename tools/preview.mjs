@@ -204,6 +204,17 @@ function createRuntime() {
   }
   return {
     React,
+    /**
+     * Forget every hook store.
+     *
+     * Hook state is keyed by path + component name so repeated mounts behave like
+     * re-renders of one tree — which means a later mount with *different* props would still
+     * see the first mount's state. A variant that needs a different starting state has to
+     * start over.
+     */
+    reset() {
+      stores.clear()
+    },
     mount(component, props) {
       const effects = []
       const tree = expand({ type: component, props: props ?? {}, children: [] }, effects)
@@ -409,6 +420,8 @@ const first = runtime.mount(registered.get('main'), previewProps)
 for (const effect of first.effects) effect()
 await new Promise((resolve) => setTimeout(resolve, 20))
 const second = runtime.mount(registered.get('main'), previewProps)
+// A third variant with selection mode on: the harness cannot re-render after a click, so
+// the mode is asked for up front and the selection UI can be asserted for real.
 
 const css = source.slice(source.indexOf('const CSS = `') + 'const CSS = `'.length, source.indexOf('`\n\n    // ---'))
 
@@ -501,9 +514,18 @@ ${css}
 
 const panelHtml = render(second.tree)
 const detailHtml = render(third.tree)
+runtime.reset()
+// Two passes, like the default render: the first runs the effects (which fetch), the
+// second reuses the now-populated hook store — the harness has no re-render of its own.
+const selectFirst = runtime.mount(registered.get('main'), { ...previewProps, initialSelectMode: true })
+for (const effect of selectFirst.effects) effect()
+await new Promise((resolve) => setTimeout(resolve, 20))
+const selectTree = runtime.mount(registered.get('main'), { ...previewProps, initialSelectMode: true })
+const selectHtml = render(selectTree.tree)
 mkdirSync(OUT.replace(/\/[^/]+$/, ''), { recursive: true })
 writeFileSync(OUT, panelHtml)
 writeFileSync(OUT.replace(/\.html?$/, '') + '-detail.html', detailHtml)
+writeFileSync(OUT.replace(/\.html?$/, '') + '-select.html', selectHtml)
 console.log('written', OUT, 'and the detail variant; fetch calls:', requestedUrl.join(', '))
 
 /**
@@ -516,7 +538,7 @@ console.log('written', OUT, 'and the detail variant; fetch calls:', requestedUrl
  * @param {string} html
  * @returns {string[]} failures, empty when the render looks right
  */
-function checkRenderedPanel(html, detail) {
+function checkRenderedPanel(html, detail, select) {
   const failures = []
   const expect = (condition, message) => {
     if (condition !== true) failures.push(message)
@@ -554,6 +576,18 @@ function checkRenderedPanel(html, detail) {
   // The Host's directory picker delegates to a Remote namespace that is not mounted in
   // every deployment, so a path field is the fallback rather than a dead error.
   expect(html.includes('>手动填<'), 'the manual directory fallback is missing')
+  // Selection mode, rendered on purpose: the bar and the row markers must appear, and the
+  // batch action must be offered for what the panel is showing.
+  expect(select.includes('>全选<'), 'the select-all control is missing')
+  expect(select.includes('已选 0 条'), 'the selection bar does not show a count')
+  expect(select.includes('>一键分配<'), 'the batch action is missing from the selection bar')
+  expect(select.includes('class="gt-pick"'), 'selection markers are missing in selection mode')
+  {
+    // Collapsed groups render no rows, so the invariant is about what *is* rendered.
+    const rows = select.split('class="gt-item"').length - 1
+    const picks = select.split('class="gt-pick"').length - 1
+    expect(rows > 0 && picks === rows, `every rendered row needs a marker (rows=${rows}, picks=${picks})`)
+  }
   // Multi-select is a mode beside the switch, and its marker must not appear unasked.
   expect(html.includes('>选择<'), 'the selection mode switch is missing')
   expect(!html.includes('class="gt-pick"'), 'selection markers must not show until the mode is on')
@@ -589,7 +623,7 @@ function checkRenderedPanel(html, detail) {
 }
 
 if (process.argv.includes('--check')) {
-  const failures = checkRenderedPanel(panelHtml, detailHtml)
+  const failures = checkRenderedPanel(panelHtml, detailHtml, selectHtml)
   if (failures.length > 0) {
     console.error('panel render check failed:')
     for (const failure of failures) console.error(' -', failure)
