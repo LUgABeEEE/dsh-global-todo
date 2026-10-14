@@ -59,6 +59,28 @@ test('settings round-trip through the file, and defaults survive a broken one', 
   }
 })
 
+test('a write that lands while the startup read is in flight is not undone by it', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'gt-settings-startup-'))
+  const file = path.join(dir, 'settings.json')
+  try {
+    const settings = createSettings({ file })
+    // Exactly what the plugin does at mount: start the read, do not await it, and let a
+    // panel write arrive. The read replaces the whole state, so a write that lands first
+    // used to be silently undone by the read finishing second.
+    const loading = settings.load()
+    const updated = await settings.update({ autoCollect: true })
+    assert.equal(updated.autoCollect, true, 'the write must survive the startup read')
+    await loading
+    assert.equal(settings.get().autoCollect, true, 'the read must not undo the write')
+
+    const reopened = createSettings({ file })
+    await reopened.load()
+    assert.equal(reopened.get().autoCollect, true, 'and the write reached the disk')
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
 test('the automatic collect decision names why it stays quiet', () => {
   const base = { ...SETTINGS_DEFAULTS, asked: {} }
   const at = 1_000_000

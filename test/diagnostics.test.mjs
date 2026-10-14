@@ -1,5 +1,5 @@
 import { strict as assert } from 'node:assert'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
@@ -60,6 +60,50 @@ test('the on-disk trail stays bounded', async () => {
     const lines = (await readFile(file, 'utf8')).trim().split('\n')
     assert.ok(lines.length <= 50, `expected at most 50 lines, got ${lines.length}`)
     assert.match(lines.at(-1), /report 69/, 'the newest report is the one that survives')
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('a reader never sees the log truncated while it is being trimmed', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'gt-diag-atomic-'))
+  const file = path.join(dir, 'client-errors.log')
+  try {
+    // The log starts out full: the very first append legitimately creates an empty file,
+    // and this test is about the trim, which used to replace the file in place.
+    const seeded = Array.from({ length: 50 }, (_, index) =>
+      JSON.stringify({ at: index, scope: 'call', message: `old ${index}` }))
+    await writeFile(file, `${seeded.join('\n')}\n`, 'utf8')
+
+    const diag = createDiagnostics({ file })
+    let reads = 0
+    let empty = 0
+    let stop = false
+    const reader = (async () => {
+      while (!stop) {
+        try {
+          if ((await readFile(file, 'utf8')) === '') empty += 1
+          reads += 1
+        } catch {
+          /* a trim renames over the log, so it is never absent */
+        }
+      }
+    })()
+
+    for (let index = 0; index < 80; index += 1) diag.record({ scope: 'call', message: `report ${index}` })
+    await diag.flush()
+    stop = true
+    await reader
+
+    assert.ok(reads > 0, 'the reader really did look at the log')
+    // Trimming in place hands a reader an empty file, and does it often: this is the
+    // assertion that would have caught the empty read CI saw, not a rare interleaving.
+    assert.equal(empty, 0, `expected no empty read, saw ${empty} of ${reads}`)
+
+    const lines = (await readFile(file, 'utf8')).trim().split('\n')
+    assert.equal(lines.length, 50)
+    assert.match(lines.at(-1), /report 79/)
+    assert.deepEqual(await readdir(dir), ['client-errors.log'], 'a trim leaves no temp file behind')
   } finally {
     await rm(dir, { recursive: true, force: true })
   }

@@ -5,6 +5,32 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **A settings write that landed during startup was silently undone.** The Host reads
+  `settings.json` without awaiting the read — it cannot block its own mount on a file — and that
+  read replaces the whole settings state. A panel toggle, or a cooldown booking from an
+  automatic ask, that arrived while the read was still in flight was therefore overwritten by
+  the file that read had just loaded. Writes now wait for the startup read to finish.
+- **The diagnostics log is trimmed without ever being seen empty.** The bound was enforced by
+  rewriting `client-errors.log` in place, and `writeFile` truncates its target before it writes,
+  so a reader that landed in that window got 0 bytes — the CI reader that expected the newest
+  report got `''`. The trim now writes a sibling file and renames it over the log, which is
+  atomic, and a failed trim leaves no litter beside the log.
+
+### Changed
+
+- **The test suite waits for results, not for the clock.** The remaining fixed sleeps
+  (`settle()`, `setTimeout`) are gone: the auto-collect, restart and dispatch tests now poll for
+  the state their assertions are about, with a bounded timeout that names what it waited for. A
+  sleep is a test that reports on the machine, and one of them was already losing that race on
+  the slower CI runner.
+- **CI runs `actions/checkout@v7` and `actions/setup-node@v7`**, which are already on Node 24,
+  so the Node 20 deprecation warnings are gone. Automatic npm caching is off explicitly: this
+  plugin has no dependencies and no lockfile to cache.
+
 ## [0.1.0] — 2026-10-14
 
 The first release: one JSON list a person and an agent both write to, eight agent tools, a
