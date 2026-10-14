@@ -25,6 +25,7 @@ const OUT = OUT_ARG === undefined ? path.join(root, 'preview', 'panel.html') : p
 const source = readFileSync(CLIENT, 'utf8')
 
 const NOW = Date.now()
+const MINUTE = 60 * 1000
 const HOUR = 3600 * 1000
 
 const TODOS = [
@@ -259,6 +260,9 @@ const runtime = createRuntime()
  * render with no conversations to choose from and the screenshot would document
  * a feature nobody can see.
  */
+// `updatedAt` is the sidebar's own recency key; these deliberately do not match the
+// insertion order, so "sorted by last use" can be told apart from "in the order the
+// map happened to have".
 const FAKE_SESSIONS = {
   byId: {
     'session-77aa31c0-1111-2222-3333-444455556666': {
@@ -266,18 +270,43 @@ const FAKE_SESSIONS = {
       title: 'dsh-global-todo · 设计与实现',
       cwd: '/home/me/projects/dsh-global-todo',
       retainedBy: { mainView: 1 },
+      updatedAt: NOW - 6 * HOUR,
     },
     'session-00000000-0000-4000-8000-000000000001': {
       id: 'session-00000000-0000-4000-8000-000000000001',
       title: 'Docker 与知识库',
       cwd: '/home/me',
+      updatedAt: NOW - 10 * MINUTE,
     },
     'session-55bb11ff-aaaa-bbbb-cccc-ddddeeeeffff': {
       id: 'session-55bb11ff-aaaa-bbbb-cccc-ddddeeeeffff',
       title: 'dorm-network',
       cwd: '/home/me/projects/dorm-network',
+      updatedAt: NOW - 2 * HOUR,
+    },
+    // Archived through the registry set...
+    'session-aaaa0000-1111-2222-3333-444455556666': {
+      id: 'session-aaaa0000-1111-2222-3333-444455556666',
+      title: '已归档的老对话（不应出现）',
+      cwd: '/home/me/projects/old-project',
+      updatedAt: NOW - 1 * MINUTE,
+    },
+    // ...and archived through the row's own flag.
+    'session-bbbb0000-1111-2222-3333-444455556666': {
+      id: 'session-bbbb0000-1111-2222-3333-444455556666',
+      title: '被归档的会话（不应出现）',
+      cwd: '/home/me',
+      archived: true,
+      updatedAt: NOW - 2 * MINUTE,
     },
   },
+}
+const FAKE_WORKSPACES = {
+  items: [
+    { workspaceId: 'ws-1', title: 'dsh-global-todo', path: '/home/me/projects/dsh-global-todo', sessionIds: [] },
+    { workspaceId: 'ws-2', title: 'dorm-network', path: '/home/me/projects/dorm-network', sessionIds: [] },
+  ],
+  archivedSessionIds: ['session-aaaa0000-1111-2222-3333-444455556666'],
 }
 const previewProps = {
   useSessions: (read) => read(FAKE_SESSIONS),
@@ -292,6 +321,9 @@ const plugin = entry.factory((name) => (name === 'react' ? runtime.React : undef
 
 const registered = new Map()
 plugin.apply({
+  // The picker reads the workspace snapshot for the archived set and the workspace
+  // options, exactly as it does in the real shell.
+  workspaces: { list: { getSnapshot: () => FAKE_WORKSPACES } },
   effect(callback) {
     const dispose = callback()
     return typeof dispose === 'function' ? dispose : () => {}
@@ -471,6 +503,16 @@ function checkRenderedPanel(html, detail) {
   expect(html.includes('is:overdue'), 'the search syntax hint is missing')
   expect(detail.includes('进展记录'), 'the notes section is missing from the detail')
   expect(detail.includes('已按四段式重写'), 'a note body is missing from the detail')
+  // Two facts the user asked for, asserted rather than trusted: archived conversations
+  // are not offered, and the list is ordered by last use.
+  expect(!html.includes('已归档的老对话'), 'an archived conversation is offered (registry set)')
+  expect(!html.includes('被归档的会话'), 'an archived conversation is offered (row flag)')
+  const offered = [...html.matchAll(/<option value="(session-[^"]+)"[^>]*>([^<]*)</g)].map((match) => match[2])
+  const expectedOrder = ['Docker 与知识库', 'dorm-network', 'dsh-global-todo · 设计与实现']
+  expect(
+    JSON.stringify(offered.slice(0, expectedOrder.length)) === JSON.stringify(expectedOrder),
+    `the picker is not ordered by last use: ${JSON.stringify(offered.slice(0, expectedOrder.length))}`,
+  )
   // The hand-off picker must offer real conversations, not only fallbacks.
   expect(html.includes('dsh-global-todo · 设计与实现'), 'the hand-off picker lost its conversation list')
   expect(html.includes('最近说过话'), 'the picker no longer marks the conversation the Host would pick')

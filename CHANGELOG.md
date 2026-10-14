@@ -12,6 +12,13 @@ panel that hands work over and records how it finished.
 
 ### Added
 
+- **The hand-off picker shows the conversations you actually use, newest first.** Its order is
+  the sidebar's own recency key (`updatedAt`), so the conversation you were last in is at the
+  top and stale ones sink, and **archived conversations are left out entirely** — an archived
+  conversation is not an answer to "where should this work go". Conversations that share a
+  title get a short id suffix so two options can be told apart, and if the current target is no
+  longer listed (archived since it was chosen) it is shown as `（已归档）` rather than silently
+  displaying a different conversation as selected.
 - **Progress notes** (`global_todo_note`, `POST /api/global-todo/note`): an append-only trail of
   who said what and when, capped per todo. An agent reporting "here is where I am stuck" no
   longer has to rewrite the user's description, and — like the other verdict tools — writing a

@@ -95,6 +95,10 @@ Your list is not touched by install or uninstall: it lives outside the plugin, a
   "continue this work" does not land beside unrelated sessions. The picker also lists the
   workspaces (`＋ new conversation · <workspace>`), and a named workspace wins over the
   inherited one. The working directory only decides when neither is known.
+- **The picker lists what you actually use, newest first, without archived conversations.** The
+  order is the sidebar's recency key (`updatedAt`). Conversations sharing a title get a short id
+  suffix, and a target that is no longer listed (archived since it was chosen) is shown as
+  `(archived)` instead of appearing as a different conversation.
 - **You pick the target** — the toolbar shows `交给：[ conversation ▾ ]`, listing your
   conversations: whichever you choose is sent with `authoritative: true` and the Host honours
   it verbatim, with no inference on top. The list marks the conversation the Host would have

@@ -153,6 +153,18 @@ rest of the batch — a partial success is reported as a partial success, never 
 The ceiling: **capture ends at the list.** Nothing the plugin does starts work by itself;
 "hand it to an agent" is always a human click.
 
+## The picker mirrors the sidebar, and hides what the user put away
+
+The conversation list is not decoration: it is the control that decides where work goes. So it
+follows the same rules the sidebar follows — ordered by the recency key the shell maintains, and
+without archived conversations.
+
+Excluding archived ones is a correctness rule, not tidiness. The user archived a conversation to
+stop seeing it; offering it as a hand-off target invites work into something deliberately put
+away. For the same reason the list must never *mislead*: two conversations sharing a title get a
+short id suffix, and a target that has since been archived is displayed as `(archived)` instead
+of being silently replaced by whichever conversation now occupies its position.
+
 ## Notes exist so reporting never rewrites the user's text
 
 A todo has one authored field — the description — and it belongs to the person who wrote it. An
