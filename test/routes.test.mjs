@@ -252,6 +252,43 @@ test('a fence that registers after mount is still found, so a trusted LAN addres
   }
 })
 
+test('the fence judges browsers while a local script is admitted by the loopback rule', async () => {
+  // Both halves matter. The fence authenticates browsers against this process's
+  // token, so a browser must go through it — including a stale one, which is a 401
+  // the user can fix by reopening the authenticated URL. A credential-less local
+  // process (a script on the Host, `curl`, an agent) is not a browser and cannot be
+  // a cross-site actor, so it is judged by the loopback rule; without that carve-out
+  // the fence locks out the Host's own tooling.
+  const env = await harness({ connection: { requestRejection: () => 401 } })
+  const local = (headers) => makeReq({ url: `${ROUTE_BASE}/list`, address: '127.0.0.1', headers })
+  try {
+    const script = await env.call('/list', local({ host: '127.0.0.1:3080' }))
+    assert.equal(script.statusCode, 200, 'a local script must not need a browser token')
+
+    const withCookie = await env.call('/list', local({ host: '127.0.0.1:3080', cookie: 'dsh=stale' }))
+    assert.equal(withCookie.statusCode, 401, 'a browser goes through the fence')
+
+    const withOrigin = await env.call('/list', local({ host: '127.0.0.1:3080', origin: 'http://127.0.0.1:3080' }))
+    assert.equal(withOrigin.statusCode, 401, 'an Origin means a browser too')
+
+    const crossSite = await env.call(
+      '/list',
+      local({ host: '127.0.0.1:3080', 'sec-fetch-site': 'cross-site' }),
+    )
+    // Refused with the fence's own verdict (401 here), not rescued by the carve-out:
+    // `isLoopbackRequest` treats a cross-site request as non-local by definition.
+    assert.equal(crossSite.statusCode, 401, 'cross-site never counts as local')
+
+    const remote = await env.call(
+      '/list',
+      makeReq({ url: `${ROUTE_BASE}/list`, address: '192.168.1.50', headers: { host: '192.168.1.10:3080' } }),
+    )
+    assert.equal(remote.statusCode, 401, 'a remote caller with no browser credentials is still fenced')
+  } finally {
+    await env.cleanup()
+  }
+})
+
 test('a fence that throws fails closed', async () => {
   const env = await harness({
     connection: {

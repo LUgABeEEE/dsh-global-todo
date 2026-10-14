@@ -12,6 +12,14 @@ panel that hands work over and records how it finished.
 
 ### Fixed
 
+- **The Host's own tooling is no longer locked out by the connection fence.** Deferring to the
+  fence fixed LAN access but made *every* credential-less request a 401, because the fence
+  authenticates browsers — so `curl`, scripts on the Host and other agents lost access to a list
+  they are the main writers of. The fence now judges **browsers** (anything carrying a cookie or
+  an `Origin`), while a local, credential-less caller is judged by the loopback rule — the guard
+  that existed before the fence did. A fence that throws still fails closed, and a cross-site
+  request is never rescued by the carve-out. `/health` reports `fence.localScriptsAdmitted`.
+
 - **The panel works from the LAN and from a tunnel again.** The Host's connection fence was read
   once at mount time, when it can still be absent, so every request fell through to the plugin's
   own loopback check. That check is stricter than the Host's trusted-host list: a browser anywhere
