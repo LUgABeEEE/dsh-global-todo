@@ -31,6 +31,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   shape of the session snapshot it sees to `/health.clientErrors` once per mount, because a preview
   fixture written by the same hand as the filter can only ever confirm itself.
 
+### Added
+
+- **A folder browser, because the shell's picker is not always mounted.** `uiWorkspace.pickDirectory()`
+  delegates to a directory-picking Remote namespace that this deployment does not have, so it
+  throws instead of opening anything (the panel had been reduced to asking you to type a path).
+  The Host now serves `GET /api/global-todo/dirs` — visible sub-folders, sorted, capped, with the
+  parent — and `选择` walks it as a real picker (`浏览`: current path, `上一级`, folder buttons,
+  `用这个目录`). The path field stays for pasting, and the failure is still reported to
+  `/health.clientErrors`.
+
 ### Changed
 
 - **A calmer panel.** The header had grown two rows of controls that said the same things

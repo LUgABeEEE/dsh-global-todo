@@ -1,5 +1,5 @@
 import { strict as assert } from 'node:assert'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
@@ -98,6 +98,7 @@ test('the route surface is exactly the documented one', async () => {
         'capture',
         'create',
         'diagnostics',
+        'dirs',
         'dispatch',
         'get',
         'health',
@@ -457,4 +458,55 @@ test('status codes are derived from the machine code table', () => {
   assert.equal(statusForCode('invalid-link'), 400)
   assert.equal(statusForCode('store-corrupt'), 500)
   assert.equal(statusForCode('agents-unavailable'), 502)
+})
+
+test('the directory browser lists folders and refuses what it cannot browse', async () => {
+  const env = await harness()
+  try {
+    const base = env.dir
+    await mkdir(path.join(base, 'sub-b'), { recursive: true })
+    await mkdir(path.join(base, 'sub-a'), { recursive: true })
+    await mkdir(path.join(base, '.hidden'), { recursive: true })
+    await writeFile(path.join(base, 'file.txt'), 'x')
+
+    const listed = await env.call('/dirs', makeReq({ url: `${ROUTE_BASE}/dirs?path=${encodeURIComponent(base)}` }))
+    assert.equal(listed.statusCode, 200)
+    const data = listed.json().data
+    assert.deepEqual(data.dirs.map((entry) => entry.name), ['sub-a', 'sub-b'], 'only visible folders, sorted')
+    assert.equal(data.parent, path.dirname(base))
+    assert.equal(data.dirs[0].path, path.join(base, 'sub-a'))
+
+    const file = await env.call('/dirs', makeReq({ url: `${ROUTE_BASE}/dirs?path=${encodeURIComponent(path.join(base, 'file.txt'))}` }))
+    assert.equal(file.statusCode, 404, 'a file is not a folder')
+
+    const relative = await env.call('/dirs', makeReq({ url: `${ROUTE_BASE}/dirs?path=relative/thing` }))
+    assert.equal(relative.statusCode, 400, 'a relative path is refused')
+
+    const fallback = await env.call('/dirs', makeReq({ url: `${ROUTE_BASE}/dirs` }))
+    assert.equal(fallback.statusCode, 200, 'no path means a sensible root')
+    assert.ok(fallback.json().data.path.length > 0)
+  } finally {
+    await env.cleanup()
+  }
+})
+
+test('POST /note and /diagnostics reach the service', async () => {
+  const recorded = []
+  const env = await harness({ diagnostics: { record: (body) => { recorded.push(body); return { at: 1 } }, recent: () => [{ at: 1, scope: 'call', message: 'boom' }] } })
+  try {
+    const created = await env.call('/create', makeReq({ method: 'POST', url: `${ROUTE_BASE}/create`, body: JSON.stringify({ title: 'A' }) }))
+    const id = created.json().data.todo.id
+    const noted = await env.call('/note', makeReq({ method: 'POST', url: `${ROUTE_BASE}/note`, body: JSON.stringify({ id, text: '进展一条' }) }))
+    assert.equal(noted.statusCode, 200)
+    assert.equal(noted.json().data.note.text, '进展一条')
+
+    const reported = await env.call('/diagnostics', makeReq({ method: 'POST', url: `${ROUTE_BASE}/diagnostics`, body: JSON.stringify({ scope: 'capture', status: 502, message: '没在运行' }) }))
+    assert.equal(reported.json().data.recorded, true)
+    assert.equal(recorded.length, 1)
+
+    const health = await env.call('/health', makeReq({ url: `${ROUTE_BASE}/health` }))
+    assert.equal(health.json().data.clientErrors[0].message, 'boom')
+  } finally {
+    await env.cleanup()
+  }
 })
