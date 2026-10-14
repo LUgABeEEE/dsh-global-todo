@@ -6,8 +6,10 @@ name: Publish
 #
 # npm refuses to configure a trusted publisher for a package that does not exist
 # yet — "Package must exist" is a documented prerequisite of `npm trust` — so the
-# first release is a manual, token-authenticated `npm publish`. Every release
-# after that can come from here.
+# first release cannot use OIDC even in principle. Until the package exists this
+# workflow also accepts the `NPM_TOKEN` secret: the bootstrap release uses it, the
+# trusted publisher is configured straight afterwards, and that env block and the
+# secret are then removed together.
 on:
   workflow_dispatch:
   push:
@@ -44,3 +46,7 @@ jobs:
 
       - name: Publish with provenance
         run: npm publish --provenance --access public
+        env:
+          # Bootstrap only — see the note at the top of this file. `setup-node`
+          # writes the matching `_authToken` line into .npmrc for this variable.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
