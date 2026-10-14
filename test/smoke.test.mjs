@@ -135,11 +135,27 @@ function makeReq(options = {}) {
   }
 }
 
-/** A recording `agents` service, enough to complete a hand-off. */
+/** A recording `agents` service, enough to complete a hand-off and to be asked. */
 function makeAgents() {
   const created = []
+  const sessions = new Map()
   return {
     created,
+    sessions,
+    /** Register a conversation that is already running. */
+    live(id, header = { cwd: '/repo' }) {
+      const sent = []
+      const agent = {
+        id,
+        status: 'idle',
+        sent,
+        session: { header },
+        followup: (message) => sent.push(message),
+        steer: (message) => sent.push(message),
+      }
+      sessions.set(id, agent)
+      return agent
+    },
     async create(options) {
       const sent = []
       created.push(options)
@@ -153,9 +169,14 @@ function makeAgents() {
         },
       }
     },
-    get: () => undefined,
+    get(id) {
+      return sessions.get(id)
+    },
   }
 }
+
+/** Wait for the plugin's fire-and-forget bookkeeping to settle. */
+const settle = () => new Promise((resolve) => setTimeout(resolve, 40))
 
 test('the plugin mounts, registers its surfaces, and survives a full round trip', async () => {
   const dir = await mkdtemp(path.join(tmpdir(), 'gt-smoke-'))
@@ -178,7 +199,7 @@ test('the plugin mounts, registers its surfaces, and survives a full round trip'
 
     // Surfaces
     assert.equal(host.state.tools.size, 9, 'all nine tools must register')
-    assert.equal(host.state.routes.size, 12, 'all twelve routes must register')
+    assert.equal(host.state.routes.size, 13, 'all thirteen routes must register')
     assert.equal(host.state.promptSections.length, 1)
     assert.equal(host.state.promptSections[0].name, 'dsh-global-todo:guidance')
     assert.ok(host.state.warnings.length === 0, `no warnings expected, got: ${host.state.warnings.join('; ')}`)
@@ -249,6 +270,63 @@ test('with no optional service the plugin still mounts and only loses surfaces',
     assert.equal(host.state.routes.size, 0)
     assert.equal(host.state.promptSections.length, 0)
     assert.ok(host.state.infos.some((line) => line.includes('已挂载')))
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('the automatic collect switch asks the person\'s conversation once, then honors the cooldown', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'gt-smoke-auto-'))
+  try {
+    const agents = makeAgents()
+    const host = makeHost({
+      tools: {},
+      webServer: {},
+      systemPrompt: {},
+      agents,
+      agentDefaultModel: { currentSelection: () => ({ provider: 'deepseek', model: 'deepseek-chat' }) },
+    })
+    apply(host.ctx, { storePath: path.join(dir, 'todos.json'), requireExistingFiles: false })
+
+    const person = agents.live('session-person')
+    const session = (id) => ({ id, header: { id } })
+    const userMessage = { type: 'user/message', seq: 1, data: { source: { kind: 'user' } } }
+    const turnEnd = { type: 'turn/end', seq: 5, data: { turn: 1, reason: { kind: 'completed' } } }
+
+    // Off until a person turns it on: a clean turn must change nothing.
+    host.emit('session/event', session('session-person'), userMessage)
+    host.emit('session/event', session('session-person'), turnEnd)
+    await settle()
+    assert.equal(person.sent.length, 0, 'automatic collect is off by default')
+
+    const settingsRoute = host.state.routes.get('/api/global-todo/settings')
+    const posted = makeRes()
+    await settingsRoute.handler(
+      makeReq({ method: 'POST', url: '/api/global-todo/settings', body: JSON.stringify({ autoCollect: true }) }),
+      posted,
+    )
+    assert.equal(JSON.parse(posted.body).data.settings.autoCollect, true)
+
+    host.emit('session/event', session('session-person'), turnEnd)
+    await settle()
+    assert.equal(person.sent.length, 1, 'the conversation must be asked exactly once')
+    assert.match(JSON.stringify(person.sent[0]), /全局待办/)
+
+    // Inside the cooldown it stays quiet, and a conversation nobody is in is never asked.
+    host.emit('session/event', session('session-person'), turnEnd)
+    host.emit('session/event', session('session-other'), turnEnd)
+    await settle()
+    assert.equal(person.sent.length, 1, 'the cooldown must hold')
+    assert.equal(agents.sessions.has('session-other'), false)
+
+    // The switch is on the Host, so it survives the panel and is reported by health.
+    const healthRoute = host.state.routes.get('/api/global-todo/health')
+    const healthRes = makeRes()
+    await healthRoute.handler(makeReq({ url: '/api/global-todo/health' }), healthRes)
+    const payload = JSON.parse(healthRes.body)
+    assert.equal(payload.data.settings.autoCollect, true)
+    assert.equal(payload.data.autoCollect.error, null)
+    assert.equal(payload.data.autoCollect.lastAsk.sessionId, 'session-person')
   } finally {
     await rm(dir, { recursive: true, force: true })
   }
@@ -327,7 +405,7 @@ test('a broken tools surface does not stop the web surface from mounting', async
     }
     assert.doesNotThrow(() => apply(host.ctx, { storePath: path.join(dir, 'todos.json') }))
     assert.ok(host.state.warnings.some((line) => line.includes('工具注册失败')))
-    assert.equal(host.state.routes.size, 12, 'routes are independent of the tool registry')
+    assert.equal(host.state.routes.size, 13, 'routes are independent of the tool registry')
   } finally {
     await rm(dir, { recursive: true, force: true })
   }

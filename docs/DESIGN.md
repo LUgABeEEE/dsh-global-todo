@@ -153,6 +153,27 @@ rest of the batch — a partial success is reported as a partial success, never 
 The ceiling: **capture ends at the list.** Nothing the plugin does starts work by itself;
 "hand it to an agent" is always a human click.
 
+## Automatic collection has to be opt-in, bounded, and aimed
+
+Asking a model to remember things on its own initiative works some of the time, which is not
+enough for a list whose whole point is not forgetting. So the plugin can also act: after a clean
+turn in a conversation the person is actually in, it asks that conversation whether anything needs
+following up.
+
+That power is fenced in four ways, because the failure mode is worse than doing nothing — a list
+that fills itself with noise gets ignored, and then the real items get ignored too:
+
+- **off until switched on** by a person;
+- **only the conversation a person is in**, judged from the same tracker a hand-off uses — never a
+  dispatch target, subagent or background run, which would interrupt work with a question;
+- **only clean turns**: an aborted, failed or truncated turn is not a moment to ask;
+- **a cooldown, booked before the question is asked**, so a repeated event or a failing request
+  cannot turn one turn into a loop.
+
+The switch lives on the Host rather than in the panel because the Host is what acts on it: the
+panel may be closed when the question is due, and `/health` reports the state so the mirror can
+never drift from the thing it mirrors.
+
 ## An action belongs where its subject is unambiguous
 
 "Collect from this chat" was a toolbar button, and in a global panel "this chat" is a guess: the

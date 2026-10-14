@@ -371,7 +371,18 @@ const requestedUrl = []
 globalThis.fetch = async (url) => {
   requestedUrl.push(url)
   const payload = url.includes('/health')
-    ? { ok: true, data: { plugin: 'dsh-global-todo', version: '0.1.0', store: { file: '/home/me/.dsh/global-todo/todos.json' }, dispatch: { agents: true } } }
+    ? {
+        ok: true,
+        data: {
+          plugin: 'dsh-global-todo',
+          version: '0.1.0',
+          store: { file: '/home/me/.dsh/global-todo/todos.json' },
+          dispatch: { agents: true },
+          // The automatic collect switch is a Host setting; the panel only mirrors it.
+          settings: { autoCollect: true, cooldownMinutes: 30 },
+          autoCollect: { enabled: true, asking: false, lastAsk: null, error: null },
+        },
+      }
     : { ok: true, data: { todos: TODOS, counts: COUNTS } }
   return { status: 200, json: async () => payload }
 }
@@ -522,6 +533,9 @@ function checkRenderedPanel(html, detail) {
   expect(html.includes('is:overdue'), 'the search syntax hint is missing')
   expect(detail.includes('进展记录'), 'the notes section is missing from the detail')
   expect(detail.includes('已按四段式重写'), 'a note body is missing from the detail')
+  // The automatic collect switch is Host state, so it must be visible in the panel —
+  // and visibly *on* in this fixture.
+  expect(/data-on="1"[^>]*>\s*自动获取/.test(html), 'the automatic collect switch is not shown as on')
   // The capture action belongs to a conversation, so it sits on that conversation's
   // group; the toolbar only keeps a fallback for a conversation that has no group.
   expect(html.includes('gt-group-action'), 'no capture action on the conversation groups')

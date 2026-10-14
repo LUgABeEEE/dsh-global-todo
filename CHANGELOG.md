@@ -10,6 +10,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 The first release: one JSON list a person and an agent both write to, eight agent tools, a
 panel that hands work over and records how it finished.
 
+### Added
+
+- **An automatic collect switch** (panel chip `自动获取`, `POST /api/global-todo/settings`). When
+  it is on, a conversation you are in that finishes a clean turn and has not been asked for a
+  while is asked once whether anything needs following up. It is off until a person turns it on,
+  the switch lives on the Host (so it works with the panel closed and is reported by `/health`),
+  and every reason *not* to ask is explicit: an aborted/failed turn, a conversation nobody is in,
+  a session asked inside the cooldown, or the feature being off. The cooldown is booked before
+  the question is asked, so a repeated event or a failed request cannot turn into a loop.
+- **Stronger proactive guidance in the system prompt.** The section now lists the concrete
+  triggers for recording something on one's own initiative (a cross-conversation follow-up, "I'll
+  do X then Y", a leftover step at the end of a turn), says plainly that asking the user whether
+  to record it is wrong, and points at `global_todo_note` for reporting a blocker instead of
+  rewriting the description.
+
 ### Changed
 
 - **"Collect from this chat" lives on the conversation it collects from.** A global toolbar

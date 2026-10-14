@@ -82,6 +82,12 @@ Your list is not touched by install or uninstall: it lives outside the plugin, a
   restores it verbatim: same id, same creation time, same attachments.
 - **Keyboard** — `/` focuses search, `n` focuses the new-todo field, `Esc` collapses the
   open detail. Row actions appear on hover or keyboard focus.
+- **Auto-collect (off by default)** — a panel switch. When on, a conversation you are in that
+  finishes a clean turn is asked once whether anything needs following up, at most once every 30
+  minutes, and only if you are actually in that conversation (never a dispatch target, a subagent
+  or a background run). Aborted and failed turns are skipped, and the cooldown is booked before
+  the question is asked so a repeated event cannot become a loop. The switch is Host state, so it
+  survives the panel being closed and is reported by `/health`.
 - **Collect per conversation** — the `Collect` action sits on each conversation's group header in
   the list, asks *that* conversation to record what needs following up, and the items land under
   it. The toolbar keeps a "collect from this chat" fallback, shown only when the current
