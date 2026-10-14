@@ -20,6 +20,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   report got `''`. The trim now writes a sibling file and renames it over the log, which is
   atomic, and a failed trim leaves no litter beside the log.
 
+### Fixed
+
+- **The hand-off picker now mirrors the shell's own visibility rule.** It was offering
+  conversations the sidebar deliberately hides: **subagent children** (`origin === 'subagent'`),
+  **blank sessions** that are not the one in front of the user, and archived sessions whose
+  archived set came from a source the picker read too narrowly. The rule is copied from
+  `sessionVisible` in the shipped workspace package — the only authority on it — including its one
+  exception: a blank session *is* offered while it is the current one. The picker also reports the
+  shape of the session snapshot it sees to `/health.clientErrors` once per mount, because a preview
+  fixture written by the same hand as the filter can only ever confirm itself.
+
 ### Changed
 
 - **A calmer panel.** The header had grown two rows of controls that said the same things

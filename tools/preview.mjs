@@ -271,6 +271,8 @@ const FAKE_SESSIONS = {
       title: 'dsh-global-todo · 设计与实现',
       cwd: '/home/me/projects/dsh-global-todo',
       retainedBy: { mainView: 1 },
+      // The one exception in the shell's rule: a blank session that is *current* stays.
+      blank: true,
       updatedAt: NOW - 6 * HOUR,
     },
     'session-00000000-0000-4000-8000-000000000001': {
@@ -284,6 +286,22 @@ const FAKE_SESSIONS = {
       title: 'dorm-network',
       cwd: '/home/me/projects/dorm-network',
       updatedAt: NOW - 2 * HOUR,
+    },
+    // A subagent child is never a top-level row in the shell, so it must not be offered.
+    'session-cccc0000-1111-2222-3333-444455556666': {
+      id: 'session-cccc0000-1111-2222-3333-444455556666',
+      title: '子代理（不应出现）',
+      cwd: '/home/me/projects/dsh-global-todo',
+      origin: 'subagent',
+      updatedAt: NOW - 30 * 1000,
+    },
+    // A blank session is hidden unless it is the one in front of the user.
+    'session-dddd0000-1111-2222-3333-444455556666': {
+      id: 'session-dddd0000-1111-2222-3333-444455556666',
+      title: '空白会话（不应出现）',
+      cwd: '/home/me',
+      blank: true,
+      updatedAt: NOW - 20 * 1000,
     },
     // Archived through the registry set...
     'session-aaaa0000-1111-2222-3333-444455556666': {
@@ -548,6 +566,9 @@ function checkRenderedPanel(html, detail) {
   expect(!html.includes('从本对话抓取'), 'the toolbar still duplicates the per-conversation capture action')
   // Two facts the user asked for, asserted rather than trusted: archived conversations
   // are not offered, and the list is ordered by last use.
+  expect(!html.includes('子代理（不应出现）'), 'a subagent child is offered as a conversation')
+  expect(!html.includes('空白会话（不应出现）'), 'a blank session that is not the current one is offered')
+  expect(html.includes('dsh-global-todo · 设计与实现'), 'the current blank session must still be offered')
   expect(!html.includes('已归档的老对话'), 'an archived conversation is offered (registry set)')
   expect(!html.includes('被归档的会话'), 'an archived conversation is offered (row flag)')
   const offered = [...html.matchAll(/<option value="(session-[^"]+)"[^>]*>([^<]*)</g)].map((match) => match[2])
