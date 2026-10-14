@@ -12,6 +12,13 @@ panel that hands work over and records how it finished.
 
 ### Fixed
 
+- **「选择」工作目录不再以一条无解的错误结束.** `uiWorkspace.pickDirectory()` exists, but it
+  delegates to a directory-picking **Remote namespace** that is not mounted in every
+  deployment, where calling it throws a bare
+  `Cannot read properties of undefined (reading 'directoryPicker')`. The panel now falls back
+  to a **path field** (`手动填` → paste an absolute path → `使用`), says plainly why, and reports
+  the throw to the Host diagnostics so it is visible in `/health.clientErrors` instead of only
+  in someone's browser.
 - **Both capture actions and the automatic-collect switch reported an error even though they
   worked.** The handlers ended with `void refresh()` — a function that does not exist — so a
   successful request was immediately followed by a `ReferenceError` that the handler's own catch
