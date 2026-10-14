@@ -5,6 +5,7 @@ import { TodoError } from '../lib/errors.js'
 import {
   LIMITS,
   PRIORITIES,
+  addNote,
   PRIORITY_LABELS,
   addLink,
   applyPatch,
@@ -204,6 +205,32 @@ test('levels run from P0 to P3 and the older values still load', () => {
   }
   assert.equal(normalizeStored({ id: 't-1', title: 'A', priority: 'nonsense' }, { activityLimit: 5 }).priority, 'normal')
   assert.equal(PRIORITY_LABELS.urgent, 'P0 紧急')
+})
+
+test('notes append, are capped, and survive a round trip', () => {
+  const todo = createTodo({ title: 'A' }, { now: NOW })
+  assert.deepEqual(todo.notes, [])
+  addNote(todo, '第一步做完了', { now: NOW, by: 'agent' })
+  addNote(todo, '卡在需要授权', { now: NOW + 1, by: 'agent' })
+  assert.equal(todo.notes.length, 2)
+  assert.equal(todo.notes[1].text, '卡在需要授权')
+  assert.equal(todo.notes[1].by, 'agent')
+  assert.equal(todo.updatedAt, NOW + 1)
+  assert.equal(todo.activity.at(-1).kind, 'noted')
+
+  // A record written before notes existed still loads, and junk is dropped.
+  const legacy = normalizeStored({ id: 't-1', title: '旧' }, { activityLimit: 10 })
+  assert.deepEqual(legacy.notes, [])
+  const repaired = normalizeStored(
+    { id: 't-2', title: 'A', notes: [{ at: 1, by: 'agent', text: 'ok' }, { text: '' }, 'junk', null] },
+    { activityLimit: 10 },
+  )
+  assert.equal(repaired.notes.length, 1)
+
+  // The cap keeps one todo from becoming a log file.
+  for (let index = 0; index < LIMITS.notes + 5; index += 1) addNote(todo, `第 ${index} 条`, { now: NOW + index })
+  assert.equal(todo.notes.length, LIMITS.notes)
+  assert.match(todo.notes.at(-1).text, /第 \d+ 条/)
 })
 
 test('completing a todo keeps the evidence and reopening drops it', () => {

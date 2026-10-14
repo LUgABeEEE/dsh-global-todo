@@ -36,9 +36,14 @@ const TODOS = [
     priority: 'high',
     dueAt: new Date(NOW + 20 * HOUR).toISOString(),
     tags: ['发布', '文档'],
+    notes: [
+      { at: NOW - 2 * HOUR, by: 'agent', text: '版本号已对齐，verify 跑过了。' },
+      { at: NOW - HOUR, by: 'agent', text: '卡在需要你在 npm 上绑定 Trusted Publisher，绑定后我打 tag 发布。' },
+    ],
     links: [
       { kind: 'url', value: 'https://docs.npmjs.com/trusted-publishers', title: 'docs.npmjs.com/trusted-publishers' },
       { kind: 'file', value: '/home/me/projects/dsh-global-todo/docs/DESIGN.md', title: 'DESIGN.md' },
+      { kind: 'file', value: '/home/me/projects/dsh-global-todo/docs/归档设计稿.md', title: '归档设计稿.md', missing: true },
     ],
     createdAt: NOW - 3 * HOUR,
     createdBy: 'human',
@@ -101,6 +106,7 @@ const TODOS = [
     createdBy: 'agent',
     updatedAt: NOW - 4 * 24 * HOUR,
     doneAt: NOW - 4 * 24 * HOUR,
+    notes: [{ at: NOW - 4 * 24 * HOUR, by: 'agent', text: '已按四段式重写并替换了旧模板。' }],
     completion: {
       at: NOW - 4 * 24 * HOUR,
       by: 'agent',
@@ -414,9 +420,10 @@ ${css}
 `
 
 const panelHtml = render(second.tree)
+const detailHtml = render(third.tree)
 mkdirSync(OUT.replace(/\/[^/]+$/, ''), { recursive: true })
 writeFileSync(OUT, panelHtml)
-writeFileSync(OUT.replace(/\.html?$/, '') + '-detail.html', render(third.tree))
+writeFileSync(OUT.replace(/\.html?$/, '') + '-detail.html', detailHtml)
 console.log('written', OUT, 'and the detail variant; fetch calls:', requestedUrl.join(', '))
 
 /**
@@ -429,7 +436,7 @@ console.log('written', OUT, 'and the detail variant; fetch calls:', requestedUrl
  * @param {string} html
  * @returns {string[]} failures, empty when the render looks right
  */
-function checkRenderedPanel(html) {
+function checkRenderedPanel(html, detail) {
   const failures = []
   const expect = (condition, message) => {
     if (condition !== true) failures.push(message)
@@ -456,6 +463,14 @@ function checkRenderedPanel(html) {
   expect(html.includes('gt-chip-ok'), 'the running-session badge lost its colour')
   expect(html.includes('会话在跑'), 'the running-session badge label is missing')
   expect(html.includes('P0 紧急'), 'the P0 label is missing')
+  // Progress notes and dead attachments are user-facing facts, so they are asserted
+  // rather than assumed to render. The row shows the count; the detail — which only
+  // exists for the open row — carries the trail.
+  expect(html.includes('2 条进展'), 'the row does not show how many notes there are')
+  expect(html.includes('文件不在了'), 'a missing attachment is not flagged on the row')
+  expect(html.includes('is:overdue'), 'the search syntax hint is missing')
+  expect(detail.includes('进展记录'), 'the notes section is missing from the detail')
+  expect(detail.includes('已按四段式重写'), 'a note body is missing from the detail')
   // The hand-off picker must offer real conversations, not only fallbacks.
   expect(html.includes('dsh-global-todo · 设计与实现'), 'the hand-off picker lost its conversation list')
   expect(html.includes('最近说过话'), 'the picker no longer marks the conversation the Host would pick')
@@ -468,7 +483,7 @@ function checkRenderedPanel(html) {
 }
 
 if (process.argv.includes('--check')) {
-  const failures = checkRenderedPanel(panelHtml)
+  const failures = checkRenderedPanel(panelHtml, detailHtml)
   if (failures.length > 0) {
     console.error('panel render check failed:')
     for (const failure of failures) console.error(' -', failure)

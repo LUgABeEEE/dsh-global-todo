@@ -82,6 +82,14 @@ Your list is not touched by install or uninstall: it lives outside the plugin, a
   restores it verbatim: same id, same creation time, same attachments.
 - **Keyboard** — `/` focuses search, `n` focuses the new-todo field, `Esc` collapses the
   open detail. Row actions appear on hover or keyboard focus.
+- **Search syntax** — `tag:release` (or `#ops`), `is:overdue`, `is:active`, `has:link`,
+  `has:note`, `level:p0`, plus free words combined with AND (which also match note text). A
+  search without a colon behaves exactly as it always did.
+- **Progress notes** — an append-only trail per todo (count on the row, full text and an add
+  box in the detail). An agent reporting a blocker writes here instead of rewriting your
+  description, and writing one makes automatic completion stand down.
+- **Dead attachments are flagged** — a file link whose target is gone is marked on the row and
+  labelled in the detail. Computed on read, never stored.
 - **Where a new conversation goes** — a hand-off that opens one joins the workspace owning
   the conversation that wrote the todo (and starts in that workspace's directory), so
   "continue this work" does not land beside unrelated sessions. The picker also lists the
@@ -141,6 +149,7 @@ Your list is not touched by install or uninstall: it lives outside the plugin, a
 | Tool | Purpose |
 |---|---|
 | `global_todo_add` | Record an item — description, attachments, tags, priority, due time |
+| `global_todo_note` | Append a progress note — where you are, what blocks you, who must decide |
 | `global_todo_capture` | **Record a batch**: for 「抓一下待办」 or a turn that produced several follow-ups; each entry is validated on its own |
 | `global_todo_list` | Query by state, tag or text; every row carries its creation time |
 | `global_todo_get` | Read one item in full, including attachments and the last hand-off |

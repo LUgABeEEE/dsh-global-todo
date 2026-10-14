@@ -153,6 +153,21 @@ rest of the batch — a partial success is reported as a partial success, never 
 The ceiling: **capture ends at the list.** Nothing the plugin does starts work by itself;
 "hand it to an agent" is always a human click.
 
+## Notes exist so reporting never rewrites the user's text
+
+A todo has one authored field — the description — and it belongs to the person who wrote it. An
+agent that needs to say "I did the first half, I am blocked on your approval" otherwise has to
+edit that text, which quietly destroys the original request. The note trail is append-only and
+capped, so reporting is cheap and a record cannot grow into a log file.
+
+`global_todo_note` is also a **verdict tool** for the completion watcher: a turn that ends
+cleanly after writing "this is blocked, here is why" must not be auto-completed, because the
+agent already stated the outcome.
+
+Attachment health is the opposite kind of data: it is a fact about the filesystem *now*, not
+about the record. So it is computed when the list is read and never written down — a file that
+comes back stops being flagged, and no stale flag can outlive the problem it described.
+
 ## Placement is inherited, not invented
 
 A hand-off means "continue this work", and work has a home: the workspace that owns the

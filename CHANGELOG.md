@@ -12,6 +12,18 @@ panel that hands work over and records how it finished.
 
 ### Added
 
+- **Progress notes** (`global_todo_note`, `POST /api/global-todo/note`): an append-only trail of
+  who said what and when, capped per todo. An agent reporting "here is where I am stuck" no
+  longer has to rewrite the user's description, and — like the other verdict tools — writing a
+  note makes automatic completion stand down rather than contradict a stated blocker. The row
+  shows the count, the detail shows the trail and a box to add one.
+- **Dead attachments are flagged where you see them.** File attachments that no longer exist
+  are marked red on the row and labelled in the detail. The flag is computed on read and never
+  stored, so a file that comes back stops being flagged and a stale flag cannot outlive the
+  problem.
+- **Search syntax**: `tag:发布` / `#运维`, `is:overdue|active|due|open|doing|done`, `has:link`,
+  `has:note`, `level:p0|p1|p2|p3`, plus free words, which are combined with AND and also match
+  note text. A plain search still behaves exactly as before.
 - **A new conversation is placed where the work lives.** A hand-off that opens a session now
   joins the workspace owning the conversation that wrote the todo (or the one it was handed
   from), and starts in that workspace's directory — so the agent and the sidebar agree

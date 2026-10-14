@@ -248,6 +248,27 @@ test('an agent that decided for itself is not overruled', async () => {
   }
 })
 
+test('writing a progress note counts as deciding', async () => {
+  const env = await harness()
+  try {
+    const todo = await env.service.create({ title: '报阻塞' })
+    await env.service.recordDispatch(todo.id, { mode: 'current', ok: true, sessionId: 'session-note' })
+    env.watcher.expect('session-note')
+    env.emit('session-note', { type: 'turn/start', seq: 1, data: { turn: 1 } })
+    env.emit('session-note', {
+      type: 'tool/call',
+      seq: 2,
+      data: { turn: 1, step: 1, callId: 'c1', name: 'global_todo_note', arguments: '{}' },
+    })
+    env.emit('session-note', assistant('记了一条进展：卡在授权'))
+    env.emit('session-note', turnEnd('completed'))
+    await env.watcher.settled()
+    assert.equal((await env.service.get(todo.id)).status, 'open', 'a stated blocker must stay open')
+  } finally {
+    await env.cleanup()
+  }
+})
+
 test('a read-only tool call does not count as deciding', async () => {
   const env = await harness()
   try {

@@ -91,7 +91,7 @@ test('the route surface is exactly the documented one', async () => {
   try {
     assert.deepEqual(
       env.routes.map((route) => route.path.replace(`${ROUTE_BASE}/`, '')).sort(),
-      ['capture', 'create', 'dispatch', 'get', 'health', 'link', 'list', 'remove', 'restore', 'status', 'update'],
+      ['capture', 'create', 'dispatch', 'get', 'health', 'link', 'list', 'note', 'remove', 'restore', 'status', 'update'],
     )
     for (const route of env.routes) assert.equal(route.kind, 'exact')
   } finally {

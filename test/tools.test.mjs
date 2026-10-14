@@ -34,6 +34,7 @@ test('every tool is a complete, self-describing definition', async () => {
         'global_todo_get',
         'global_todo_link',
         'global_todo_list',
+        'global_todo_note',
         'global_todo_remove',
         'global_todo_update',
       ],
@@ -281,6 +282,23 @@ test('a todo written by a tool remembers which conversation wrote it', async () 
     const bare = await env.invoke('global_todo_add', { title: '没有上下文' })
     assert.equal(bare.value.todo.originDir, '')
     assert.equal(bare.value.todo.originSessionId, '')
+  } finally {
+    await env.cleanup()
+  }
+})
+
+test('a progress note is recorded without rewriting the description', async () => {
+  const env = await harness()
+  try {
+    const added = await env.invoke('global_todo_add', { title: 'A', description: '用户写的' })
+    const id = added.value.todo.id
+    const noted = await env.invoke('global_todo_note', { id, text: '做到一半，卡在需要授权' })
+    assert.equal(noted.value.ok, true)
+    assert.equal(noted.value.todo.notes.length, 1)
+    assert.equal(noted.value.todo.notes[0].text, '做到一半，卡在需要授权')
+    assert.equal(noted.value.todo.notes[0].by, 'agent')
+    assert.equal(noted.value.todo.description, '用户写的')
+    assert.match(noted.rendered[0].text, /已记一条进展/)
   } finally {
     await env.cleanup()
   }
