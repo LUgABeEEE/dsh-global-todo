@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A new conversation is placed where the work lives.** A hand-off that opens a session now
+  joins the workspace owning the conversation that wrote the todo (or the one it was handed
+  from), and starts in that workspace's directory — so the agent and the sidebar agree
+  instead of the session landing beside unrelated ones. The panel also lists the workspaces,
+  so a new conversation can be aimed at one explicitly (`＋ new conversation · <workspace>`);
+  a named workspace outranks the inherited one. Only when neither is known does the working
+  directory decide.
 - **A pre-commit credential audit inside `npm run check`**: the rule the project used to
   apply only to shipped files now runs over every file a commit would carry (51 of them,
   with the same exclusions `.gitignore` applies), and it asserts that the local artifacts
@@ -64,6 +71,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The receipt's jump button did nothing.** Client services arrive through
+  `ctx.inject([...])`, not `ctx.get(...)`: the directory marks `uiWorkspace` as a hard
+  dependency for exactly that reason. It is now obtained by injection, and the button is
+  only rendered when `openSession` really exists — a button that does nothing is worse than
+  no button.
+- **A hand-off still landed in the wrong conversation.** Inference about "the conversation
+  you are in" was wrong twice, so it is no longer the mechanism: the toolbar now lists the
+  conversations and the user picks one (`交给：[ 对话名 ▾ ]`). An explicit pick is sent with
+  `authoritative: true`, which the Host honours verbatim; the list marks the conversation the
+  Host would have chosen on its own, `自动` keeps the old behaviour, and a pick is remembered.
 - **A hand-off pulled the next hand-off with it.** The "conversation you were last in" came
   from `api-session/activity`, which reports *any* user-authored durable message — and a
   hand-off is one: the plugin injects a user-role message into its target. So every dispatch

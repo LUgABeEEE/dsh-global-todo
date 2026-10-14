@@ -246,6 +246,36 @@ function toHtml(node) {
 // ------------------------------------------------------------------ run
 
 const runtime = createRuntime()
+
+/**
+ * The shell hands slot components a `useSessions` selector hook. The preview has
+ * no shell, so it supplies a small stand-in — otherwise the hand-off picker would
+ * render with no conversations to choose from and the screenshot would document
+ * a feature nobody can see.
+ */
+const FAKE_SESSIONS = {
+  byId: {
+    'session-77aa31c0-1111-2222-3333-444455556666': {
+      id: 'session-77aa31c0-1111-2222-3333-444455556666',
+      title: 'dsh-global-todo · 设计与实现',
+      cwd: '/home/me/projects/dsh-global-todo',
+      retainedBy: { mainView: 1 },
+    },
+    'session-00000000-0000-4000-8000-000000000001': {
+      id: 'session-00000000-0000-4000-8000-000000000001',
+      title: 'Docker 与知识库',
+      cwd: '/home/me',
+    },
+    'session-55bb11ff-aaaa-bbbb-cccc-ddddeeeeffff': {
+      id: 'session-55bb11ff-aaaa-bbbb-cccc-ddddeeeeffff',
+      title: 'dorm-network',
+      cwd: '/home/me/projects/dorm-network',
+    },
+  },
+}
+const previewProps = {
+  useSessions: (read) => read(FAKE_SESSIONS),
+}
 let entry = null
 new Function('window', 'document', 'navigator', source)(
   { __ModuleLoader__: { load: (registration) => (entry = registration) } },
@@ -261,6 +291,13 @@ plugin.apply({
     return typeof dispose === 'function' ? dispose : () => {}
   },
   locale: { register: () => () => {}, subscribe: () => () => {}, getLocale: () => ({ locale: 'zh-CN' }) },
+  // Hostile on purpose: the real shell's `inject` can throw, and a throw from an
+  // effect is not a render error, so no error boundary catches it. An earlier
+  // version called it unguarded and the panel went blank; this keeps that from
+  // coming back.
+  inject: () => {
+    throw new Error('preview: no services are mounted here')
+  },
   slots: {
     inject: (_name, callback) => {
       callback()
@@ -282,10 +319,10 @@ globalThis.fetch = async (url) => {
   return { status: 200, json: async () => payload }
 }
 
-const first = runtime.mount(registered.get('main'), {})
+const first = runtime.mount(registered.get('main'), previewProps)
 for (const effect of first.effects) effect()
 await new Promise((resolve) => setTimeout(resolve, 20))
-const second = runtime.mount(registered.get('main'), {})
+const second = runtime.mount(registered.get('main'), previewProps)
 
 const css = source.slice(source.indexOf('const CSS = `') + 'const CSS = `'.length, source.indexOf('`\n\n    // ---'))
 
@@ -345,10 +382,10 @@ const menuTriggers = []
 collectButtonsBy(second.tree, (node) => node.props?.['aria-haspopup'] === 'menu', menuTriggers)
 const menuTrigger = menuTriggers.length > 0 ? menuTriggers[menuTriggers.length - 1] : null
 if (menuTrigger !== null) menuTrigger.props.onClick()
-const withMenu = runtime.mount(registered.get('main'), {})
+const withMenu = runtime.mount(registered.get('main'), previewProps)
 const detailButton = findButton(withMenu.tree, '详情')
 if (detailButton !== null && typeof detailButton.props?.onClick === 'function') detailButton.props.onClick()
-const third = runtime.mount(registered.get('main'), {})
+const third = runtime.mount(registered.get('main'), previewProps)
 
 const render = (tree) => `<!DOCTYPE html>
 <html lang="zh-CN"><head><meta charset="utf-8"><title>全局待办 · UI 预览</title>
@@ -400,7 +437,9 @@ function checkRenderedPanel(html) {
 
   // Every todo in the sample that came from the same conversation must be one
   // entry: the header line, and none of the rows it stands for.
-  expect(html.includes('对话 …dff746e2'), 'the merged conversation header is missing')
+  // The shell knows the conversation titles, so the merged group is named after
+  // the conversation rather than after an id suffix.
+  expect(html.includes('Docker 与知识库'), 'the merged conversation header is missing its title')
   expect(html.includes('2 条'), 'the merged header does not carry its count')
   // The group header carries the titles in its tooltip, which is fine — what
   // must not exist is a *row* for them.
@@ -417,6 +456,9 @@ function checkRenderedPanel(html) {
   expect(html.includes('gt-chip-ok'), 'the running-session badge lost its colour')
   expect(html.includes('会话在跑'), 'the running-session badge label is missing')
   expect(html.includes('P0 紧急'), 'the P0 label is missing')
+  // The hand-off picker must offer real conversations, not only fallbacks.
+  expect(html.includes('dsh-global-todo · 设计与实现'), 'the hand-off picker lost its conversation list')
+  expect(html.includes('最近说过话'), 'the picker no longer marks the conversation the Host would pick')
   for (const label of ['对话', '时间', '级别']) {
     expect(html.includes(`>${label}</button>`), `the ${label} grouping button is missing`)
   }

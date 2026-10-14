@@ -36,6 +36,29 @@ function makeAgents() {
     get(id) {
       return sessions.get(id)
     },
+    // The Host loads a persisted session and resumes an agent on it; the double
+    // records the call and can be told to fail.
+    resumed: [],
+    resumeFails: false,
+    async resume(options) {
+      this.resumed.push(options.resumeSessionId)
+      if (this.resumeFails) throw new Error('persistence unavailable')
+      const sent = []
+      const agent = {
+        id: options.resumeSessionId,
+        status: 'idle',
+        sent,
+        session: { header: { cwd: '/resumed' } },
+        followup(message) {
+          sent.push({ kind: 'followup', message })
+        },
+        steer(message) {
+          sent.push({ kind: 'steer', message })
+        },
+      }
+      sessions.set(options.resumeSessionId, agent)
+      return { agent }
+    },
   }
 }
 
@@ -318,6 +341,52 @@ test('current falls back to the conversation the todo was written from', async (
   }
 })
 
+test('an explicitly picked conversation that is not running is resumed, not substituted', async () => {
+  const agents = makeAgents()
+  const env = await harness({}, { agents }, { getRecentSession: () => 'session-here' })
+  try {
+    liveSession(agents, 'session-here', { cwd: '/here' })
+    const todo = await env.service.create({ title: '交给一个没在跑的对话' })
+    // The person picked a dormant conversation: it must be woken, not replaced by
+    // the session the activity feed happens to name.
+    const result = await env.dispatcher.dispatch(todo.id, {
+      mode: 'current',
+      sessionId: 'session-dormant',
+      authoritative: true,
+    })
+    assert.equal(result.sessionId, 'session-dormant')
+    assert.equal(result.resumed, true)
+    assert.deepEqual(agents.resumed, ['session-dormant'])
+    assert.equal(agents.sessions.get('session-dormant').sent.length, 1)
+    assert.equal(agents.sessions.get('session-here').sent.length, 0, 'the other conversation must stay untouched')
+  } finally {
+    await env.cleanup()
+  }
+})
+
+test('a picked conversation that cannot be loaded fails instead of going elsewhere', async () => {
+  const agents = makeAgents()
+  const env = await harness({}, { agents }, { getRecentSession: () => 'session-here' })
+  try {
+    liveSession(agents, 'session-here', { cwd: '/here' })
+    agents.resumeFails = true
+    const todo = await env.service.create({ title: 'A' })
+    await assert.rejects(
+      () =>
+        env.dispatcher.dispatch(todo.id, { mode: 'current', sessionId: 'session-dormant', authoritative: true }),
+      (error) => {
+        assert.equal(error.code, 'dispatch-failed')
+        assert.match(error.message, /没在运行/)
+        return true
+      },
+    )
+    assert.equal(agents.sessions.get('session-here').sent.length, 0, 'no silent substitution')
+    assert.equal((await env.service.get(todo.id)).lastDispatch.ok, false)
+  } finally {
+    await env.cleanup()
+  }
+})
+
 test('current without any resolvable conversation says so instead of guessing', async () => {
   const agents = makeAgents()
   const env = await harness({}, { agents })
@@ -430,6 +499,92 @@ test('capture follows the same rule: grounded activity first, a knowing caller a
     const known = await env.dispatcher.requestCapture({ sessionId: 'session-named', authoritative: true })
     assert.equal(known.sessionId, 'session-named')
     assert.equal(named.sent.length, 1)
+  } finally {
+    await env.cleanup()
+  }
+})
+
+test('a new session joins the workspace of the conversation that wrote the todo', async () => {
+  const agents = makeAgents()
+  const attachments = []
+  const workspaceOf = (workspaceId, path, sessionIds) => ({
+    workspaceId,
+    path,
+    title: workspaceId,
+    sessionIds,
+    attachSession: async (id) => {
+      attachments.push({ workspaceId, id })
+    },
+  })
+  const origin = workspaceOf('ws-origin', '/ws/origin', ['session-origin'])
+  const other = workspaceOf('ws-other', '/ws/other', [])
+  const env = await harness(
+    {},
+    {
+      agents,
+      registry: {
+        list: () => [other, origin],
+        get: (id) => [other, origin].find((workspace) => workspace.workspaceId === id),
+        resolveByPath: async () => undefined,
+        create: async () => {
+          throw new Error('按目录新建不该被走到：来源会话已经指明了工作区')
+        },
+      },
+    },
+  )
+  try {
+    const todo = await env.service.create(
+      { title: 'A' },
+      { by: 'agent', origin: { dir: '/ws/origin', sessionId: 'session-origin' } },
+    )
+    const result = await env.dispatcher.dispatch(todo.id, { mode: 'new' })
+    assert.equal(result.workspace, 'ws-origin')
+    assert.equal(result.placed, 'origin')
+    assert.equal(agents.created[0].meta.cwd, '/ws/origin', 'cwd follows the owning workspace')
+    assert.deepEqual(attachments, [{ workspaceId: 'ws-origin', id: result.sessionId }])
+  } finally {
+    await env.cleanup()
+  }
+})
+
+test('a workspace the user names wins over the inherited one', async () => {
+  const agents = makeAgents()
+  const attachments = []
+  const workspaceOf = (workspaceId, path, sessionIds) => ({
+    workspaceId,
+    path,
+    title: workspaceId,
+    sessionIds,
+    attachSession: async (id) => {
+      attachments.push({ workspaceId, id })
+    },
+  })
+  const origin = workspaceOf('ws-origin', '/ws/origin', ['session-origin'])
+  const chosen = workspaceOf('ws-chosen', '/ws/chosen', [])
+  const env = await harness(
+    {},
+    {
+      agents,
+      registry: {
+        list: () => [origin, chosen],
+        get: (id) => [origin, chosen].find((workspace) => workspace.workspaceId === id),
+        resolveByPath: async () => undefined,
+        create: async () => {
+          throw new Error('user named a workspace: nothing to create')
+        },
+      },
+    },
+  )
+  try {
+    const todo = await env.service.create(
+      { title: 'A' },
+      { by: 'agent', origin: { dir: '/ws/origin', sessionId: 'session-origin' } },
+    )
+    const result = await env.dispatcher.dispatch(todo.id, { mode: 'new', workspaceId: 'ws-chosen' })
+    assert.equal(result.workspace, 'ws-chosen')
+    assert.equal(result.placed, 'chosen')
+    assert.equal(agents.created[0].meta.cwd, '/ws/chosen')
+    assert.deepEqual(attachments, [{ workspaceId: 'ws-chosen', id: result.sessionId }])
   } finally {
     await env.cleanup()
   }
@@ -650,9 +805,16 @@ test('the current mode targets an explicit session id', async () => {
     const result = await env.dispatcher.dispatch(todo.id, { mode: 'current', sessionId: first.sessionId })
     assert.equal(result.reused, true)
     assert.equal(result.sessionId, first.sessionId)
+    // An id that cannot be loaded fails clearly: it is never swapped for another
+    // conversation.
+    agents.resumeFails = true
     await assert.rejects(
       () => env.dispatcher.dispatch(todo.id, { mode: 'current', sessionId: 'session-nope' }),
-      /找不到「当前对话」/,
+      (error) => {
+        assert.equal(error.code, 'dispatch-failed')
+        assert.match(error.message, /没在运行|无法把它加载起来/)
+        return true
+      },
     )
   } finally {
     await env.cleanup()

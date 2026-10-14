@@ -153,6 +153,35 @@ rest of the batch — a partial success is reported as a partial success, never 
 The ceiling: **capture ends at the list.** Nothing the plugin does starts work by itself;
 "hand it to an agent" is always a human click.
 
+## Placement is inherited, not invented
+
+A hand-off means "continue this work", and work has a home: the workspace that owns the
+conversation the todo came from. The first implementation ignored that and placed a new
+session by matching its working directory to a workspace — which works only when a directory
+is owned by exactly one workspace and the directory is right, and fails visibly otherwise
+(the session lands as an unrelated row).
+
+So placement resolves in this order: the workspace the user named, the workspace owning the
+conversation that wrote the todo, the workspace owning the conversation it was handed from,
+and only then the directory. The owning workspace's path also becomes the new session's
+working directory, because two sources of truth for "where this work lives" is one too many.
+
+## The user picks, the plugin stops guessing
+
+Three attempts at working out "the conversation in front of the user" were three chances to
+be wrong, and two of them were: a stale main-view retention, then a self-feeding activity
+feed, then a grounding that was correct in principle and still not what the person meant.
+Inference was the bug, not any individual rule.
+
+So the panel lists the conversations and the user picks one. An explicit pick travels as
+`authoritative: true` and the Host uses it verbatim — that field exists precisely so a caller
+that *knows* can outrank a heuristic. The list still marks the conversation the Host would
+have chosen by itself, and `自动` keeps that behaviour available, but the default is now
+something the user can see and change in the same control they press the button next to.
+
+The general shape, worth reusing: when a decision is cheap for a person and expensive to get
+wrong for a machine, put it in front of the person and make the current answer visible.
+
 ## A plugin's own messages are not the user talking
 
 "The conversation in front of the user" is resolved from activity, and the first attempt

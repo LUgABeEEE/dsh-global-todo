@@ -82,6 +82,17 @@ Your list is not touched by install or uninstall: it lives outside the plugin, a
   restores it verbatim: same id, same creation time, same attachments.
 - **Keyboard** — `/` focuses search, `n` focuses the new-todo field, `Esc` collapses the
   open detail. Row actions appear on hover or keyboard focus.
+- **Where a new conversation goes** — a hand-off that opens one joins the workspace owning
+  the conversation that wrote the todo (and starts in that workspace's directory), so
+  "continue this work" does not land beside unrelated sessions. The picker also lists the
+  workspaces (`＋ new conversation · <workspace>`), and a named workspace wins over the
+  inherited one. The working directory only decides when neither is known.
+- **You pick the target** — the toolbar shows `交给：[ conversation ▾ ]`, listing your
+  conversations: whichever you choose is sent with `authoritative: true` and the Host honours
+  it verbatim, with no inference on top. The list marks the conversation the Host would have
+  chosen on its own, `自动` restores that behaviour, and `＋ a new conversation` starts a fresh
+  context. A choice is remembered, and changing it is one click in the same control — what you
+  see is what happens.
 - **A receipt for every hand-off** — the panel says which conversation received the work and
   offers to open it. A dispatch starts work *elsewhere*, so staying silent looked exactly
   like "nothing happened".

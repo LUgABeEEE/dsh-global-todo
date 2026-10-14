@@ -309,7 +309,11 @@ test('the factory returns a mountable plugin declaring its services', () => {
     if (name === 'react') return reactStub
     throw new Error(`unexpected module request: ${name}`)
   })
-  assert.deepEqual(plugin.inject, ['slots', 'locale'])
+  // The declared dependencies are load-bearing: client services reach a plugin
+  // through `inject` (the shipped panels declare the same list), and a service
+  // that is used but not declared is exactly how the hand-off picker rendered
+  // empty and the receipt's jump button did nothing.
+  assert.deepEqual(plugin.inject, ['sessions', 'uiWorkspace', 'workspaces', 'slots', 'locale'])
   assert.equal(typeof plugin.apply, 'function')
 })
 

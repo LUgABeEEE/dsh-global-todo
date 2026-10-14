@@ -247,7 +247,13 @@ test('the dispatch route forwards the mode and records the outcome', async () =>
     const id = created.json().data.todo.id
     const response = await env.call('/dispatch', makeReq({ method: 'POST', url: `${ROUTE_BASE}/dispatch`, body: JSON.stringify({ id, mode: 'new' }) }))
     assert.equal(response.statusCode, 200)
-    assert.deepEqual(env.dispatched, [{ id, request: { mode: 'new', sessionId: undefined, dir: undefined } }])
+    // The whole forwarded shape, so a field added or dropped here is visible.
+    assert.deepEqual(env.dispatched, [
+      {
+        id,
+        request: { mode: 'new', sessionId: undefined, dir: undefined, authoritative: false, workspaceId: undefined },
+      },
+    ])
     assert.equal(response.json().data.sessionId, 'session-fake')
   } finally {
     await env.cleanup()
