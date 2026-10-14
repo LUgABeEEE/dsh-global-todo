@@ -37,7 +37,7 @@ test('panel failures are recorded, trimmed, and readable newest first', async ()
     assert.equal(diag.record(null), null)
     assert.equal(diag.record('nope'), null)
 
-    await new Promise((resolve) => setTimeout(resolve, 60))
+    await diag.flush()
     const lines = (await readFile(file, 'utf8')).trim().split('\n')
     assert.equal(lines.length, 2, 'both reports are on disk')
 
@@ -56,7 +56,7 @@ test('the on-disk trail stays bounded', async () => {
   try {
     const diag = createDiagnostics({ file })
     for (let index = 0; index < 70; index += 1) diag.record({ scope: 'call', message: `report ${index}` })
-    await new Promise((resolve) => setTimeout(resolve, 300))
+    await diag.flush()
     const lines = (await readFile(file, 'utf8')).trim().split('\n')
     assert.ok(lines.length <= 50, `expected at most 50 lines, got ${lines.length}`)
     assert.match(lines.at(-1), /report 69/, 'the newest report is the one that survives')
