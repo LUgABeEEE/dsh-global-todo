@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-10-15
+
+The first published release. 0.1.0 was cut in the repository but never reached a
+registry, so this is the version to install.
+
 ### Fixed
 
 - **A settings write that landed during startup was silently undone.** The Host reads
@@ -333,8 +338,6 @@ panel that hands work over and records how it finished.
   and a footer that names the keyboard shortcuts.
 - The word "attachment" now covers addresses and documents consistently in the UI.
 
-## [0.1.0] - 2026-10-13
-
 ### Added
 
 - Global todo list persisted as one JSON file (`$DSH_HOME/global-todo/todos.json`
@@ -359,5 +362,6 @@ panel that hands work over and records how it finished.
   `agentPresets` service, the plugin loses exactly that surface instead of
   failing to load.
 
-[Unreleased]: https://github.com/LUgABeEEE/dsh-global-todo/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/LUgABeEEE/dsh-global-todo/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/LUgABeEEE/dsh-global-todo/releases/tag/v0.2.0
 [0.1.0]: https://github.com/LUgABeEEE/dsh-global-todo/releases/tag/v0.1.0
