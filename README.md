@@ -82,6 +82,9 @@ Your list is not touched by install or uninstall: it lives outside the plugin, a
   restores it verbatim: same id, same creation time, same attachments.
 - **Keyboard** — `/` focuses search, `n` focuses the new-todo field, `Esc` collapses the
   open detail. Row actions appear on hover or keyboard focus.
+- **A receipt for every hand-off** — the panel says which conversation received the work and
+  offers to open it. A dispatch starts work *elsewhere*, so staying silent looked exactly
+  like "nothing happened".
 - **Hand to agent** — the panel says **where it will go** before you press it, and the
   default is `current`: the conversation you are talking in (the Host learns it from the
   session-activity feed, and the panel uses what it can see directly). `auto` prefers the

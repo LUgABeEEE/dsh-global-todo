@@ -247,15 +247,56 @@ test('current hands the work to the conversation the user is in', async () => {
   }
 })
 
-test('current prefers the id the caller names over the recent one', async () => {
+test('the activity feed outranks the panel\'s guess about the current conversation', async () => {
+  // The panel is the main view while it is open, so its idea of "the session on
+  // screen" is whatever the view retained earlier — hours stale in practice. The
+  // activity feed records a real user message, so it wins.
+  const agents = makeAgents()
+  const env = await harness({}, { agents }, { getRecentSession: () => 'session-here' })
+  try {
+    liveSession(agents, 'session-here', { cwd: '/x' })
+    liveSession(agents, 'session-stale', { cwd: '/y' })
+    const todo = await env.service.create({ title: 'A' })
+    const result = await env.dispatcher.dispatch(todo.id, {
+      mode: 'current',
+      sessionId: 'session-stale',
+      // No `authoritative`: the caller is guessing.
+    })
+    assert.equal(result.sessionId, 'session-here')
+    assert.equal(agents.sessions.get('session-here').sent.length, 1)
+    assert.equal(agents.sessions.get('session-stale').sent.length, 0)
+  } finally {
+    await env.cleanup()
+  }
+})
+
+test('a caller that knows says so and wins', async () => {
+  // A button rendered *inside* a conversation knows which one it is.
   const agents = makeAgents()
   const env = await harness({}, { agents }, { getRecentSession: () => 'session-here' })
   try {
     liveSession(agents, 'session-here', { cwd: '/x' })
     liveSession(agents, 'session-named', { cwd: '/y' })
     const todo = await env.service.create({ title: 'A' })
-    const result = await env.dispatcher.dispatch(todo.id, { mode: 'current', sessionId: 'session-named' })
+    const result = await env.dispatcher.dispatch(todo.id, {
+      mode: 'current',
+      sessionId: 'session-named',
+      authoritative: true,
+    })
     assert.equal(result.sessionId, 'session-named')
+  } finally {
+    await env.cleanup()
+  }
+})
+
+test('the reply names the conversation the work went to', async () => {
+  const agents = makeAgents()
+  const env = await harness({}, { agents }, { getRecentSession: () => 'session-here' })
+  try {
+    liveSession(agents, 'session-here', { cwd: '/x' })
+    const todo = await env.service.create({ title: 'A' })
+    const result = await env.dispatcher.dispatch(todo.id, { mode: 'current' })
+    assert.equal(result.target, 'session-here', 'the panel needs the target to say where it went')
   } finally {
     await env.cleanup()
   }
@@ -375,14 +416,19 @@ test('capture refuses when there is no conversation to ask', async () => {
   }
 })
 
-test('capture prefers the session the caller names', async () => {
+test('capture follows the same rule: grounded activity first, a knowing caller above it', async () => {
   const agents = makeAgents()
   const env = await harness({}, { agents }, { getRecentSession: () => 'session-recent' })
   try {
-    liveSession(agents, 'session-recent', { cwd: '/recent' })
+    const recent = liveSession(agents, 'session-recent', { cwd: '/recent' })
     const named = liveSession(agents, 'session-named', { cwd: '/named' })
-    const result = await env.dispatcher.requestCapture({ sessionId: 'session-named' })
-    assert.equal(result.sessionId, 'session-named')
+
+    const guessed = await env.dispatcher.requestCapture({ sessionId: 'session-named' })
+    assert.equal(guessed.sessionId, 'session-recent')
+    assert.equal(recent.sent.length, 1)
+
+    const known = await env.dispatcher.requestCapture({ sessionId: 'session-named', authoritative: true })
+    assert.equal(known.sessionId, 'session-named')
     assert.equal(named.sent.length, 1)
   } finally {
     await env.cleanup()

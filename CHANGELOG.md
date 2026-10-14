@@ -64,6 +64,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A hand-off could start work silently in another conversation.** The panel said nothing
+  after a successful dispatch, so a person staring at the todo list saw "no reaction" while
+  the agent in a different conversation was already working. The panel now names the target
+  and offers to open it, and the pre-click label uses the conversation the Host will actually
+  pick (`/health`'s recent-session answer) instead of the panel's own guess.
+- **The panel's guess about "the conversation on screen" outranked the real one.** While the
+  panel is the main view, its idea of the current session is whatever the view retained
+  earlier — hours stale in practice, and it sent work to the wrong conversation. The activity
+  feed (a real user message) now wins; a caller that genuinely knows — a button rendered
+  inside a conversation — opts in with `authoritative: true`.
 - **Auto-completion recorded an empty artifact list.** `workspace/changes` is not appended
   with `turn/end`: the recorder enqueues a turn-end snapshot and diff when the turn closes
   and announces the result in a later event. Completing on `turn/end` therefore always saw
