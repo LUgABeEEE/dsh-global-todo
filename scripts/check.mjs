@@ -18,6 +18,7 @@
  */
 
 import { execFile } from 'node:child_process'
+import { auditClientCalls } from '../tools/scan-client-calls.mjs'
 import { existsSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
@@ -199,6 +200,16 @@ for (const profile of profileCandidates) {
     fail(`could not validate tool schemas against profile "${profile}": ${error.message}`)
   }
   break
+}
+
+// A call to a function nobody defined is invisible to every other check here, and it
+// reaches a person as "the button errors" *after* the write succeeded.
+{
+  const clientSource = await readFile(path.join(root, 'lib', 'client.js'), 'utf8')
+  const undefinedCalls = auditClientCalls(clientSource)
+  if (undefinedCalls.length > 0) {
+    fail(`lib/client.js calls undefined function(s): ${undefinedCalls.join(', ')}`)
+  }
 }
 
 if (failures.length > 0) {

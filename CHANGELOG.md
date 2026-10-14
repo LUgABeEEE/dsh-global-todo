@@ -12,6 +12,21 @@ panel that hands work over and records how it finished.
 
 ### Fixed
 
+- **Both capture actions and the automatic-collect switch reported an error even though they
+  worked.** The handlers ended with `void refresh()` — a function that does not exist — so a
+  successful request was immediately followed by a `ReferenceError` that the handler's own catch
+  turned into an error banner. The write had already landed, which is also why the switch appeared
+  impossible to turn off: the panel's copy of the Host settings was only read at mount, so the chip
+  never moved and the next click sent the same value again. Health is now refreshed on the poll and
+  updated optimistically on write, and `void refresh()` is gone.
+- **A guard against that class of bug**: `tools/scan-client-calls.mjs` scans the shipped client for
+  calls to functions nobody defined (comments and strings removed first; destructuring, parameters
+  and method shorthand recognised), wired into `npm run check` and covered by its own test. Every
+  other check passes such a mistake, and the preview harness cannot see it — an error caught inside
+  a handler only appears on a real re-render.
+- **The toolbar's own "collect from this chat" button is gone.** The action lives on each
+  conversation's group header, where its subject is unambiguous; a second copy in the toolbar only
+  gave the wrong one to click.
 - **The Host's own tooling is no longer locked out by the connection fence.** Deferring to the
   fence fixed LAN access but made *every* credential-less request a 401, because the fence
   authenticates browsers — so `curl`, scripts on the Host and other agents lost access to a list

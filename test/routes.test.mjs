@@ -75,6 +75,7 @@ async function harness(options = {}) {
     ...(options.target === undefined ? {} : { target: options.target }),
     ...(options.connection === undefined ? {} : { connection: options.connection }),
     ...(options.rootCtx === undefined ? {} : { rootCtx: options.rootCtx }),
+    ...(options.diagnostics === undefined ? {} : { diagnostics: options.diagnostics }),
     ...(options.logger === undefined ? {} : { logger: options.logger }),
   })
   const call = async (suffix, request) => {
@@ -95,6 +96,7 @@ test('the route surface is exactly the documented one', async () => {
       [
         'capture',
         'create',
+        'diagnostics',
         'dispatch',
         'get',
         'health',
