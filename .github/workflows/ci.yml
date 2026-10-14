@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: verify (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22.19.0', '24.x']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      # The plugin has no dependencies: there is nothing to install and nothing
+      # to build. `npm ci` would fail without a lockfile, so it is not used.
+      - name: Static checks
+        run: npm run check
+
+      - name: Tests
+        run: npm test
+
+      - name: Package shape
+        run: npm pack --dry-run

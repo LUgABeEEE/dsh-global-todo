@@ -1,0 +1,72 @@
+{
+  "name": "dsh-global-todo",
+  "version": "0.1.0",
+  "description": "Global, cross-session todos for DeepSeek Harness: one list owned by the human and the agent together, with creation time, attached documents and links, and one-click hand-off to an agent session. 全局待办：跨会话一份清单，记录加入时间，可挂文档与地址，可一键交给 Agent 继续干。",
+  "type": "module",
+  "license": "MIT",
+  "author": "LUgABeEEE",
+  "homepage": "https://github.com/LUgABeEEE/dsh-global-todo#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LUgABeEEE/dsh-global-todo.git"
+  },
+  "bugs": {
+    "url": "https://github.com/LUgABeEEE/dsh-global-todo/issues"
+  },
+  "keywords": [
+    "deepseek",
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "cordis",
+    "todo",
+    "todos",
+    "task-list",
+    "待办",
+    "全局待办"
+  ],
+  "engines": {
+    "node": ">=22.19.0",
+    "dsh": ">=0.2.0-rc.1 <0.3.0"
+  },
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json"
+  },
+  "files": [
+    "lib",
+    "locale",
+    "cordis.patch.yml",
+    "docs/DESIGN.md",
+    "docs/ROADMAP.md",
+    "docs/screenshots",
+    "LICENSE",
+    "README.md",
+    "README.zh.md",
+    "CHANGELOG.md",
+    "SECURITY.md",
+    "CONTRIBUTING.md",
+    "CODE_OF_CONDUCT.md"
+  ],
+  "scripts": {
+    "check": "node scripts/check.mjs",
+    "test": "node --test \"test/**/*.test.mjs\"",
+    "verify": "npm run check && npm run check:render && npm test",
+    "preview": "node tools/preview.mjs",
+    "prepack": "npm run verify",
+    "check:render": "node tools/preview.mjs --check",
+    "check:live": "node tools/live-check.mjs"
+  },
+  "dsh": {
+    "manifestVersion": 1,
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true
+    }
+  }
+}

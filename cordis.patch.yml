@@ -1,0 +1,23 @@
+# dsh-global-todo — bundle patch
+#
+# This file is the plugin's own configuration layer. It contributes exactly one
+# Loader row; the profile's `cordis.patch.yml` can target that row id (`global-todo`)
+# to override `config` or set `disabled: true`.
+#
+# `config` is replaced wholesale by an override, not deep-merged: when you override
+# it, restate every key you want to keep.
+- insert:
+    - id: global-todo
+      name: 'dsh-global-todo'
+      config:
+        # Where the list lives. Empty = `$DSH_HOME/global-todo/todos.json`.
+        # Point it at a notes repo or a synced folder to make the list portable.
+        storePath: ''
+        # Default working directory for 「new session」 dispatch. Empty = let the
+        # harness decide (default workspace).
+        dispatchDir: ''
+        # How many activity entries each todo keeps (audit trail, oldest dropped).
+        activityLimit: 50
+        # Reject links whose file path does not exist at write time. `false` lets
+        # you attach a document before creating it.
+        requireExistingFiles: true

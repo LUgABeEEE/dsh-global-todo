@@ -1,0 +1,62 @@
+name: Bug report
+description: Something behaves differently from what the documentation says
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Please redact anything private from snippets of
+        `todos.json` before pasting it.
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Plugin version
+      description: From Settings → Plugins, or `GET /api/global-todo/health`
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: dsh-version
+    attributes:
+      label: DeepSeek Harness version
+      placeholder: 0.2.0-rc.2
+    validations:
+      required: true
+  - type: input
+    id: node-version
+    attributes:
+      label: Node.js version
+      placeholder: v22.19.0
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the 待办 panel
+        2. Add a todo with a document attachment
+        3. Click 「交给 Agent」
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened
+      description: Include the error text and the `reason` code when the panel shows one
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Host log lines
+      description: Lines containing `dsh-global-todo`, if any
+      render: text
+    validations:
+      required: false

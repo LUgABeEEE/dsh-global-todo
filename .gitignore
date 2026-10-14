@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Backup copies a plugin install or a person may create
+*.bak-*
+*.tmp
+*.tgz
+
+# Editor and OS noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Generated panel previews
+preview/
+
+# Local data: the list itself never belongs in the repository
+todos.json
+todos.json.*
