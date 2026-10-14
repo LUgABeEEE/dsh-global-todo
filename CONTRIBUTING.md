@@ -61,10 +61,9 @@ Node 22.19 or newer is all you need.
 Facts checked on 2026-10-14, so nobody has to re-derive them:
 
 - the npm name `dsh-global-todo` is **still free** (`registry.npmjs.org/dsh-global-todo` → 404);
-- the GitHub account `LUgABeEEE` exists, but the repository
-  `LUgABeEEE/dsh-global-todo` that `package.json` names **does not exist yet**
-  (GitHub API → 404). Create it first, or fix the `repository` field before publishing:
-  npm renders that link, and Trusted Publishing binds a package to a repository.
+- the repository `LUgABeEEE/dsh-global-todo` exists and holds the first commit
+  (`2a6f716`), so the `repository` field in `package.json` now points at something real;
+  CI has run green on both matrix legs (node 22.19.0 and 24.x).
 
 The order that avoids publishing a package pointing at nothing:
 
@@ -79,10 +78,16 @@ The order that avoids publishing a package pointing at nothing:
    artifacts (`node_modules/`, `preview/`, `todos.json`, backups) out of the commit.
 3. **Push and watch CI for real.** The workflow matrix is Node 22.19 and 24; it has only
    ever been simulated locally, so the first green run is the first real evidence.
-4. **Publish with Trusted Publishing (OIDC).** Bind the npm package to the GitHub repository
-   and the workflow file in the package settings, then publish from CI with provenance —
-   no long-lived token on a laptop. Locally, `npm pack --dry-run` is the dry run: it prints
-   exactly what would ship.
+4. **Publish with Trusted Publishing (OIDC).** `.github/workflows/publish.yml` is ready: it
+   verifies, then publishes with provenance when a `v*` tag is pushed or the workflow is
+   dispatched by hand. Before its first run, the npm side needs the binding — on the package
+   settings page add a trusted publisher with:
+   - repository `LUgABeEEE/dsh-global-todo`
+   - workflow file `publish.yml`
+   - environment: none (or one you create and also name here)
+
+   No long-lived token is involved, which is the point: nothing to leak from a laptop. Check
+   what would ship with `npm pack --dry-run`.
 5. **Cut the version.** Move CHANGELOG's `Unreleased` block under
    `## 0.1.0 — <date>`, keep `package.json`'s `version` and `VERSION` in `lib/index.js`
    equal (a test enforces it), and tag the commit.
