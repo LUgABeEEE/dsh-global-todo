@@ -86,8 +86,10 @@ Your list is not touched by install or uninstall: it lives outside the plugin, a
   offers to open it. A dispatch starts work *elsewhere*, so staying silent looked exactly
   like "nothing happened".
 - **Hand to agent** — the panel says **where it will go** before you press it, and the
-  default is `current`: the conversation you are talking in (the Host learns it from the
-  session-activity feed, and the panel uses what it can see directly). `auto` prefers the
+  default is `current`: the conversation **you** last wrote in (read from the session log,
+  keeping only `source.kind === 'user'` messages — the plugin's own injected hand-off
+  messages are excluded, or each dispatch would drag the next one to its own target; the id
+  is also kept next to the data so a restart does not forget it). `auto` prefers the
   conversation this todo already owns, then the current one, and only then opens a fresh
   session; `new` always opens one; `bound` insists on the bound conversation and says why
   if it is gone. When nothing usable can be resolved the hand-off **fails with a reason**

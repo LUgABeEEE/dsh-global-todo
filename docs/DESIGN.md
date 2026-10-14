@@ -153,6 +153,31 @@ rest of the batch — a partial success is reported as a partial success, never 
 The ceiling: **capture ends at the list.** Nothing the plugin does starts work by itself;
 "hand it to an agent" is always a human click.
 
+## A plugin's own messages are not the user talking
+
+"The conversation in front of the user" is resolved from activity, and the first attempt
+used `api-session/activity`. That feed means "a user-authored durable message advanced the
+list" — and a hand-off **is** a user-authored durable message: the plugin injects a
+user-role message into the session it hands work to. The result was a feedback loop that
+looked like a targeting bug: the first dispatch moved the current conversation to its own
+target, so the second click went *there* rather than to the conversation the person was
+reading, and the wrong destination stuck.
+
+The fix is to read the session log instead of the derived feed, and keep only
+`user/message` events whose `source.kind` is `user`: model turns, tool results, system
+prompts and plugin injections all carry a different kind. The smoke test emits exactly that
+sequence — a real message, an injected one, another real one — and asserts the tracker
+follows the person.
+
+Two lessons, worth applying to any future tracking:
+
+- when a component both **writes and observes** the same stream, it has to distinguish its
+  own output, or it will steer itself;
+- **in-memory knowledge does not survive a restart**. The tracker is memory-only by default,
+  so a Host restart emptied it and resolution fell back to a guess that was hours stale. The
+  id is now written beside the data — a file that costs one small write per person message
+  and turns "unknown" back into "the conversation you were in".
+
 ## Capture is a request for work, not a hand-off
 
 「从本对话抓取」 asks the conversation in front of the user to turn itself into todos. It

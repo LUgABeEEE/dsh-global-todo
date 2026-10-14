@@ -64,6 +64,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A hand-off pulled the next hand-off with it.** The "conversation you were last in" came
+  from `api-session/activity`, which reports *any* user-authored durable message — and a
+  hand-off is one: the plugin injects a user-role message into its target. So every dispatch
+  moved "the current conversation" to the conversation it had just dispatched to, and the
+  next click followed the previous click instead of the person. The tracker now reads the
+  session log and keeps only `user/message` events whose `source.kind` is `user`, so model
+  turns, tool results and plugin injections cannot move it. The id is also kept next to the
+  data (`recent-session.json`), because the tracker lives in memory and this plugin restarts
+  with the Host: an empty tracker falls back to the panel's stale guess, which is how a
+  hand-off reached the wrong conversation. Covered by two smoke tests — the message sequence,
+  and a restart that must not forget.
 - **A hand-off could start work silently in another conversation.** The panel said nothing
   after a successful dispatch, so a person staring at the todo list saw "no reaction" while
   the agent in a different conversation was already working. The panel now names the target

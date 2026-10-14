@@ -33,6 +33,7 @@ function makeHost(services = {}) {
     warnings: [],
     infos: [],
     services,
+    listeners: new Map(),
   }
 
   const makeCtx = () => {
@@ -46,6 +47,15 @@ function makeHost(services = {}) {
         debug: () => {},
       },
       get: (name) => state.services[name],
+      // Event subscription, as the real context exposes it.
+      on(name, listener) {
+        const list = state.listeners.get(name) ?? []
+        list.push(listener)
+        state.listeners.set(name, list)
+        return () => {
+          state.listeners.set(name, (state.listeners.get(name) ?? []).filter((entry) => entry !== listener))
+        }
+      },
       effect(callback, label) {
         state.effects.push(label)
         const dispose = callback()
@@ -85,7 +95,12 @@ function makeHost(services = {}) {
     }
   }
 
-  return { ctx: makeCtx(), state }
+  /** Deliver an event the way the Loader does: scoped session first, event second. */
+  const emit = (name, ...args) => {
+    for (const listener of state.listeners.get(name) ?? []) listener(...args)
+  }
+
+  return { ctx: makeCtx(), state, emit }
 }
 
 function makeRes() {
@@ -234,6 +249,70 @@ test('with no optional service the plugin still mounts and only loses surfaces',
     assert.equal(host.state.routes.size, 0)
     assert.equal(host.state.promptSections.length, 0)
     assert.ok(host.state.infos.some((line) => line.includes('已挂载')))
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('a plugin-written message must not move the current conversation', async () => {
+  // The incident this guards: a hand-off injects a user-role message into its
+  // target, so tracking "any user-authored message" pulled the current
+  // conversation towards the last dispatch target — the next click followed the
+  // previous one instead of the person.
+  const dir = await mkdtemp(path.join(tmpdir(), 'gt-smoke-recent-'))
+  try {
+    const host = makeHost({ tools: {}, webServer: {} })
+    apply(host.ctx, { storePath: path.join(dir, 'todos.json'), requireExistingFiles: false })
+
+    const session = (id) => ({ id, header: { id } })
+    const userMessage = (kind) => ({ type: 'user/message', seq: 1, data: { source: { kind } } })
+
+    host.emit('session/event', session('session-person'), userMessage('user'))
+    host.emit('session/event', session('session-injected'), userMessage('plugin:dsh-global-todo'))
+    // A second message written by hand still wins.
+    host.emit('session/event', session('session-person-2'), userMessage('user'))
+    // Model and tool traffic must never count.
+    host.emit('session/event', session('session-model'), userMessage('model'))
+
+    const healthRoute = host.state.routes.get('/api/global-todo/health')
+    const healthRes = makeRes()
+    await healthRoute.handler(makeReq({ url: '/api/global-todo/health' }), healthRes)
+    const payload = JSON.parse(healthRes.body)
+    assert.equal(payload.data.target.recentSessionId, 'session-person-2')
+    assert.equal(payload.data.target.trackingRecent, true)
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('the tracked conversation survives a restart', async () => {
+  // Restarts happen constantly during development, and an empty tracker falls
+  // back to the panel's stale guess — the path that sent work to the wrong
+  // conversation once already. So the id is kept next to the data.
+  const dir = await mkdtemp(path.join(tmpdir(), 'gt-smoke-persist-'))
+  try {
+    const file = path.join(dir, 'todos.json')
+    const read = async (host) => {
+      const route = host.state.routes.get('/api/global-todo/health')
+      const res = makeRes()
+      await route.handler(makeReq({ url: '/api/global-todo/health' }), res)
+      return JSON.parse(res.body).data.target.recentSessionId
+    }
+
+    const first = makeHost({ tools: {}, webServer: {} })
+    apply(first.ctx, { storePath: file, requireExistingFiles: false })
+    assert.equal(await read(first), '', 'nothing is known before anyone writes')
+    first.emit('session/event', { id: 'session-person', header: {} }, {
+      type: 'user/message',
+      seq: 1,
+      data: { source: { kind: 'user' } },
+    })
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
+    const second = makeHost({ tools: {}, webServer: {} })
+    apply(second.ctx, { storePath: file, requireExistingFiles: false })
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    assert.equal(await read(second), 'session-person', 'the restart must not forget the conversation')
   } finally {
     await rm(dir, { recursive: true, force: true })
   }
