@@ -215,7 +215,7 @@ lib/
   client.js    浏览器半区（面板 + 侧栏入口）
 test/          单元、service、工具、路由、派发、bundle、manifest 测试
 tools/         preview.mjs —— 不依赖宿主，把面板渲染成静态 HTML
-docs/          DESIGN.md（数据模型与取舍）、ROADMAP.md、research/
+docs/          DESIGN.md（数据模型与取舍）、ROADMAP.md
 ```
 
 欢迎贡献，先读 [CONTRIBUTING.md](CONTRIBUTING.md)。

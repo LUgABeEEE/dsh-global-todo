@@ -3,6 +3,11 @@ name: Publish
 # Trusted Publishing: the OIDC token below replaces a long-lived npm token. The
 # package has to name this repository *and* this workflow file in its npm
 # settings before the first run, otherwise `npm publish` has no identity to use.
+#
+# npm refuses to configure a trusted publisher for a package that does not exist
+# yet — "Package must exist" is a documented prerequisite of `npm trust` — so the
+# first release is a manual, token-authenticated `npm publish`. Every release
+# after that can come from here.
 on:
   workflow_dispatch:
   push:
@@ -17,12 +22,20 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22.19.0'
           registry-url: https://registry.npmjs.org
+          # No lockfile and no dependencies: caching would have nothing to key on.
+          package-manager-cache: false
+
+      # Trusted publishing needs npm 11.5.1 or later, and Node 22.19 ships npm
+      # 10.9.3 — the publish would fail with ENEEDAUTH however correct the OIDC
+      # setup is. Pin the floor, not a major, so a fix can still arrive.
+      - name: Install an npm that speaks OIDC
+        run: npm install --global npm@^11.5.1
 
       # `prepack` already runs `npm run verify`, so this is belt and braces — and
       # it fails the release long before the registry sees anything.

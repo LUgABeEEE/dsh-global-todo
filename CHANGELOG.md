@@ -31,6 +31,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   shape of the session snapshot it sees to `/health.clientErrors` once per mount, because a preview
   fixture written by the same hand as the filter can only ever confirm itself.
 
+- **A long working directory no longer breaks its own label.** `工作目录：` is a flex child of the
+  directory pill, so when the row overflowed it shrank and wrapped mid-word — and the third
+  button (`浏览`) was enough to push it over. Only the path yields now: it already ellipsises,
+  while the label, the hint and the buttons keep their size.
+
 ### Added
 
 - **A folder browser, because the shell's picker is not always mounted.** `uiWorkspace.pickDirectory()`
@@ -60,6 +65,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CI runs `actions/checkout@v7` and `actions/setup-node@v7`**, which are already on Node 24,
   so the Node 20 deprecation warnings are gone. Automatic npm caching is off explicitly: this
   plugin has no dependencies and no lockfile to cache.
+
+- **The repository is publishable as it stands.** Two things stood between this tree and a
+  public one. The machine-path guard in `scripts/check.mjs` only looked at the shipped halves,
+  so a preview fixture, a test constant and a screenshot caption each carried the author's real
+  home directory while the guard still reported `OK`; it now covers every committable file and
+  allows exactly one placeholder, `/home/me/…`. And `publish.yml` asked Node 22.19 for npm
+  10.9.3, which cannot do OIDC at all — trusted publishing needs npm 11.5.1 or later — so the
+  job installs that floor before it publishes. The internal research reports left `docs/`, and
+  the fixtures and screenshots were regenerated from the same neutral data.
 
 ## [0.1.0] — 2026-10-14
 

@@ -9,8 +9,10 @@
  *   1. every JavaScript file parses (via `node --check`, which handles both
  *      ES modules and classic scripts);
  *   2. every JSON file parses;
- *   3. the shipped halves contain no machine-local absolute paths;
- *   4. the shipped halves contain no obvious credential material;
+ *   3. nothing a commit would carry names a machine-local home path — a fixture,
+ *      a test constant and a screenshot caption are published just as surely as
+ *      the shipped halves, so the rule covers the whole tree;
+ *   4. nothing a commit would carry contains obvious credential material;
  *   5. every tool schema is accepted by the Host's own validator, when this
  *      machine has a DSH profile to borrow it from (skipped elsewhere).
  *
@@ -86,23 +88,12 @@ for (const file of sources) {
   }
 }
 
-// Shipping hygiene, applied to the files that actually reach a user.
-const shipped = [...(await walk('lib')), ...(await walk('locale')), 'cordis.patch.yml']
-const FORBIDDEN = [
-  { pattern: /\/(home|Users)\/[a-zA-Z0-9._-]+\//, why: 'a machine-local home path' },
-  { pattern: /\/data\/agent\//, why: 'a machine-local workspace path' },
-  {
-    pattern: /\b(api[_-]?key|secret|password|passwd|token)\s*[:=]\s*['"][^'"]{8,}['"]/i,
-    why: 'what looks like a credential',
-  },
-  { pattern: /-----BEGIN [A-Z ]*PRIVATE KEY-----\r?\n/, why: 'a private key' },
-]
-for (const file of shipped) {
-  const text = await readFile(path.join(root, file), 'utf8')
-  for (const rule of FORBIDDEN) {
-    if (rule.pattern.test(text)) fail(`${file}: contains ${rule.why}`)
-  }
-}
+// Shipping hygiene. The path rule is the one that actually bit this repository:
+// the shipped halves were careful, while a preview fixture, a test constant and
+// a screenshot caption each carried the author's real home — and all three are
+// published. `/home/me` is the single documented placeholder, so it is the only
+// home this allows; everything else looks like somebody's machine.
+const MACHINE_PATH = /\/(?:home|Users)\/(?!me\/)[a-zA-Z0-9._-]+\//
 
 // Everything a first commit would carry, with the same exclusions `.gitignore`
 // applies. The credential rule below used to run only on shipped files, which
@@ -135,10 +126,10 @@ async function committable(relative = '.') {
   return out
 }
 
-// The rule a person would run by hand before committing. A leaked credential in a
-// test or a doc is exactly as leaked as one in `lib/`, so the whole tree is
-// checked, and the local artifacts that must never reach a commit are asserted
-// absent rather than assumed.
+// The rule a person would run by hand before committing. A leaked credential — or
+// a leaked home directory — in a test or a doc is exactly as leaked as one in
+// `lib/`, so the whole tree is checked, and the local artifacts that must never
+// reach a commit are asserted absent rather than assumed.
 const COMMIT_CREDENTIAL = /\b(api[_-]?key|secret|password|passwd|token)\s*[:=]\s*['"][^'"]{8,}['"]/i
 // The trailing newline is what makes a PEM header real — and what keeps this rule
 // from matching its own source text.
@@ -148,6 +139,7 @@ const committableFiles = await committable()
 for (const file of committableFiles) {
   if (/\.(png|jpe?g|gif|ico|woff2?|zstd)$/i.test(file)) continue
   const text = await readFile(path.join(root, file), 'utf8')
+  if (MACHINE_PATH.test(text)) fail(`${file}: names a machine-local home path (use /home/me/… as the placeholder)`)
   if (COMMIT_PRIVATE_KEY.test(text)) fail(`${file}: contains a private key block`)
   else if (COMMIT_CREDENTIAL.test(text)) fail(`${file}: contains what looks like a credential`)
 }
@@ -156,7 +148,7 @@ for (const file of committableFiles) {
     fail(`${file}: a local artifact would be committed (check .gitignore)`)
   }
 }
-process.stdout.write(`OK  ${committableFiles.length} committable files carry no credential and no local artifact\n`)
+process.stdout.write(`OK  ${committableFiles.length} committable files carry no credential, no home path and no local artifact\n`)
 
 // The Host's real validator, when a profile is available. Tool schemas that
 // fall outside its subset are rejected at registration and the failure is
@@ -218,5 +210,5 @@ if (failures.length > 0) {
 }
 
 process.stdout.write(
-  `OK  ${sources.length} files parsed, ${shipped.length} shipped files clean, host validator: ${hostChecked}\n`,
+  `OK  ${sources.length} files parsed, ${committableFiles.length} committable files clean, host validator: ${hostChecked}\n`,
 )

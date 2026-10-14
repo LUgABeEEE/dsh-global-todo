@@ -308,7 +308,7 @@ lib/
   client.js    the browser half (panel + sidebar entry)
 test/          unit, service, tool, route, dispatch, bundle and manifest tests
 tools/         preview.mjs — render the panel to static HTML without a Host
-docs/          DESIGN.md (data model and rejected alternatives), ROADMAP.md, research/
+docs/          DESIGN.md (data model and rejected alternatives), ROADMAP.md
 ```
 
 Contributions are welcome — read [CONTRIBUTING.md](CONTRIBUTING.md) first.
