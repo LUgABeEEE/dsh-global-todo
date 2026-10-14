@@ -74,6 +74,7 @@ async function harness(options = {}) {
     ...(options.completion === undefined ? {} : { completion: options.completion }),
     ...(options.target === undefined ? {} : { target: options.target }),
     ...(options.connection === undefined ? {} : { connection: options.connection }),
+    ...(options.rootCtx === undefined ? {} : { rootCtx: options.rootCtx }),
     ...(options.logger === undefined ? {} : { logger: options.logger }),
   })
   const call = async (suffix, request) => {
@@ -211,6 +212,41 @@ test('the host connection fence wins whenever it is present', async () => {
     const allowed = await env.call('/list', makeReq({ url: `${ROUTE_BASE}/list`, headers: { host: 'evil.example' }, address: '10.0.0.9' }))
     assert.equal(allowed.statusCode, 200, 'the fence, not our loopback guess, decides when it is installed')
     assert.equal(seen.length, 2)
+  } finally {
+    await env.cleanup()
+  }
+})
+
+test('a fence that registers after mount is still found, so a trusted LAN address works', async () => {
+  // The incident this pins: the fence was captured once at mount time, when the
+  // service did not exist yet, so every request fell through to the plugin's own
+  // loopback check. That check is stricter than the Host's trusted-host list, so a
+  // browser anywhere but the Host machine got 403 「只接受本机请求」 on every call —
+  // panel, picker and both capture actions alike — while curl from the Host looked
+  // fine.
+  let fence
+  const rootCtx = { get: (name) => (name === 'connection' ? fence : undefined) }
+  const env = await harness({ rootCtx })
+  const lanRequest = () =>
+    makeReq({ url: `${ROUTE_BASE}/list`, address: '192.168.1.50', headers: { host: '192.168.1.10:3080' } })
+  try {
+    const withoutFence = await env.call('/list', lanRequest())
+    assert.equal(withoutFence.statusCode, 403, 'with no fence at all the loopback check still refuses')
+    const healthBefore = await env.call('/health', makeReq({ url: `${ROUTE_BASE}/health` }))
+    assert.equal(healthBefore.json().data.fence.loopbackFallback, true, 'health must admit which fence is in force')
+
+    // The Host's connection service appears later in the boot order.
+    fence = { requestRejection: () => undefined }
+    const withFence = await env.call('/list', lanRequest())
+    assert.equal(withFence.statusCode, 200, 'a later-registered fence must be used')
+    const healthAfter = await env.call('/health', makeReq({ url: `${ROUTE_BASE}/health` }))
+    assert.equal(healthAfter.json().data.fence.host, true)
+    assert.equal(healthAfter.json().data.fence.loopbackFallback, false)
+
+    // And its verdict is what counts, including a refusal.
+    fence = { requestRejection: () => 401 }
+    const refused = await env.call('/list', lanRequest())
+    assert.equal(refused.statusCode, 401, 'the fence verdict is honoured verbatim')
   } finally {
     await env.cleanup()
   }

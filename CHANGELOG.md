@@ -10,6 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 The first release: one JSON list a person and an agent both write to, eight agent tools, a
 panel that hands work over and records how it finished.
 
+### Fixed
+
+- **The panel works from the LAN and from a tunnel again.** The Host's connection fence was read
+  once at mount time, when it can still be absent, so every request fell through to the plugin's
+  own loopback check. That check is stricter than the Host's trusted-host list: a browser anywhere
+  but the Host machine got `403 只接受本机请求` on **every** call — list, picker and both capture
+  actions — while `curl` from the Host looked perfectly healthy. The fence is now resolved per
+  request, its verdict is honoured verbatim, and `/health` reports which fence is actually in
+  force so a silent downgrade cannot hide again.
+
 ### Added
 
 - **An automatic collect switch** (panel chip `自动获取`, `POST /api/global-todo/settings`). When

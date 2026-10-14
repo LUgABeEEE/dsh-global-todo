@@ -153,6 +153,23 @@ rest of the batch — a partial success is reported as a partial success, never 
 The ceiling: **capture ends at the list.** Nothing the plugin does starts work by itself;
 "hand it to an agent" is always a human click.
 
+## A fallback must never quietly outrank the real rule
+
+The routes are fenced: the Host's connection service decides (`isTrustedApiRequest` against
+`--trusted-host`, then browser authentication), and only when that service is missing does the
+plugin fall back to its own stricter "loopback only" check.
+
+That fallback ran **always**, because the fence was read once at mount time — before the service
+existed — and the captured value stayed `undefined` forever. The symptom was invisible from the
+Host: `curl` on `127.0.0.1` passed the fallback happily. Every browser that was not *on* the Host
+machine — the LAN address, a tunnel — got `403` on every call, so the whole panel failed while the
+health endpoint reported nothing wrong.
+
+Two lessons, both now enforced: resolve a service **when it is used**, not when the plugin mounts
+(services register in an order the plugin does not control), and make the active branch
+**reportable** — `/health` now names which fence is in force, because a silent downgrade to a
+stricter path is indistinguishable from a working system until someone else tries to use it.
+
 ## Automatic collection has to be opt-in, bounded, and aimed
 
 Asking a model to remember things on its own initiative works some of the time, which is not

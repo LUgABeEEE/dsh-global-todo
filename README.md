@@ -82,6 +82,9 @@ Your list is not touched by install or uninstall: it lives outside the plugin, a
   restores it verbatim: same id, same creation time, same attachments.
 - **Keyboard** — `/` focuses search, `n` focuses the new-todo field, `Esc` collapses the
   open detail. Row actions appear on hover or keyboard focus.
+- **Reachable from the LAN and from a tunnel** — the routes defer to the Host's connection fence
+  (which honours `--trusted-host`); the plugin's own loopback check is only the fallback for a
+  Host without that service. `/health` reports `fence` so you can see which one is in force.
 - **Auto-collect (off by default)** — a panel switch. When on, a conversation you are in that
   finishes a clean turn is asked once whether anything needs following up, at most once every 30
   minutes, and only if you are actually in that conversation (never a dispatch target, a subagent
