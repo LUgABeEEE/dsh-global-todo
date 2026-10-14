@@ -22,6 +22,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **A calmer panel.** The header had grown two rows of controls that said the same things
+  twice: the three count chips *were* the status filter, and the add form sat open above the
+  list forever. Now there are three rows with one job each — **title + summary + `添加`**,
+  **filters · grouping · search** in a single row, then a quiet **context line** (working
+  directory, hand-off target, `选择`, `自动获取`). Counts moved into the summary line as plain
+  text, every "pick one of these" control uses one segmented style (chips are now only facts
+  about a todo: tags, levels, notes), and the add form opens from `添加` instead of occupying
+  the top of the list.
+
 - **The test suite waits for results, not for the clock.** The remaining fixed sleeps
   (`settle()`, `setTimeout`) are gone: the auto-collect, restart and dispatch tests now poll for
   the state their assertions are about, with a bounded timeout that names what it waited for. A
