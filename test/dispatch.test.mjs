@@ -507,13 +507,14 @@ test('capture follows the same rule: grounded activity first, a knowing caller a
 test('a new session joins the workspace of the conversation that wrote the todo', async () => {
   const agents = makeAgents()
   const attachments = []
+  // The Host exposes `id`; the assertion records it under the name the panel uses.
   const workspaceOf = (workspaceId, path, sessionIds) => ({
-    workspaceId,
+    id: workspaceId,
     path,
     title: workspaceId,
     sessionIds,
-    attachSession: async (id) => {
-      attachments.push({ workspaceId, id })
+    attachSession: async (sessionId) => {
+      attachments.push({ workspaceId, id: sessionId })
     },
   })
   const origin = workspaceOf('ws-origin', '/ws/origin', ['session-origin'])
@@ -524,7 +525,7 @@ test('a new session joins the workspace of the conversation that wrote the todo'
       agents,
       registry: {
         list: () => [other, origin],
-        get: (id) => [other, origin].find((workspace) => workspace.workspaceId === id),
+        get: (id) => [other, origin].find((workspace) => workspace.id === id),
         resolveByPath: async () => undefined,
         create: async () => {
           throw new Error('按目录新建不该被走到：来源会话已经指明了工作区')
@@ -538,7 +539,7 @@ test('a new session joins the workspace of the conversation that wrote the todo'
       { by: 'agent', origin: { dir: '/ws/origin', sessionId: 'session-origin' } },
     )
     const result = await env.dispatcher.dispatch(todo.id, { mode: 'new' })
-    assert.equal(result.workspace, 'ws-origin')
+    assert.equal(result.workspace, 'ws-origin', 'the reply names the workspace (id, not workspaceId)')
     assert.equal(result.placed, 'origin')
     assert.equal(agents.created[0].meta.cwd, '/ws/origin', 'cwd follows the owning workspace')
     assert.deepEqual(attachments, [{ workspaceId: 'ws-origin', id: result.sessionId }])
@@ -550,13 +551,14 @@ test('a new session joins the workspace of the conversation that wrote the todo'
 test('a workspace the user names wins over the inherited one', async () => {
   const agents = makeAgents()
   const attachments = []
+  // The Host exposes `id`; the assertion records it under the name the panel uses.
   const workspaceOf = (workspaceId, path, sessionIds) => ({
-    workspaceId,
+    id: workspaceId,
     path,
     title: workspaceId,
     sessionIds,
-    attachSession: async (id) => {
-      attachments.push({ workspaceId, id })
+    attachSession: async (sessionId) => {
+      attachments.push({ workspaceId, id: sessionId })
     },
   })
   const origin = workspaceOf('ws-origin', '/ws/origin', ['session-origin'])
@@ -567,7 +569,7 @@ test('a workspace the user names wins over the inherited one', async () => {
       agents,
       registry: {
         list: () => [origin, chosen],
-        get: (id) => [origin, chosen].find((workspace) => workspace.workspaceId === id),
+        get: (id) => [origin, chosen].find((workspace) => workspace.id === id),
         resolveByPath: async () => undefined,
         create: async () => {
           throw new Error('user named a workspace: nothing to create')
