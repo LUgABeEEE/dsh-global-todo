@@ -10,6 +10,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 The first release: one JSON list a person and an agent both write to, eight agent tools, a
 panel that hands work over and records how it finished.
 
+### Changed
+
+- **"Collect from this chat" lives on the conversation it collects from.** A global toolbar
+  button could not say *which* conversation it meant, so the action now sits on each
+  conversation's group header in the list (`抓取`), and asking a group to collect files the
+  results under that conversation. The toolbar keeps a fallback, shown *only* when the
+  conversation in front of the user has no group yet — otherwise there would be no way to
+  collect from it.
+- **Collecting from a conversation that is not running now resumes it** (the same rule a
+  hand-off follows). It used to look the session up in the live registry and die on
+  `undefined` for any conversation that was not currently loaded.
+
 ### Added
 
 - **The hand-off picker shows the conversations you actually use, newest first.** Its order is

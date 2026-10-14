@@ -82,6 +82,11 @@ Your list is not touched by install or uninstall: it lives outside the plugin, a
   restores it verbatim: same id, same creation time, same attachments.
 - **Keyboard** — `/` focuses search, `n` focuses the new-todo field, `Esc` collapses the
   open detail. Row actions appear on hover or keyboard focus.
+- **Collect per conversation** — the `Collect` action sits on each conversation's group header in
+  the list, asks *that* conversation to record what needs following up, and the items land under
+  it. The toolbar keeps a "collect from this chat" fallback, shown only when the current
+  conversation has no group yet. A conversation that is not running is resumed first, like a
+  hand-off.
 - **Search syntax** — `tag:release` (or `#ops`), `is:overdue`, `is:active`, `has:link`,
   `has:note`, `level:p0`, plus free words combined with AND (which also match note text). A
   search without a colon behaves exactly as it always did.

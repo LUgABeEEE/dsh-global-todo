@@ -153,6 +153,18 @@ rest of the batch — a partial success is reported as a partial success, never 
 The ceiling: **capture ends at the list.** Nothing the plugin does starts work by itself;
 "hand it to an agent" is always a human click.
 
+## An action belongs where its subject is unambiguous
+
+"Collect from this chat" was a toolbar button, and in a global panel "this chat" is a guess: the
+panel is the main view, so there is no conversation on screen to mean. Moving the action onto each
+conversation's group header removes the ambiguity — the group **is** the conversation — and puts
+the result where the reader is already looking, because the collected todos are filed under that
+same conversation via their recorded origin.
+
+The toolbar keeps its version only when the current conversation has no group to carry the action,
+so the feature never becomes unreachable. That fallback is a consequence of the rule, not a second
+code path: it appears exactly when the group version cannot.
+
 ## The picker mirrors the sidebar, and hides what the user put away
 
 The conversation list is not decoration: it is the control that decides where work goes. So it

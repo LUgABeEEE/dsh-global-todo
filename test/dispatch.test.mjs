@@ -592,6 +592,43 @@ test('a workspace the user names wins over the inherited one', async () => {
   }
 })
 
+test('capturing from a conversation that is not running resumes it', async () => {
+  const agents = makeAgents()
+  const env = await harness({}, { agents }, { getRecentSession: () => 'session-here' })
+  try {
+    liveSession(agents, 'session-here', { cwd: '/here' })
+    const result = await env.dispatcher.requestCapture({ sessionId: 'session-dormant', authoritative: true })
+    assert.equal(result.sessionId, 'session-dormant')
+    assert.equal(result.resumed, true)
+    assert.deepEqual(agents.resumed, ['session-dormant'])
+    const sent = agents.sessions.get('session-dormant').sent
+    assert.equal(sent.length, 1, 'the capture request must reach that conversation')
+    assert.equal(agents.sessions.get('session-here').sent.length, 0, 'and nothing else')
+  } finally {
+    await env.cleanup()
+  }
+})
+
+test('capturing from a conversation that cannot be loaded fails instead of guessing', async () => {
+  const agents = makeAgents()
+  const env = await harness({}, { agents }, { getRecentSession: () => 'session-here' })
+  try {
+    liveSession(agents, 'session-here', { cwd: '/here' })
+    agents.resumeFails = true
+    await assert.rejects(
+      () => env.dispatcher.requestCapture({ sessionId: 'session-dormant', authoritative: true }),
+      (error) => {
+        assert.equal(error.code, 'dispatch-failed')
+        assert.match(error.message, /没在运行|无法把它加载起来/)
+        return true
+      },
+    )
+    assert.equal(agents.sessions.get('session-here').sent.length, 0, 'no silent substitution')
+  } finally {
+    await env.cleanup()
+  }
+})
+
 test('a bound hand-off reuses the same conversation', async () => {
   const agents = makeAgents()
   const env = await harness({}, { agents })

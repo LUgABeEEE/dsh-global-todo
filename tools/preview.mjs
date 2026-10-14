@@ -37,6 +37,7 @@ const TODOS = [
     priority: 'high',
     dueAt: new Date(NOW + 20 * HOUR).toISOString(),
     tags: ['发布', '文档'],
+    originSessionId: 'session-77aa31c0-1111-2222-3333-444455556666',
     notes: [
       { at: NOW - 2 * HOUR, by: 'agent', text: '版本号已对齐，verify 跑过了。' },
       { at: NOW - HOUR, by: 'agent', text: '卡在需要你在 npm 上绑定 Trusted Publisher，绑定后我打 tag 发布。' },
@@ -308,6 +309,24 @@ const FAKE_WORKSPACES = {
   ],
   archivedSessionIds: ['session-aaaa0000-1111-2222-3333-444455556666'],
 }
+TODOS.push({
+  id: 't-3f4a5b6c',
+  title: '手动记一条：等交换机到货',
+  description: '',
+  status: 'open',
+  priority: 'low',
+  dueAt: null,
+  tags: [],
+  links: [],
+  createdAt: NOW - 30 * MINUTE,
+  createdBy: 'human',
+  updatedAt: NOW - 30 * MINUTE,
+  doneAt: null,
+  sessionId: '',
+  sessionAlive: false,
+  sessionDir: '',
+  lastDispatch: null,
+})
 const previewProps = {
   useSessions: (read) => read(FAKE_SESSIONS),
 }
@@ -503,6 +522,10 @@ function checkRenderedPanel(html, detail) {
   expect(html.includes('is:overdue'), 'the search syntax hint is missing')
   expect(detail.includes('进展记录'), 'the notes section is missing from the detail')
   expect(detail.includes('已按四段式重写'), 'a note body is missing from the detail')
+  // The capture action belongs to a conversation, so it sits on that conversation's
+  // group; the toolbar only keeps a fallback for a conversation that has no group.
+  expect(html.includes('gt-group-action'), 'no capture action on the conversation groups')
+  expect(!html.includes('从本对话抓取'), 'the toolbar still duplicates the per-conversation capture action')
   // Two facts the user asked for, asserted rather than trusted: archived conversations
   // are not offered, and the list is ordered by last use.
   expect(!html.includes('已归档的老对话'), 'an archived conversation is offered (registry set)')
