@@ -512,3 +512,19 @@ test('POST /note and /diagnostics reach the service', async () => {
     await env.cleanup()
   }
 })
+
+test('health reports the idle threshold, so the rule in force is observable', async () => {
+  // A check that could not see the threshold could not tell whether the idle gate was
+  // deployed at all — which is exactly the mistake this assertion exists to prevent. The
+  // write path is covered by the smoke test, which uses the real settings module.
+  const env = await harness()
+  try {
+    const health = await env.call('/health', makeReq({ url: `${ROUTE_BASE}/health` }))
+    assert.equal(health.statusCode, 200)
+    const settings = health.json().data.settings
+    assert.equal(settings.idleMinutes, 30, 'the default idle window must be visible')
+    assert.equal(typeof settings.cooldownMinutes, 'number')
+  } finally {
+    await env.cleanup()
+  }
+})

@@ -72,6 +72,16 @@ registry, so this is the version to install.
 
 ### Changed
 
+- **A quiet conversation has its finished work ticked off for it.** Asking an agent to close what
+  it finished works most of the time, which is not the same as a tidy list — so when a conversation
+  that *wrote* todos has been quiet for the idle window after a clean turn, the Host closes the ones
+  it owns, with a summary saying why ("插件按「做完就划掉」结束了它写下的这条"), and it is reversible.
+  It touches only that conversation's own todos, and it is deliberately independent of the
+  automatic-collect switch: tidying is not the same feature as asking for more.
+- **`/health` reports `idleMinutes`** (and the settings write echoes it). The rule in force has to
+  be observable — a check that could not see it reported "not deployed" for code that was running.
+
+
 - **Automatic collect now waits for quiet, instead of asking at every turn end.** That was the
   design mistake behind "too frequent": a session being worked in ends turns every few minutes, so
   the question arrived mid-work, repeatedly. A clean turn now only *marks* the conversation as a
