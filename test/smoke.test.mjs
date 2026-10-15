@@ -135,6 +135,9 @@ function makeReq(options = {}) {
   }
 }
 
+/** Wait for the plugin's fire-and-forget bookkeeping to settle. */
+const settle = () => new Promise((resolve) => setTimeout(resolve, 40))
+
 /** A recording `agents` service, enough to complete a hand-off and to be asked. */
 function makeAgents() {
   const created = []
@@ -293,7 +296,10 @@ test('with no optional service the plugin still mounts and only loses surfaces',
   }
 })
 
-test('the automatic collect switch asks the person\'s conversation once, then honors the cooldown', async () => {
+test('the automatic collect switch waits for quiet instead of asking at every turn end', async () => {
+  // The complaint this encodes: asking at `turn/end` produced a question every few minutes
+  // for a session that was still being worked in. A clean turn now only marks the
+  // conversation as a candidate; the timer asks once it has been quiet for `idleMinutes`.
   const dir = await mkdtemp(path.join(tmpdir(), 'gt-smoke-auto-'))
   try {
     const agents = makeAgents()
@@ -308,16 +314,6 @@ test('the automatic collect switch asks the person\'s conversation once, then ho
 
     const person = agents.live('session-person')
     const session = (id) => ({ id, header: { id } })
-    const userMessage = { type: 'user/message', seq: 1, data: { source: { kind: 'user' } } }
-    const turnEnd = { type: 'turn/end', seq: 5, data: { turn: 1, reason: { kind: 'completed' } } }
-
-    // Off until a person turns it on: a clean turn must change nothing. There is nothing
-    // to wait for here — the listener decides synchronously and only an ask is async, so a
-    // turn this feature must ignore cannot be "about to" send something.
-    host.emit('session/event', session('session-person'), userMessage)
-    host.emit('session/event', session('session-person'), turnEnd)
-    assert.equal(person.sent.length, 0, 'automatic collect is off by default')
-
     const settingsRoute = host.state.routes.get('/api/global-todo/settings')
     const posted = makeRes()
     await settingsRoute.handler(
@@ -326,37 +322,25 @@ test('the automatic collect switch asks the person\'s conversation once, then ho
     )
     assert.equal(JSON.parse(posted.body).data.settings.autoCollect, true)
 
-    host.emit('session/event', session('session-person'), turnEnd)
-    await waitFor(() => person.sent.length === 1, 'the automatic ask to go out')
-    assert.equal(person.sent.length, 1, 'the conversation must be asked exactly once')
-    assert.match(JSON.stringify(person.sent[0]), /全局待办/)
+    // A person speaks, works, and the turn ends cleanly.
+    host.emit('session/event', session('session-person'), { type: 'user/message', seq: 1, data: { source: { kind: 'user' } } })
+    host.emit('session/event', session('session-person'), { type: 'turn/start', seq: 2, data: { turn: 1 } })
+    host.emit('session/event', session('session-person'), { type: 'turn/end', seq: 3, data: { turn: 1, reason: { kind: 'completed' } } })
+    await settle()
+    assert.equal(person.sent.length, 0, 'a clean turn must not ask immediately')
 
-    // Inside the cooldown it stays quiet, and a conversation nobody is in is never asked.
-    // The cooldown is booked before the ask goes out, so both repeats below are judged
-    // synchronously — waiting would only be waiting for the machine.
-    host.emit('session/event', session('session-person'), turnEnd)
-    host.emit('session/event', session('session-other'), turnEnd)
-    assert.equal(person.sent.length, 1, 'the cooldown must hold')
-    assert.equal(agents.sessions.has('session-other'), false)
+    // Another clean turn a moment later still asks nothing: the conversation is in use.
+    host.emit('session/event', session('session-person'), { type: 'turn/end', seq: 4, data: { turn: 2, reason: { kind: 'completed' } } })
+    await settle()
+    assert.equal(person.sent.length, 0, 'a busy conversation is never asked')
 
-    // The switch is on the Host, so it survives the panel and is reported by health.
-    // `lastAsk` is written *after* the ask resolves, so wait for the record rather than
-    // for a duration that happens to be long enough.
-    const health = async () => {
-      const res = makeRes()
-      await host.state.routes
-        .get('/api/global-todo/health')
-        .handler(makeReq({ url: '/api/global-todo/health' }), res)
-      return JSON.parse(res.body).data
-    }
-    await waitFor(
-      async () => (await health()).autoCollect.lastAsk?.sessionId === 'session-person',
-      'the ask to be recorded',
-    )
-    const data = await health()
-    assert.equal(data.settings.autoCollect, true)
-    assert.equal(data.autoCollect.error, null)
-    assert.equal(data.autoCollect.lastAsk.sessionId, 'session-person')
+    const health = host.state.routes.get('/api/global-todo/health')
+    const healthRes = makeRes()
+    await health.handler(makeReq({ url: '/api/global-todo/health' }), healthRes)
+    const payload = JSON.parse(healthRes.body)
+    assert.equal(payload.data.settings.autoCollect, true)
+    assert.equal(payload.data.autoCollect.error, null)
+    assert.equal(payload.data.autoCollect.enabled, true)
   } finally {
     await rm(dir, { recursive: true, force: true })
   }

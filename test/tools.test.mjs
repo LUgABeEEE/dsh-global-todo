@@ -323,3 +323,22 @@ test('a document that must exist is refused with a typed reason', async () => {
     await rm(dir, { recursive: true, force: true })
   }
 })
+
+test('a capture run does not register what the list already has', async () => {
+  const env = await harness()
+  try {
+    const first = await env.invoke('global_todo_capture', { items: [{ title: '把 npm 发布跑通' }, { title: '另一个不同的活' }] })
+    assert.equal(first.value.count, 2)
+    assert.deepEqual(first.value.skipped, [])
+
+    // Same run again: the list has not changed, so nothing new should appear. This is what
+    // kept filling the list with near-duplicates on every automatic collect.
+    const second = await env.invoke('global_todo_capture', { items: [{ title: '把 npm 发布跑通' }, { title: '新的一件事' }] })
+    assert.equal(second.value.count, 1, 'only the genuinely new item is registered')
+    assert.equal(second.value.skipped.length, 1)
+    assert.match(second.value.skipped[0].error, /已有同名/)
+    assert.equal((await env.service.list({ status: 'all' })).todos.length, 3)
+  } finally {
+    await env.cleanup()
+  }
+})

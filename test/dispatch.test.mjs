@@ -468,7 +468,11 @@ test('capture asks the conversation in front of the user to collect todos', asyn
     const prompt = session.sent[0].message.content[0].text
     assert.match(prompt, /全局待办 · 抓取/)
     assert.match(prompt, /global_todo_capture/)
-    assert.match(prompt, /宁可少记/)
+    // The prompt is what shapes the list, so its shape is asserted: refine and merge, and
+    // aim for a couple of entries rather than a transcript of the conversation.
+    assert.match(prompt, /精炼、合并/)
+    assert.match(prompt, /宁可 1–3 条/)
+    assert.match(prompt, /合并成一条/)
     // It is work, not a hand-off of a record: nothing is created or completed.
     assert.equal(agents.created.length, 0)
     assert.equal(env.watcherProbe, undefined)

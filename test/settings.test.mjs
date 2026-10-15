@@ -4,7 +4,13 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 
-import { SETTINGS_DEFAULTS, createSettings, decideAutoCollect, normalizeSettings } from '../lib/settings.js'
+import {
+  SETTINGS_DEFAULTS,
+  createSettings,
+  decideAutoCollect,
+  dueAutoCollect,
+  normalizeSettings,
+} from '../lib/settings.js'
 
 test('settings default to off, and every field is repaired rather than trusted', () => {
   assert.deepEqual(normalizeSettings(undefined), { ...SETTINGS_DEFAULTS, asked: {} })
@@ -90,6 +96,8 @@ test('the automatic collect decision names why it stays quiet', () => {
       sessionId: over.sessionId ?? 'session-me',
       recentSessionId: over.recentSessionId ?? 'session-me',
       turnReason: over.turnReason ?? 'completed',
+      // Quiet long enough unless a test says otherwise.
+      idleMs: over.idleMs ?? 60 * 60 * 1000,
       now: at,
     })
 
@@ -102,4 +110,78 @@ test('the automatic collect decision names why it stays quiet', () => {
   assert.equal(decide({ settings: { asked: { 'session-me': at - 1000 } } }).reason, 'cooldown')
   assert.equal(decide({ settings: { asked: { 'session-me': at - 31 * 60 * 1000 } } }).ask, true)
   assert.deepEqual(decide({}), { ask: true, reason: 'ok' })
+  // The rule asked for: a conversation still being worked in is never asked, and not knowing
+  // how long it has been quiet counts as "not yet".
+  assert.equal(decide({ idleMs: 29 * 60 * 1000 }).reason, 'not-idle-yet')
+  assert.equal(decide({ idleMs: 30 * 60 * 1000 }).ask, true)
+  assert.equal(
+    decideAutoCollect({
+      settings: { ...base, autoCollect: true },
+      sessionId: 'session-me',
+      recentSessionId: 'session-me',
+      turnReason: 'completed',
+      // No idle information at all: fail closed rather than ask.
+      now: at,
+    }).reason,
+    'not-idle-yet',
+  )
+  assert.equal(decide({ idleMs: 60 * 60 * 1000, settings: { idleMinutes: 90 } }).reason, 'not-idle-yet')
+  assert.equal(decide({ idleMs: 90 * 60 * 1000, settings: { idleMinutes: 90 } }).ask, true)
+})
+
+test('only a conversation that has gone quiet is due', () => {
+  const settings = { ...SETTINGS_DEFAULTS, autoCollect: true, idleMinutes: 30, asked: {} }
+  const now = 1_000_000_000
+
+  // Still being worked in: nothing due, however many turns ended.
+  assert.deepEqual(
+    dueAutoCollect({
+      pending: { 'session-me': now - 60_000 },
+      activityAt: { 'session-me': now - 60_000 },
+      settings,
+      recentSessionId: 'session-me',
+      now,
+    }),
+    [],
+  )
+
+  // Quiet for half an hour: due — and the idle time is reported, so the log says why.
+  assert.deepEqual(
+    dueAutoCollect({
+      pending: { 'session-me': now - 31 * 60_000 },
+      activityAt: { 'session-me': now - 31 * 60_000 },
+      settings,
+      recentSessionId: 'session-me',
+      now,
+    }),
+    [{ sessionId: 'session-me', idleMs: 31 * 60_000 }],
+  )
+
+  // Someone else's conversation, or one already asked inside the cooldown, stays quiet.
+  assert.deepEqual(
+    dueAutoCollect({
+      pending: { 'session-other': now - 31 * 60_000 },
+      activityAt: { 'session-other': now - 31 * 60_000 },
+      settings,
+      recentSessionId: 'session-me',
+      now,
+    }),
+    [],
+  )
+  assert.deepEqual(
+    dueAutoCollect({
+      pending: { 'session-me': now - 31 * 60_000 },
+      activityAt: { 'session-me': now - 31 * 60_000 },
+      settings: { ...settings, asked: { 'session-me': now - 60_000 } },
+      recentSessionId: 'session-me',
+      now,
+    }),
+    [],
+  )
+
+  // A session with no known activity is never due: not knowing is a reason to wait.
+  assert.deepEqual(
+    dueAutoCollect({ pending: { 'session-me': now }, activityAt: {}, settings, recentSessionId: 'session-me', now }),
+    [],
+  )
 })

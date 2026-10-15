@@ -72,6 +72,22 @@ registry, so this is the version to install.
 
 ### Changed
 
+- **Automatic collect now waits for quiet, instead of asking at every turn end.** That was the
+  design mistake behind "too frequent": a session being worked in ends turns every few minutes, so
+  the question arrived mid-work, repeatedly. A clean turn now only *marks* the conversation as a
+  candidate and records **when it went quiet**; a one-minute timer asks when nothing has been said
+  for `idleMinutes` (default **30**) — and any new message, or the start of a new turn, restarts
+  that clock. Asking is also still gated on the conversation being the one the person is in, the
+  turn having ended cleanly, and the per-session cooldown. Not knowing how long it has been quiet
+  counts as "not yet" (fail closed).
+- **Captured items are refined and merged rather than transcribed.** The capture prompt now asks
+  for one entry per matter, merges scattered points into a single entry's description, targets
+  "1–3 entries, not 8", and refuses to record what the list already has. The capture tool enforces
+  the last part: an item whose normalised title matches an unfinished entry is skipped with
+  「清单里已有同名的未完成条目」 instead of being registered again — which is how the list kept
+  filling with near-duplicates.
+
+
 - **A calmer panel.** The header had grown two rows of controls that said the same things
   twice: the three count chips *were* the status filter, and the add form sat open above the
   list forever. Now there are three rows with one job each — **title + summary + `添加`**,
