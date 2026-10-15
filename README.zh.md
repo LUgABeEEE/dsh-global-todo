@@ -30,7 +30,9 @@ DSH 自带的 `todo_write` 属于**某一个 agent 会话**：整表替换、三
 
 ![展开一条：就地编辑、附件带「打开 / 复制路径」、动态轨迹](docs/screenshots/panel-detail.png)
 
-两张图都由 `npm run preview` 生成——它不依赖宿主，直接把真实的客户端半区渲染成静态 HTML。
+图都由 `npm run screenshots`（内部串起 `npm run preview`）生成：先把真实的客户端半区渲染成静态
+HTML（不依赖宿主、零依赖），再以 1280×720 拍进 `docs/screenshots/`。Playwright 不是依赖——工具
+借的是 DSH profile 里已经装好的那份，或 `DSH_PLAYWRIGHT` 指向的那份。
 
 ## 环境要求
 
@@ -128,9 +130,11 @@ dsh plugin --profile web remove dsh-global-todo
 |---|---|---|
 | GET | `/api/global-todo/list` | `status`、`query`、`tag`、`sort`、`limit` |
 | GET | `/api/global-todo/get` | `id` |
+| GET | `/api/global-todo/export` | ——（存储用的那份 JSON 文档，用于备份或迁移） |
+| POST | `/api/global-todo/import` | `{ doc, mode?: replace\|merge }`——`replace` 是无损往返，`merge` 同 id 覆盖、新 id 追加（面板用的是这个） |
 | POST | `/api/global-todo/note` | `{ id, text }`（追加进展记录） |
 | POST | `/api/global-todo/capture` | `{ sessionId? }`（请当前对话把要跟进的事抓进清单） |
-| GET | `/api/global-todo/health` | —（数据位置、统计、派发能力，以及**工具注册状态**与**自动收尾观察者是否挂上**——这两种失败是静默的，所以必须能查） |
+| GET | `/api/global-todo/health` | —（数据位置、统计、派发能力，以及**工具注册状态**与**自动收尾观察者是否挂上**——这两种失败是静默的，所以必须能查；还有 `metrics`：派发成功率、工具调用次数、清单增长） |
 | POST | `/api/global-todo/create` | `{ title, description?, links?, tags?, priority?, dueAt? }` |
 | POST | `/api/global-todo/update` | `{ id, ...字段 }` |
 | POST | `/api/global-todo/status` | `{ id, status }` |
@@ -198,8 +202,12 @@ npm run verify    # 两者都跑
 CI 里也没有构建产物。改 `lib/client.js` 刷新页面即生效；改宿主半区要重启宿主。
 
 ```sh
-npm run preview   # 把面板渲染成 preview/panel.html（另附详情态）
+npm run preview       # 把面板渲染成 preview/panel.html（另附详情态与选择态）
+npm run screenshots   # 把这些预览重新拍成 docs/screenshots/，1280×720
 ```
+
+`docs/screenshots/` 下那三张 PNG 会随包发布、并嵌在两份 README 里，所以面板 UI 一改就要重跑
+`npm run screenshots`。
 
 ```text
 lib/
@@ -215,6 +223,7 @@ lib/
   client.js    浏览器半区（面板 + 侧栏入口）
 test/          单元、service、工具、路由、派发、bundle、manifest 测试
 tools/         preview.mjs —— 不依赖宿主，把面板渲染成静态 HTML
+               screenshot.mjs —— 把预览拍成 PNG（借 profile 里的 Playwright）
 docs/          DESIGN.md（数据模型与取舍）、ROADMAP.md
 ```
 

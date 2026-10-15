@@ -33,8 +33,10 @@ one record:
 
 ![One row opened: inline editing, attachments with 打开 / 复制路径, activity](docs/screenshots/panel-detail.png)
 
-Both are produced by `npm run preview`, which renders the real client half to static HTML
-with no Host and no dependencies.
+These are produced by `npm run screenshots` (which chains `npm run preview`): the real client
+half is rendered to static HTML with no Host and no dependencies, then photographed at 1280×720
+into `docs/screenshots/`. Playwright is not a dependency — the tool borrows the copy a DSH
+profile already installed, or whatever `DSH_PLAYWRIGHT` points at.
 
 ## Requirements
 
@@ -217,8 +219,10 @@ fence when that service is present, and by a strict loopback check otherwise.
 |---|---|---|
 | GET | `/api/global-todo/list` | `status`, `query`, `tag`, `sort`, `limit` |
 | GET | `/api/global-todo/get` | `id` |
+| GET | `/api/global-todo/export` | — (the store's own JSON document, for backup or migration) |
+| POST | `/api/global-todo/import` | `{ doc, mode?: replace\|merge }` — `replace` is an exact round trip, `merge` updates by id and appends (what the panel sends) |
 | POST | `/api/global-todo/capture` | `{ sessionId? }` — ask the current conversation to collect its follow-ups |
-| GET | `/api/global-todo/health` | — (store location, counts, dispatch capabilities, plus **tool registration** and **whether the completion watcher attached** — both fail quietly, so both are reported) |
+| GET | `/api/global-todo/health` | — (store location, counts, dispatch capabilities, plus **tool registration** and **whether the completion watcher attached** — both fail quietly, so both are reported — and `metrics`: dispatch success rate, agent tool calls, list growth) |
 | POST | `/api/global-todo/create` | `{ title, description?, links?, tags?, priority?, dueAt? }` |
 | POST | `/api/global-todo/update` | `{ id, ...fields }` |
 | POST | `/api/global-todo/status` | `{ id, status }` |
@@ -291,8 +295,12 @@ TypeScript toolchain or CI artifact is involved. `lib/client.js` edits take effe
 page refresh; host-half edits need a host restart.
 
 ```sh
-npm run preview   # render the panel to preview/panel.html (+ a detail variant)
+npm run preview       # render the panel to preview/panel.html (+ detail and selection variants)
+npm run screenshots   # re-photograph those previews into docs/screenshots/, 1280×720
 ```
+
+The three PNGs under `docs/screenshots/` ship with the package and are embedded in both
+READMEs, so re-run `npm run screenshots` whenever the panel UI changes.
 
 ```text
 lib/
@@ -308,6 +316,7 @@ lib/
   client.js    the browser half (panel + sidebar entry)
 test/          unit, service, tool, route, dispatch, bundle and manifest tests
 tools/         preview.mjs — render the panel to static HTML without a Host
+               screenshot.mjs — photograph those previews (borrows the profile's Playwright)
 docs/          DESIGN.md (data model and rejected alternatives), ROADMAP.md
 ```
 

@@ -438,6 +438,39 @@ Everything is obtained through `ctx.inject` (which waits for the service) or a g
 `ctx.get` (which tolerates its absence). The plugin never imports a `@deepseek-ai/*`
 package, so it cannot fail to load because of a version skew in one of them.
 
+## Metrics describe the process, not the list
+
+`/health` answers "is this working". The list is one file the person can inspect, so the
+numbers that belong next to it are the ones the file cannot answer: how many hand-offs this
+process attempted and how many landed, how many tool calls failed, how big the list has grown
+since the process started.
+
+All of it is **in-memory on purpose**. A counter persisted to disk would be a second source of
+truth for facts the store already owns — the record's own activity trail says when something
+changed, and `docs/ROADMAP.md` already lists the honest cross-restart version of this
+("what did the sessions finish this week") as unbuilt. Restarting the process resets the
+counters, and the field says so rather than pretending to be cumulative.
+
+The failure mode worth avoiding was a counter that only counts what it can see cheaply: a tool
+call that throws is exactly the one a person wants counted, so the wrapper records a failure
+when the call rejects *and* when it returns `{ ok: false }`.
+
+## Export and import move the store's own document
+
+A file that is already JSON still needs a round trip to be portable — the point is to move the
+list between machines, back it up, or diff it in a repository without hand-editing.
+
+Two rules keep it honest. First, export serializes **the store's document, not the read view**:
+`missing` and `sessionDir` are computed for the panel on every read, and writing them back would
+freeze today's filesystem state into a file the person then moves somewhere else. Second, an
+import is all-or-nothing: one unreadable record fails the whole request with a 400 and nothing is
+written. A partial import is indistinguishable from data loss, and the person has no way to see
+which half landed.
+
+`merge` is the default the panel uses because the destructive operation should not be the one a
+stray click reaches. `replace` exists for restoring a known-good backup, and it is exact: the
+document that goes in is the document that comes out.
+
 ## Rejected storage alternatives
 
 **A SQLite database.** Better for thousands of rows and concurrent readers; worse for the

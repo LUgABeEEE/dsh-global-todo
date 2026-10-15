@@ -60,6 +60,36 @@ test('filters cover active, single statuses, overdue and text search', async () 
   }
 })
 
+test('the search box understands tag:, is:, has: and level: tokens', async () => {
+  const env = await harness()
+  try {
+    const tagged = await env.service.create({ title: '写周报', tags: ['工作'], priority: 'urgent' })
+    const late = await env.service.create({ title: '交材料', dueAt: '2020-01-01' })
+    const attached = await env.service.create({ title: '看规格' })
+    await env.service.addLink(attached.id, 'https://example.com/spec')
+    const noted = await env.service.create({ title: '追进度' })
+    await env.service.note(noted.id, '卡在授权')
+    const done = await env.service.create({ title: '买咖啡' })
+    await env.service.setStatus(done.id, 'done')
+
+    const ids = async (query) => (await env.service.list({ status: 'all', query })).todos.map((todo) => todo.id)
+    assert.deepEqual(await ids('tag:工作'), [tagged.id])
+    assert.deepEqual(await ids('#工作'), [tagged.id])
+    assert.deepEqual(await ids('level:p0'), [tagged.id], 'p0 is the friendly alias of urgent')
+    assert.deepEqual(await ids('is:overdue'), [late.id])
+    assert.deepEqual(await ids('has:link'), [attached.id])
+    assert.deepEqual(await ids('has:note'), [noted.id])
+    assert.deepEqual(await ids('is:done'), [done.id])
+    // Free text still has to match every word, alongside the syntax tokens.
+    assert.deepEqual(await ids('tag:工作 周报'), [tagged.id])
+    assert.deepEqual(await ids('tag:工作 咖啡'), [])
+    // A token nobody defined stays a search term rather than becoming a filter.
+    assert.deepEqual(await ids('nonsense:thing'), [])
+  } finally {
+    await env.cleanup()
+  }
+})
+
 test('sorting by created, updated, due and priority behaves predictably', async () => {
   const env = await harness()
   try {

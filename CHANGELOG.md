@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`/health` now reports what the plugin has been doing.** In-process counters for the list
+  (`created`, `removed`, `restored`, `imports`, `noted`, `changes`, `size`, `peak`) and for
+  hand-offs (`attempts`, `ok`, `failed`, `byMode`, `successRate`), plus a per-tool call count that
+  includes failures. The existing fields are untouched; `metrics` is `null` when the plugin is
+  mounted without a store. Deliberately **in-memory**: it describes this process, and a counter
+  that survives a restart is a second source of truth for facts the store already owns.
+- **The list can be exported and imported as JSON.** `GET /export` returns the store's own
+  document — not the read view, so the runtime annotations (`missing`, `sessionDir`) are absent —
+  and `POST /import` accepts it back with `replace` or `merge` semantics (`merge` overwrites by id
+  and appends new ones). A single unreadable record fails the whole request with a 400 rather than
+  writing half of it. The panel gained 导出 / 导入 buttons; the import path defaults to `merge` so
+  choosing the wrong file cannot empty the list.
+- The tool count in the docs now matches the tree: **nine** `global_todo_*` tools
+  (`add`, `capture`, `list`, `get`, `update`, `link`, `note`, `done`, `remove`), the same list
+  `/health.tools.registered` reports. `ROADMAP.md` was re-audited against the code and now
+  separates what has landed (with `file:line` citations) from what has not.
+
 ## [0.2.0] — 2026-10-15
 
 The first published release. 0.1.0 was cut in the repository but never reached a
