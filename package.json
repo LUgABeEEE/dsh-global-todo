@@ -55,6 +55,7 @@
     "test": "node --test \"test/**/*.test.mjs\"",
     "verify": "npm run check && npm run check:render && npm test",
     "preview": "node tools/preview.mjs",
+    "screenshots": "npm run preview && node tools/screenshot.mjs",
     "prepack": "npm run verify",
     "check:render": "node tools/preview.mjs --check",
     "check:live": "node tools/live-check.mjs"
