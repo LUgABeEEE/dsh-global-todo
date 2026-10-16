@@ -177,12 +177,18 @@ enough for a list whose whole point is not forgetting. So the plugin can also ac
 turn in a conversation the person is actually in, it asks that conversation whether anything needs
 following up.
 
-That power is fenced in five ways, because the failure mode is worse than doing nothing — a list
+That power is fenced in six ways, because the failure mode is worse than doing nothing — a list
 that fills itself with noise gets ignored, and then the real items get ignored too:
 
 - **off until switched on** by a person;
 - **only the conversation a person is in**, judged from the same tracker a hand-off uses — never a
   dispatch target, subagent or background run, which would interrupt work with a question;
+- **never an exempted workspace**. Some conversations are driven by a machine: a chat companion's
+  room is where a person talks, not where work is tracked, and "anything to follow up on?" has no
+  business arriving there. The exemption is keyed on the **working directory**, not on a session
+  id, because such a session is recreated when it restarts and an id-keyed exemption would quietly
+  stop applying — and it is decided before anything about the conversation's state, so the reason
+  reported is the exemption rather than whichever timing rule happened to apply;
 - **only clean turns**: an aborted, failed or truncated turn is not a moment to ask;
 - **one question per message the person wrote**. The question is itself a message in the
   conversation, so it restarted the quiet clock, and the answer to it ended a clean turn — which

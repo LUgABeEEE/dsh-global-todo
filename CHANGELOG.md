@@ -31,6 +31,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reporting a repair that did not happen. Until now the only agent-side path was `status` on
   `global_todo_done`, i.e. a capability filed under the tool whose name says the opposite, so a
   data repair reached for the HTTP route instead — and was filed as the person's work.
+- **A workspace can be exempted from automatic collect.** The `Exempt` action on a conversation's
+  group header takes that conversation's whole **working directory** out of scope, and
+  `/health.settings` reports the list so the panel can show which places are out. It is keyed on
+  the directory rather than on a session id because the conversations that need it are the ones a
+  machine drives — a chat companion's room — and such a session is recreated with a new id when it
+  restarts, so an id-keyed exemption would quietly stop applying. Subdirectories count; a shared
+  prefix does not, and a conversation whose directory nobody reported is not treated as exempt.
 
 ### Fixed
 

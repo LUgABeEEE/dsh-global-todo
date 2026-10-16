@@ -24,6 +24,17 @@ test('settings default to off, and every field is repaired rather than trusted',
   assert.equal(normalizeSettings({ autoCollect: true }).autoCollect, true)
 })
 
+test('the exempt workspace list is repaired rather than trusted', () => {
+  // A trailing slash comes off, so one place cannot be listed twice; a relative path is not
+  // a place at all, and matching one by accident would silence a conversation nobody named.
+  assert.deepEqual(
+    normalizeSettings({ exemptWorkspaces: ['/a/', '/a', '/b', 'relative', '', 7, '/a/sub'] }).exemptWorkspaces,
+    ['/a', '/b', '/a/sub'],
+  )
+  assert.deepEqual(normalizeSettings({ exemptWorkspaces: 'nope' }).exemptWorkspaces, [])
+  assert.deepEqual(normalizeSettings({}).exemptWorkspaces, [])
+})
+
 test('the cooldown bookkeeping keeps the newest sessions and drops junk', () => {
   const asked = { junk: 'nope', '': 5, 'session-old': 1, 'session-new': 100 }
   for (let index = 0; index < 80; index += 1) asked[`session-${index}`] = index
@@ -97,6 +108,7 @@ test('the automatic collect decision names why it stays quiet', () => {
       recentSessionId: over.recentSessionId ?? 'session-me',
       turnReason: over.turnReason ?? 'completed',
       humanAt: over.humanAt,
+      sessionDir: over.sessionDir,
       // Quiet long enough unless a test says otherwise.
       idleMs: over.idleMs ?? 60 * 60 * 1000,
       now: at,
@@ -130,6 +142,18 @@ test('the automatic collect decision names why it stays quiet', () => {
     'awaiting-human',
   )
   assert.deepEqual(decide({}), { ask: true, reason: 'ok' })
+  // An exempted workspace is settled before anything about the conversation's state, so the
+  // reason names the exemption rather than whichever timing rule happened to apply.
+  const exempted = { exemptWorkspaces: ['/home/me/workspace/示例工作区'] }
+  assert.equal(decide({ settings: exempted, sessionDir: '/home/me/workspace/示例工作区' }).reason, 'exempt-workspace')
+  assert.equal(
+    decide({ settings: exempted, sessionDir: '/home/me/workspace/示例工作区/nested' }).reason,
+    'exempt-workspace',
+  )
+  // A shared prefix is a different place, and an unknown directory is not an exemption.
+  assert.equal(decide({ settings: exempted, sessionDir: '/home/me/workspace/示例工作区2' }).ask, true)
+  assert.equal(decide({ settings: exempted, sessionDir: '' }).ask, true)
+  assert.equal(decide({ settings: exempted }).ask, true, 'a directory nobody reported is not exempt')
   // The rule asked for: a conversation still being worked in is never asked, and not knowing
   // how long it has been quiet counts as "not yet".
   assert.equal(decide({ idleMs: 29 * 60 * 1000 }).reason, 'not-idle-yet')

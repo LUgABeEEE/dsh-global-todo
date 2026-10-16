@@ -485,6 +485,80 @@ test('a quiet conversation never has its open todos closed for it', async () => 
   }
 })
 
+test('an exempted workspace is never asked, and stops being exempt when the list changes', async () => {
+  // The case this exists for: a workspace whose conversations a machine drives — a chat
+  // companion, say — must not have "anything to follow up on?" injected into it. Keyed on the
+  // working directory, because such a session is recreated with a new id whenever it restarts,
+  // and an exemption pinned to an id would quietly stop applying.
+  const dir = await mkdtemp(path.join(tmpdir(), 'gt-smoke-exempt-'))
+  const realSetInterval = globalThis.setInterval
+  const realNow = Date.now
+  const ticks = []
+  let now = 1_000_000_000
+  try {
+    globalThis.setInterval = (callback) => {
+      ticks.push(callback)
+      return { unref() {} }
+    }
+    Date.now = () => now
+
+    const agents = makeAgents()
+    const host = makeHost({
+      tools: {},
+      webServer: {},
+      agents,
+      agentDefaultModel: { currentSelection: () => ({ provider: 'deepseek', model: 'deepseek-chat' }) },
+    })
+    apply(host.ctx, { storePath: path.join(dir, 'todos.json'), requireExistingFiles: false })
+
+    const person = agents.live('session-person', { cwd: '/home/me/workspace/示例工作区' })
+    const session = (id) => ({ id, header: { id } })
+    const settingsRoute = host.state.routes.get('/api/global-todo/settings')
+
+    // The switch on, and this place exempted — the panel writes both the same way.
+    await settingsRoute.handler(
+      makeReq({
+        method: 'POST',
+        url: '/api/global-todo/settings',
+        body: JSON.stringify({ autoCollect: true, exemptWorkspaces: ['/home/me/workspace/示例工作区'] }),
+      }),
+      makeRes(),
+    )
+
+    const speakThenGoQuiet = async () => {
+      now += 1000
+      host.emit('session/event', session('session-person'), {
+        type: 'user/message',
+        seq: now,
+        data: { source: { kind: 'user' } },
+      })
+      host.emit('session/event', session('session-person'), {
+        type: 'turn/end',
+        seq: now,
+        data: { turn: 1, reason: { kind: 'completed' } },
+      })
+      now += 31 * 60 * 1000
+      for (const tick of ticks) tick()
+      await settle()
+    }
+
+    await speakThenGoQuiet()
+    assert.equal(person.sent.length, 0, 'an exempted workspace is never asked, however quiet it gets')
+
+    // Take the exemption back: the same conversation is asked, so the exemption is what did it.
+    await settingsRoute.handler(
+      makeReq({ method: 'POST', url: '/api/global-todo/settings', body: JSON.stringify({ exemptWorkspaces: [] }) }),
+      makeRes(),
+    )
+    await speakThenGoQuiet()
+    assert.equal(person.sent.length, 1, 'with the exemption gone the question comes through')
+  } finally {
+    globalThis.setInterval = realSetInterval
+    Date.now = realNow
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
 test('a plugin-written message must not move the current conversation', async () => {
   // The incident this guards: a hand-off injects a user-role message into its
   // target, so tracking "any user-authored message" pulled the current

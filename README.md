@@ -94,7 +94,11 @@ Your list is not touched by install or uninstall: it lives outside the plugin, a
   itself a message in the conversation, so it restarts the quiet clock — which is why **only a
   message you wrote arms it again**: one question per turn from you, and it can never chase its own
   answer. The switch is Host state, so it survives the panel being closed and is reported by
-  `/health`.
+  `/health`. Each conversation's group also carries an **`Exempt`** button: it takes that
+  conversation's whole **working directory** out of automatic collect (click again to undo). That
+  is for conversations a machine drives — a chat companion's room — whose session is recreated with
+  a new id when it restarts, so the exemption is keyed on the directory rather than on one
+  conversation and cannot quietly stop applying.
 - **Collect per conversation** — the `Collect` action sits on each conversation's group header in
   the list, asks *that* conversation to record what needs following up, and the items land under
   it. The toolbar keeps a "collect from this chat" fallback, shown only when the current
