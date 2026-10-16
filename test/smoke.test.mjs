@@ -422,6 +422,69 @@ test('a conversation is asked once, and only a person re-arms it', async () => {
   }
 })
 
+test('a quiet conversation never has its open todos closed for it', async () => {
+  // The incident this encodes: on the night of 2026-10-15 a conversation that had gone quiet
+  // had eight todos it had written closed with a template summary — including one waiting on a
+  // person and one waiting on an event that had not happened yet. Quiet is what a conversation
+  // looks like when it is *waiting*, so it is the wrong signal to close a todo on. Only the
+  // agent's own `global_todo_done`, or the guarded hand-off watcher, may close one.
+  const dir = await mkdtemp(path.join(tmpdir(), 'gt-smoke-quiet-'))
+  const realSetInterval = globalThis.setInterval
+  const realNow = Date.now
+  const ticks = []
+  let now = 1_000_000_000
+  try {
+    globalThis.setInterval = (callback) => {
+      ticks.push(callback)
+      return { unref() {} }
+    }
+    Date.now = () => now
+
+    const host = makeHost({ tools: {}, webServer: {}, agents: makeAgents() })
+    apply(host.ctx, { storePath: path.join(dir, 'todos.json'), requireExistingFiles: false })
+
+    // A conversation writes a todo that is waiting on somebody else.
+    const added = await host.state.tools.get('global_todo_add').execute(
+      { title: '等对方回信', description: '回信还没到，不能算做完' },
+      { agent: { id: 'session-person', session: { header: { cwd: '/repo' } } } },
+    )
+    assert.equal(added.ok, true)
+    assert.equal(added.todo.originSessionId, 'session-person', 'the todo belongs to that conversation')
+
+    // It speaks, the turn ends cleanly, and then nothing happens for hours — the shape that
+    // used to be read as "finished".
+    const session = (id) => ({ id, header: { id } })
+    host.emit('session/event', session('session-person'), {
+      type: 'user/message',
+      seq: 1,
+      data: { source: { kind: 'user' } },
+    })
+    host.emit('session/event', session('session-person'), {
+      type: 'turn/end',
+      seq: 2,
+      data: { turn: 1, reason: { kind: 'completed' } },
+    })
+    now += 6 * 60 * 60 * 1000
+    for (let pass = 0; pass < 5; pass += 1) {
+      for (const tick of ticks) tick()
+      await settle()
+    }
+
+    const res = makeRes()
+    await host.state.routes
+      .get('/api/global-todo/list')
+      .handler(makeReq({ url: '/api/global-todo/list?status=active' }), res)
+    const todos = JSON.parse(res.body).data.todos
+    assert.equal(todos.length, 1, 'the waiting todo is still on the list')
+    assert.equal(todos[0].status, 'open', 'going quiet is not a verdict on the work')
+    assert.equal(todos[0].completion ?? null, null, 'and it wears no completion record')
+  } finally {
+    globalThis.setInterval = realSetInterval
+    Date.now = realNow
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
 test('a plugin-written message must not move the current conversation', async () => {
   // The incident this guards: a hand-off injects a user-role message into its
   // target, so tracking "any user-authored message" pulled the current

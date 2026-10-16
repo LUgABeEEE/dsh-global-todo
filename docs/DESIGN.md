@@ -419,6 +419,34 @@ it says more than a transcript can. The watcher is the safety net for the agent 
 and it is deliberately written to never throw: an observer that could break a turn would be
 much worse than a todo left open.
 
+## Quiet is not a verdict
+
+One attempt at being helpful went the other way, and the reason is worth keeping.
+
+The idea was a second safety net, for todos an agent finished but never dispatched: when a
+conversation that *wrote* todos had gone quiet for the idle window after a clean turn, close the
+ones it owned — reversibly, with a summary saying why, and only ever its own. On the night it
+shipped it closed eight todos that were not finished: one waiting on the person to make a decision,
+one waiting on an event that had not happened yet. The only thing that gave them away was the
+template summary, because there was no other evidence behind it at all.
+
+The flaw is not the threshold, it is the signal. A conversation falls quiet *because* it is
+waiting — on a person, on a reply, on a scheduled thing. So silence is not merely weak evidence of
+"finished"; in exactly the cases that matter it is evidence of the opposite, and no idle window can
+rescue a signal that points the wrong way.
+
+What remains is only the paths that carry evidence:
+
+- the agent's own `global_todo_done` — it said so;
+- the hand-off watcher above — the plugin handed that work over and watched the turn end;
+- the panel — a person clicked.
+
+Silence belongs to none of them, so the heuristic is gone, and the module with it. If the safety
+net is wanted back it has to come from a positive signal — an explicit "an agent is still on this
+one" mark on the todo, defaulting to *not* finished — rather than from a conversation going quiet.
+The regression test is `test/smoke.test.mjs`, "a quiet conversation never has its open todos closed
+for it".
+
 ## Where the human and the agent meet
 
 Both writers call the same `service` functions. That is the whole design: validation, the

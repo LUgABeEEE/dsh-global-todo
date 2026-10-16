@@ -37,6 +37,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `source.kind === 'user'` re-arms it, and the plugin's own traffic never does. A restarted Host has
   forgotten the timestamps and so stays quiet, which is the direction to fail in.
 
+- **A quiet conversation no longer has its open todos closed for it.** Yesterday's helper read
+  "this conversation has gone quiet" as "its work is finished" and closed every open todo that
+  conversation had written, under a template summary. On its first night it closed eight that were
+  not finished — one waiting on a person, one waiting on an event that had not happened yet — and
+  the only thing that told them apart was that summary, because there was no evidence behind it.
+  The signal is not weak, it points the wrong way: a conversation falls quiet *because* it is
+  waiting, so the items that matter most are the ones it gets wrong. Only paths that carry evidence
+  close a todo now — the agent's own `global_todo_done`, the hand-off watcher, or a person in the
+  panel — and the module that held the heuristic is gone.
+
 ## [0.2.0] — 2026-10-15
 
 The first published release. 0.1.0 was cut in the repository but never reached a
