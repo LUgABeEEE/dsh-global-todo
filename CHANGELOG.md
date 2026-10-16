@@ -38,6 +38,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   machine drives — a chat companion's room — and such a session is recreated with a new id when it
   restarts, so an id-keyed exemption would quietly stop applying. Subdirectories count; a shared
   prefix does not, and a conversation whose directory nobody reported is not treated as exempt.
+  The directory is remembered from the conversation's own events rather than looked up when the
+  timer runs, because these conversations are idle most of the time and an idle conversation is
+  one the Host may have unloaded — where a live lookup answers `''`, and the exemption would stop
+  applying to exactly the conversations it exists for.
 
 ### Fixed
 

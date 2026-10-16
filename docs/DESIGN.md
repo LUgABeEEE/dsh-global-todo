@@ -188,7 +188,11 @@ that fills itself with noise gets ignored, and then the real items get ignored t
   business arriving there. The exemption is keyed on the **working directory**, not on a session
   id, because such a session is recreated when it restarts and an id-keyed exemption would quietly
   stop applying — and it is decided before anything about the conversation's state, so the reason
-  reported is the exemption rather than whichever timing rule happened to apply;
+  reported is the exemption rather than whichever timing rule happened to apply. The directory is
+  remembered from the conversation's own events rather than looked up when the timer runs: these
+  conversations are idle most of the time, and an idle one is exactly the one the Host may have
+  unloaded, where a live lookup answers `''` and the exemption would stop applying to the only
+  conversations it exists for;
 - **only clean turns**: an aborted, failed or truncated turn is not a moment to ask;
 - **one question per message the person wrote**. The question is itself a message in the
   conversation, so it restarted the quiet clock, and the answer to it ended a clean turn — which

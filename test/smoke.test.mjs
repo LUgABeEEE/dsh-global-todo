@@ -559,6 +559,77 @@ test('an exempted workspace is never asked, and stops being exempt when the list
   }
 })
 
+test('the exemption still holds after the Host has unloaded the conversation', async () => {
+  // A machine-driven conversation is idle most of the time, and an idle conversation is one the
+  // Host may have unloaded since: `sessionDir` answers '' for a session the agents service no
+  // longer holds, and such a conversation can still be asked, because asking resumes it. So the
+  // directory is remembered from the conversation's own events instead. Here the live lookup
+  // deliberately knows nothing — the agent is registered without a cwd — and the exemption still
+  // has to bite.
+  const dir = await mkdtemp(path.join(tmpdir(), 'gt-smoke-exempt2-'))
+  const realSetInterval = globalThis.setInterval
+  const realNow = Date.now
+  const ticks = []
+  let now = 1_000_000_000
+  try {
+    globalThis.setInterval = (callback) => {
+      ticks.push(callback)
+      return { unref() {} }
+    }
+    Date.now = () => now
+
+    const agents = makeAgents()
+    const host = makeHost({
+      tools: {},
+      webServer: {},
+      agents,
+      agentDefaultModel: { currentSelection: () => ({ provider: 'deepseek', model: 'deepseek-chat' }) },
+    })
+    apply(host.ctx, { storePath: path.join(dir, 'todos.json'), requireExistingFiles: false })
+
+    // Askable — so the "not asked" assertion below cannot pass merely because nothing could have
+    // been sent — but its directory is not knowable from the live store.
+    const person = agents.live('session-person', { id: 'session-person' })
+    // The events carry what the Host's Session carries: a header, cwd included.
+    const session = () => ({
+      id: 'session-person',
+      header: { id: 'session-person', cwd: '/home/me/workspace/示例工作区' },
+    })
+    const settingsRoute = host.state.routes.get('/api/global-todo/settings')
+    await settingsRoute.handler(
+      makeReq({
+        method: 'POST',
+        url: '/api/global-todo/settings',
+        body: JSON.stringify({ autoCollect: true, exemptWorkspaces: ['/home/me/workspace/示例工作区'] }),
+      }),
+      makeRes(),
+    )
+
+    const speakThenGoQuiet = async () => {
+      now += 1000
+      host.emit('session/event', session(), { type: 'user/message', seq: now, data: { source: { kind: 'user' } } })
+      host.emit('session/event', session(), { type: 'turn/end', seq: now, data: { turn: 1, reason: { kind: 'completed' } } })
+      now += 31 * 60 * 1000
+      for (const tick of ticks) tick()
+      await settle()
+    }
+
+    await speakThenGoQuiet()
+    assert.equal(person.sent.length, 0, 'the exemption holds even though the live lookup knows nothing')
+
+    await settingsRoute.handler(
+      makeReq({ method: 'POST', url: '/api/global-todo/settings', body: JSON.stringify({ exemptWorkspaces: [] }) }),
+      makeRes(),
+    )
+    await speakThenGoQuiet()
+    assert.equal(person.sent.length, 1, 'and it was askable all along, so the assertion above means something')
+  } finally {
+    globalThis.setInterval = realSetInterval
+    Date.now = realNow
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
 test('a plugin-written message must not move the current conversation', async () => {
   // The incident this guards: a hand-off injects a user-role message into its
   // target, so tracking "any user-authored message" pulled the current
