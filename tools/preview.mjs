@@ -407,8 +407,14 @@ globalThis.fetch = async (url) => {
           version: '0.2.0',
           store: { file: '/home/me/.dsh/global-todo/todos.json' },
           dispatch: { agents: true },
-          // The automatic collect switch is a Host setting; the panel only mirrors it.
-          settings: { autoCollect: true, cooldownMinutes: 30 },
+          // The automatic collect switch is a Host setting; the panel only mirrors it. The
+          // exemption list is one too, and `dorm-network` is the fixture conversation whose
+          // directory is known — so the render check can assert the state it puts that group in.
+          settings: {
+            autoCollect: true,
+            cooldownMinutes: 30,
+            exemptWorkspaces: ['/home/me/projects/dorm-network'],
+          },
           autoCollect: { enabled: true, asking: false, lastAsk: null, error: null },
         },
       }
@@ -597,6 +603,11 @@ function checkRenderedPanel(html, detail, select) {
   // The capture action belongs to a conversation, so it sits on that conversation's
   // group; the toolbar only keeps a fallback for a conversation that has no group.
   expect(html.includes('gt-group-action'), 'no capture action on the conversation groups')
+  // The exemption is a per-workspace setting reached from a conversation's group, so it has to
+  // render there — and it is keyed on the directory the todos were *written* in, not on the
+  // bound session, because the conversation may have been unloaded since and a live lookup
+  // answers nothing for it. The fixture exempts the one group whose directory is known.
+  expect(html.includes('已豁免'), 'no exemption state on a group whose directory is known')
   expect(!html.includes('从本对话抓取'), 'the toolbar still duplicates the per-conversation capture action')
   // Two facts the user asked for, asserted rather than trusted: archived conversations
   // are not offered, and the list is ordered by last use.
