@@ -12,7 +12,7 @@ body:
     attributes:
       label: Plugin version
       description: From Settings → Plugins, or `GET /api/global-todo/health`
-      placeholder: 0.2.0
+      placeholder: 0.3.0
     validations:
       required: true
   - type: input

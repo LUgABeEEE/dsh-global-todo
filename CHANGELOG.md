@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-10-17
+
+The round after 0.2.0: `/health` grew counters and a JSON export/import round trip, an agent
+gained an honest way to reopen a todo it had finished by mistake, and automatic collect learned
+both when to shut up — one question per message a person wrote — and where never to speak at all,
+a workspace somebody exempted. The quiet auto-close from the middle of that round was removed
+again the same night it shipped; the reason is written down in `DESIGN.md`.
+
 ### Added
 
 - **`/health` now reports what the plugin has been doing.** In-process counters for the list
@@ -452,6 +460,7 @@ panel that hands work over and records how it finished.
   `agentPresets` service, the plugin loses exactly that surface instead of
   failing to load.
 
-[Unreleased]: https://github.com/LUgABeEEE/dsh-global-todo/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/LUgABeEEE/dsh-global-todo/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/LUgABeEEE/dsh-global-todo/releases/tag/v0.3.0
 [0.2.0]: https://github.com/LUgABeEEE/dsh-global-todo/releases/tag/v0.2.0
 [0.1.0]: https://github.com/LUgABeEEE/dsh-global-todo/releases/tag/v0.1.0

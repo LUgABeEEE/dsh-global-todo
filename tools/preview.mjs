@@ -404,7 +404,7 @@ globalThis.fetch = async (url) => {
         ok: true,
         data: {
           plugin: 'dsh-global-todo',
-          version: '0.2.0',
+          version: '0.3.0',
           store: { file: '/home/me/.dsh/global-todo/todos.json' },
           dispatch: { agents: true },
           // The automatic collect switch is a Host setting; the panel only mirrors it. The
