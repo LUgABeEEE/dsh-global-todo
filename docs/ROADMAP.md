@@ -15,8 +15,8 @@ of a citation is the function or the label beside it.
 - Creation time on every entry, immutable and shown everywhere.
 - Attachments as references: any number of documents and addresses per todo.
 - Nine `global_todo_*` tools — `add`, `capture`, `list`, `get`, `update`, `link`, `note`,
-  `done`, `remove` (the same list `/health` reports as `tools.registered`); panel and tools
-  share the same validation.
+  `done`, `remove`; `reopen` joined them later (below). What `/health` reports as
+  `tools.registered` is the list as it stands, and panel and tools share the same validation.
 - Four hand-off modes, with success **and failure** recorded on the record.
 - Restore/undo for a delete, keyboard shortcuts, editable detail panel.
 - Proactive capture: `global_todo_capture` for batches, plus guidance that says when the
@@ -75,6 +75,19 @@ imported back through the route.
 `lib/metrics.js`. The counters are in memory and reset with the Host, and the field is
 `null` when nothing mounted them — an absent metric is not a zero. Test:
 `test/metrics.test.mjs`.
+
+**Reopen, with an honest trail** — a wrongly-finished todo has a dedicated way back:
+`reopen()` (`lib/service.js:318`) does `done` / `cancelled` → `open` and refuses anything else,
+reached by the tool `global_todo_reopen` (`lib/tools.js:747`); the reason it records lands in
+the activity trail via `setStatus()` (`lib/model.js:536`, `lib/model.js:554`). Writing through
+the panel's routes no longer forces a false provenance: `/update` and `/status`
+(`lib/routes.js:462`, `lib/routes.js:471`) take an explicit `by: 'agent'` and default to the
+person, and anything else is a 400 (`actorOf` at `lib/routes.js:254`). Tests:
+`test/tools.test.mjs:230`, `test/routes.test.mjs:142`.
+
+Not landed: the same `by` on `/create`, `/note`, `/remove` and `/link`, which still record the
+person — the agent has its own tools for those. `/restore` (the panel's undo) has no agent-facing
+equivalent at all, so nothing there can be misattributed today.
 
 ### Partly landed
 

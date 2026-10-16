@@ -44,6 +44,11 @@ npm run verify   # static checks then the full test suite; run before every comm
 - Adding a field to a todo: `lib/model.js` (create + `applyPatch` + `normalizeStored`),
   `lib/tools.js` (`presentTodo` and the relevant JSON Schemas), `lib/client.js` (render),
   plus `docs/DESIGN.md`.
+- Adding a tool: define it in `lib/tools.js`, then update **every** place the count is written
+  down — the header comment there, the tool table in both READMEs, `docs/DESIGN.md` (the
+  service table), `docs/ROADMAP.md` and the assertion in `test/smoke.test.mjs`. This has drifted
+  before — `docs/DESIGN.md` still said "the seven agent tools" — because only one of those files
+  was updated at a time.
 
 ## Style
 

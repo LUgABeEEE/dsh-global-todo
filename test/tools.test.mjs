@@ -36,6 +36,7 @@ test('every tool is a complete, self-describing definition', async () => {
         'global_todo_list',
         'global_todo_note',
         'global_todo_remove',
+        'global_todo_reopen',
         'global_todo_update',
       ],
     )
@@ -222,6 +223,44 @@ test('marking done can carry a summary and the artifacts it produced', async () 
     const reopened = await env.invoke('global_todo_done', { id, status: 'open' })
     assert.equal(reopened.value.todo.status, 'open')
     assert.equal(reopened.value.todo.completion, null)
+  } finally {
+    await env.cleanup()
+  }
+})
+
+test('reopen is the honest way back from a wrong "done", and records who did it', async () => {
+  const env = await harness()
+  try {
+    const added = await env.invoke('global_todo_add', { title: '被误收的一条' })
+    const id = added.value.todo.id
+    await env.invoke('global_todo_done', { id, summary: '自动收尾：会话安静了' })
+
+    const { value, rendered } = await env.invoke('global_todo_reopen', { id, reason: '误收：这条没做完' })
+    assert.equal(value.ok, true)
+    assert.equal(value.todo.status, 'open')
+    assert.equal(value.todo.doneAt, null)
+    assert.equal(value.todo.completion, null, 'a reopened record must not still claim it was finished')
+    assert.match(rendered[0].text, /已标回未完成/)
+
+    // The provenance is the point: the trail says an agent reopened it, not a person,
+    // and it carries the reason. `presentTodo` hides the trail, so read the record.
+    const record = await env.service.get(id)
+    assert.equal(record.updatedBy, 'agent')
+    const last = record.activity.at(-1)
+    assert.equal(last.kind, 'reopened')
+    assert.equal(last.by, 'agent')
+    assert.match(last.summary, /误收：这条没做完/)
+
+    // Cancelled is the other state this is for.
+    await env.service.setStatus(id, 'cancelled')
+    const again = await env.invoke('global_todo_reopen', { id })
+    assert.equal(again.value.todo.status, 'open')
+
+    // Nothing to reopen: refuse rather than report a fix that did not happen.
+    const noop = await env.invoke('global_todo_reopen', { id })
+    assert.equal(noop.value.ok, false)
+    assert.equal(noop.value.reason, 'invalid-status')
+    assert.match(noop.rendered[0].text, /没有标回来/)
   } finally {
     await env.cleanup()
   }

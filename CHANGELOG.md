@@ -21,12 +21,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and appends new ones). A single unreadable record fails the whole request with a 400 rather than
   writing half of it. The panel gained 导出 / 导入 buttons; the import path defaults to `merge` so
   choosing the wrong file cannot empty the list.
-- The tool count in the docs now matches the tree: **nine** `global_todo_*` tools
-  (`add`, `capture`, `list`, `get`, `update`, `link`, `note`, `done`, `remove`), the same list
-  `/health.tools.registered` reports. `ROADMAP.md` was re-audited against the code and now
-  separates what has landed (with `file:line` citations) from what has not.
+- The tool count in the docs now matches the tree: **ten** `global_todo_*` tools
+  (`add`, `capture`, `list`, `get`, `update`, `link`, `note`, `done`, `reopen`, `remove`), the
+  same list `/health.tools.registered` reports. `ROADMAP.md` was re-audited against the code and
+  now separates what has landed (with `file:line` citations) from what has not.
+- **`global_todo_reopen` gives a wrongly-finished todo an honest way back.** It does exactly
+  one thing — `done` / `cancelled` → `open` — records the act as the agent's (with an optional
+  `reason` in the activity trail) and **refuses** an item that was never finished, instead of
+  reporting a repair that did not happen. Until now the only agent-side path was `status` on
+  `global_todo_done`, i.e. a capability filed under the tool whose name says the opposite, so a
+  data repair reached for the HTTP route instead — and was filed as the person's work.
 
 ### Fixed
+
+- **The panel's `/update` and `/status` routes no longer need a lie to accept a write.** Both
+  hardcoded `by: 'human'`, so a script repairing data on an agent's behalf filed the change as
+  the person's own — the four reopens from the mis-close repair are recorded that way, and the
+  only thing saying otherwise was a sentence in a note. Both routes now take an explicit
+  `by: 'agent'` and still default to `human`; any other value is a `400`, because quietly
+  folding a typo into `human` is the same lie with better manners.
 
 - **Automatic collect no longer asks the same conversation over and over.** The question the plugin
   sends *is* a message in the conversation, so it restarted the plugin's own quiet clock, and the

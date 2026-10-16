@@ -116,6 +116,7 @@ dsh plugin --profile web remove dsh-global-todo
 | `global_todo_update` | 改任意字段；`""` 清空，`[]` 清空列表 |
 | `global_todo_link` | 挂上或摘掉文档与地址 |
 | `global_todo_done` | 标完成 / 标回未完成 / 标进行中 |
+| `global_todo_reopen` | 把**被误标完成**的一条标回未完成（只做 `done` / `cancelled` → `open`）；本来就未完成的会被拒绝，动作按 agent 记进活动轨迹 |
 | `global_todo_remove` | 永久删除（做完的请标记，不要删） |
 
 系统提示词里会注入一小段用法指引，让模型知道这份清单存在、以及它和内建 `todo_write`
@@ -136,12 +137,16 @@ dsh plugin --profile web remove dsh-global-todo
 | POST | `/api/global-todo/capture` | `{ sessionId? }`（请当前对话把要跟进的事抓进清单） |
 | GET | `/api/global-todo/health` | —（数据位置、统计、派发能力，以及**工具注册状态**与**自动收尾观察者是否挂上**——这两种失败是静默的，所以必须能查；还有 `metrics`：派发成功率、工具调用次数、清单增长） |
 | POST | `/api/global-todo/create` | `{ title, description?, links?, tags?, priority?, dueAt? }` |
-| POST | `/api/global-todo/update` | `{ id, ...字段 }` |
-| POST | `/api/global-todo/status` | `{ id, status }` |
+| POST | `/api/global-todo/update` | `{ id, ...字段, by?: human\|agent }` |
+| POST | `/api/global-todo/status` | `{ id, status, by?: human\|agent }` |
 | POST | `/api/global-todo/remove` | `{ id }` |
 | POST | `/api/global-todo/restore` | `{ todo }` —— 原样还原被删除的记录（撤销） |
 | POST | `/api/global-todo/link` | `{ id, add?: [...], remove?: [值 或 下标] }` |
 | POST | `/api/global-todo/dispatch` | `{ id, mode?: auto\|bound\|new\|current, sessionId?, dir? }` |
+
+`/update` 与 `/status` 的 `by` 说明这次写是谁做的：不传（面板就是这样）就是人在键盘前，
+脚本替 agent 干活时写 `by: 'agent'`，而不是被记成人的操作。传别的值是 `400`——
+一个会把笔误悄悄收下的来源字段，比没有这个字段更糟。
 
 错误是带类型的：非法值 `400`、id 不存在 `404`、请求体过大 `413`、过不了围栏 `403`、
 够不到 agents 服务 `502`。响应体始终是 `{ ok, ... }`，并带机器可读的 `reason`。
@@ -217,7 +222,7 @@ lib/
   links.js     附件规则（纯函数，不碰文件系统）
   service.js   唯一写入路径、筛选与排序
   routes.js    面板用的 HTTP 接口
-  tools.js     七个 Agent 工具
+  tools.js     十个 Agent 工具
   dispatch.js  把待办交给 agent 会话
   errors.js    带机器码的类型化失败
   client.js    浏览器半区（面板 + 侧栏入口）

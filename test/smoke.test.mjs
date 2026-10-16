@@ -219,7 +219,7 @@ test('the plugin mounts, registers its surfaces, and survives a full round trip'
     apply(host.ctx, { storePath: file, requireExistingFiles: false, dispatchDir: '/home/me/projects/demo' })
 
     // Surfaces
-    assert.equal(host.state.tools.size, 9, 'all nine tools must register')
+    assert.equal(host.state.tools.size, 10, 'all ten tools must register')
     assert.equal(host.state.routes.size, 18, 'all eighteen routes must register')
     assert.equal(host.state.promptSections.length, 1)
     assert.equal(host.state.promptSections[0].name, 'dsh-global-todo:guidance')

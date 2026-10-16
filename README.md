@@ -183,6 +183,7 @@ Your list is not touched by install or uninstall: it lives outside the plugin, a
 | `global_todo_update` | Change any field of one item; `""` clears, `[]` empties |
 | `global_todo_link` | Attach or detach documents and addresses |
 | `global_todo_done` | Mark done, back to open, or in progress |
+| `global_todo_reopen` | Put a **wrongly finished** item back (`done` / `cancelled` → `open`); refuses anything else, and the trail records it as the agent |
 | `global_todo_remove` | Delete permanently (done items should be marked, not deleted) |
 
 ### Live check
@@ -226,12 +227,17 @@ fence when that service is present, and by a strict loopback check otherwise.
 | POST | `/api/global-todo/capture` | `{ sessionId? }` — ask the current conversation to collect its follow-ups |
 | GET | `/api/global-todo/health` | — (store location, counts, dispatch capabilities, plus **tool registration** and **whether the completion watcher attached** — both fail quietly, so both are reported — and `metrics`: dispatch success rate, agent tool calls, list growth) |
 | POST | `/api/global-todo/create` | `{ title, description?, links?, tags?, priority?, dueAt? }` |
-| POST | `/api/global-todo/update` | `{ id, ...fields }` |
-| POST | `/api/global-todo/status` | `{ id, status }` |
+| POST | `/api/global-todo/update` | `{ id, ...fields, by?: human\|agent }` |
+| POST | `/api/global-todo/status` | `{ id, status, by?: human\|agent }` |
 | POST | `/api/global-todo/remove` | `{ id }` |
 | POST | `/api/global-todo/restore` | `{ todo }` — put a removed record back verbatim (undo) |
 | POST | `/api/global-todo/link` | `{ id, add?: [...], remove?: [value \| index] }` |
 | POST | `/api/global-todo/dispatch` | `{ id, mode?: auto\|bound\|new\|current, sessionId?, dir? }` |
+
+`by` on `/update` and `/status` says whose write this is: omitted (what the panel sends) it is
+the person at the keyboard, and a script acting for the agent says `by: 'agent'` rather than
+being filed as a human. Anything else is a `400` — a provenance field that silently absorbs a
+typo is worse than no field at all.
 
 Errors are typed: `400` for a rejected value, `404` for an unknown id, `413` for an
 oversized body, `403` for a request that fails the fence, `502` when a hand-off cannot
@@ -312,7 +318,7 @@ lib/
   links.js     attachment rules (pure: no filesystem access)
   service.js   the single write path, filters and sorting
   routes.js    the HTTP surface for the panel
-  tools.js     the seven agent tools
+  tools.js     the ten agent tools
   dispatch.js  handing a todo to an agent session
   errors.js    typed failures with stable machine codes
   client.js    the browser half (panel + sidebar entry)

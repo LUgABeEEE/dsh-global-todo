@@ -456,11 +456,24 @@ tools, because there is only one implementation of each.
 `createdBy` / `updatedBy` / `activity` exist so a person can tell at a glance whether an
 item came from their own hands or from an agent's turn.
 
+That only works while nothing along the way has to guess. An agent tool call is recorded as
+the agent, because that is what it is. A **route** records the person by default — the
+panel's own click — and takes an explicit `by: 'agent'` from a script acting for one, because
+the alternative is a caller that has to impersonate a person in order to be allowed to write.
+A value that is neither is refused rather than filed under `human`: absorbing a typo into the
+wrong provenance is the failure all of this exists to prevent.
+
+Reopening gets the same treatment. `global_todo_done` can set any status, but *a wrongly
+finished item* is a different intent with a different guard, so `global_todo_reopen` does
+exactly that one thing (`done` / `cancelled` → `open`), puts the reason in the activity trail,
+and refuses an item that was never finished. One obvious entry point beats a capability
+buried inside the tool whose name says the opposite.
+
 ## Optional services
 
 | Service | Needed for | Without it |
 |---|---|---|
-| `tools` | the seven agent tools | the panel still works; the model sees no tools |
+| `tools` | the ten agent tools | the panel still works; the model sees no tools |
 | `webServer` | the panel's HTTP routes | the tools still work |
 | `agents` | handing a todo to a session | the ▶ button reports `agents-unavailable` |
 | `agentPresets` | composing a new session | a session is created without a preset (documented, degraded) |

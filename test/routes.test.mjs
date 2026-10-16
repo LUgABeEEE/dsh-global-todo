@@ -139,6 +139,43 @@ test('create then list round-trips through HTTP', async () => {
   }
 })
 
+test('the write routes record the actor the caller declares, and default to the person', async () => {
+  const env = await harness()
+  try {
+    const created = await env.call('/create', makeReq({ method: 'POST', url: `${ROUTE_BASE}/create`, body: JSON.stringify({ title: 'A' }) }))
+    const id = created.json().data.todo.id
+
+    // No `by`: the panel's own click, so the person.
+    await env.call('/status', makeReq({ method: 'POST', url: `${ROUTE_BASE}/status`, body: JSON.stringify({ id, status: 'done' }) }))
+    assert.equal((await env.service.get(id)).updatedBy, 'human')
+
+    // A script repairing data on an agent's behalf says so, and the trail believes it.
+    await env.call('/status', makeReq({ method: 'POST', url: `${ROUTE_BASE}/status`, body: JSON.stringify({ id, status: 'open', by: 'agent' }) }))
+    let record = await env.service.get(id)
+    assert.equal(record.updatedBy, 'agent')
+    assert.equal(record.activity.at(-1).kind, 'reopened')
+    assert.equal(record.activity.at(-1).by, 'agent')
+
+    const renamed = await env.call('/update', makeReq({ method: 'POST', url: `${ROUTE_BASE}/update`, body: JSON.stringify({ id, title: '重命名', by: 'agent' }) }))
+    assert.equal(renamed.statusCode, 200)
+    record = await env.service.get(id)
+    assert.equal(record.title, '重命名')
+    assert.equal(record.updatedBy, 'agent')
+    assert.equal(record.by, undefined, 'the actor is a statement about the caller, not a field of the record')
+
+    await env.call('/update', makeReq({ method: 'POST', url: `${ROUTE_BASE}/update`, body: JSON.stringify({ id, title: '再改名' }) }))
+    assert.equal((await env.service.get(id)).updatedBy, 'human')
+
+    // A typo must not be quietly filed as "the person did it".
+    const bogus = await env.call('/status', makeReq({ method: 'POST', url: `${ROUTE_BASE}/status`, body: JSON.stringify({ id, status: 'done', by: 'robot' }) }))
+    assert.equal(bogus.statusCode, 400)
+    assert.equal(bogus.json().reason, 'invalid-body')
+    assert.equal((await env.service.get(id)).status, 'open', 'and nothing was written')
+  } finally {
+    await env.cleanup()
+  }
+})
+
 test('a rejected value maps to 400 with its machine reason', async () => {
   const env = await harness()
   try {
