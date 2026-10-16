@@ -199,6 +199,27 @@ async function waitFor(check, what, timeoutMs = 5000) {
   }
 }
 
+/**
+ * Poll until `check` passes, counting attempts instead of reading the clock.
+ *
+ * The timer tests below deliberately replace `Date.now` — they drive the half-hour rule from a
+ * fake clock — so a `waitFor` deadline never arrives inside them and a stuck poll would hang
+ * instead of failing. Bounded by attempts, this works under a stubbed clock and still gives up
+ * loudly. A fixed sleep is the thing being avoided: it reports on the machine, and it cost a CI
+ * run before this helper existed.
+ *
+ * @param {() => boolean | Promise<boolean>} check
+ * @param {string} what - named in the failure
+ * @param {number} [attempts]
+ */
+async function pollUntil(check, what, attempts = 400) {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    if (await check()) return
+    await new Promise((resolve) => setTimeout(resolve, 5))
+  }
+  assert.fail(`polled ${attempts} times for ${what}`)
+}
+
 test('the plugin mounts, registers its surfaces, and survives a full round trip', async () => {
   const dir = await mkdtemp(path.join(tmpdir(), 'gt-smoke-'))
   const file = path.join(dir, 'todos.json')
@@ -397,7 +418,7 @@ test('a conversation is asked once, and only a person re-arms it', async () => {
     speak('user')
     endCleanTurn()
     idle(31)
-    await settle()
+    await pollUntil(() => person.sent.length === 1, 'the question to be asked')
     assert.equal(person.sent.length, 1, 'a quiet conversation with a person in it is asked once')
 
     // What the conversation receives next is the plugin's own question, and answering it
@@ -413,7 +434,7 @@ test('a conversation is asked once, and only a person re-arms it', async () => {
     speak('user')
     endCleanTurn()
     idle(31)
-    await settle()
+    await pollUntil(() => person.sent.length === 2, 'the second question')
     assert.equal(person.sent.length, 2, 'a person re-arms the conversation')
   } finally {
     globalThis.setInterval = realSetInterval
@@ -551,6 +572,7 @@ test('an exempted workspace is never asked, and stops being exempt when the list
       makeRes(),
     )
     await speakThenGoQuiet()
+    await pollUntil(() => person.sent.length === 1, 'the question to come through once the exemption is gone')
     assert.equal(person.sent.length, 1, 'with the exemption gone the question comes through')
   } finally {
     globalThis.setInterval = realSetInterval
@@ -622,6 +644,7 @@ test('the exemption still holds after the Host has unloaded the conversation', a
       makeRes(),
     )
     await speakThenGoQuiet()
+    await pollUntil(() => person.sent.length === 1, 'the question to come through')
     assert.equal(person.sent.length, 1, 'and it was askable all along, so the assertion above means something')
   } finally {
     globalThis.setInterval = realSetInterval
