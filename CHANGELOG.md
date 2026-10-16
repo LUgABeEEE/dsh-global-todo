@@ -26,6 +26,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `/health.tools.registered` reports. `ROADMAP.md` was re-audited against the code and now
   separates what has landed (with `file:line` citations) from what has not.
 
+### Fixed
+
+- **Automatic collect no longer asks the same conversation over and over.** The question the plugin
+  sends *is* a message in the conversation, so it restarted the plugin's own quiet clock, and the
+  answer to it ended a clean turn — which put the same conversation straight back in the queue. With
+  `cooldownMinutes` on the same half hour as `idleMinutes`, the cooldown had always expired by the
+  time the quiet window opened, so one conversation was asked every half hour, all night, with
+  nobody there. A conversation is now asked **once per message a person wrote in it**: only
+  `source.kind === 'user'` re-arms it, and the plugin's own traffic never does. A restarted Host has
+  forgotten the timestamps and so stays quiet, which is the direction to fail in.
+
 ## [0.2.0] — 2026-10-15
 
 The first published release. 0.1.0 was cut in the repository but never reached a

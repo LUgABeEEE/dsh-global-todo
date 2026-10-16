@@ -177,13 +177,20 @@ enough for a list whose whole point is not forgetting. So the plugin can also ac
 turn in a conversation the person is actually in, it asks that conversation whether anything needs
 following up.
 
-That power is fenced in four ways, because the failure mode is worse than doing nothing — a list
+That power is fenced in five ways, because the failure mode is worse than doing nothing — a list
 that fills itself with noise gets ignored, and then the real items get ignored too:
 
 - **off until switched on** by a person;
 - **only the conversation a person is in**, judged from the same tracker a hand-off uses — never a
   dispatch target, subagent or background run, which would interrupt work with a question;
 - **only clean turns**: an aborted, failed or truncated turn is not a moment to ask;
+- **one question per message the person wrote**. The question is itself a message in the
+  conversation, so it restarted the quiet clock, and the answer to it ended a clean turn — which
+  put the same conversation straight back in the queue. With the cooldown below set to the same
+  half hour as the quiet window, it had always expired by the time that window opened, so a single
+  conversation was asked again and again, all night, with nobody there. Only a message a *person*
+  typed re-arms a conversation now; model turns, tool results and this plugin's own notices never
+  do;
 - **a cooldown, booked before the question is asked**, so a repeated event or a failing request
   cannot turn one turn into a loop.
 

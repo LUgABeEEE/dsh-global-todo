@@ -346,6 +346,82 @@ test('the automatic collect switch waits for quiet instead of asking at every tu
   }
 })
 
+test('a conversation is asked once, and only a person re-arms it', async () => {
+  // The incident this encodes: the question the plugin sends *is* a message in the
+  // conversation, so it restarted the quiet clock, and the answer to it ended a clean turn —
+  // which put the same conversation straight back in the queue. With the cooldown on the same
+  // half hour as the quiet window it had always expired by the time the window opened, so the
+  // conversation was asked again and again, all night, with nobody there.
+  const dir = await mkdtemp(path.join(tmpdir(), 'gt-smoke-loop-'))
+  const realSetInterval = globalThis.setInterval
+  const realNow = Date.now
+  const ticks = []
+  let now = 1_000_000_000
+  try {
+    // The real timer is a one-minute interval against a half-hour rule, so this test drives
+    // the tick and the clock itself rather than waiting.
+    globalThis.setInterval = (callback) => {
+      ticks.push(callback)
+      return { unref() {} }
+    }
+    Date.now = () => now
+
+    const agents = makeAgents()
+    const host = makeHost({
+      tools: {},
+      webServer: {},
+      agents,
+      agentDefaultModel: { currentSelection: () => ({ provider: 'deepseek', model: 'deepseek-chat' }) },
+    })
+    apply(host.ctx, { storePath: path.join(dir, 'todos.json'), requireExistingFiles: false })
+
+    const person = agents.live('session-person')
+    const session = (id) => ({ id, header: { id } })
+    await host.state.routes.get('/api/global-todo/settings').handler(
+      makeReq({ method: 'POST', url: '/api/global-todo/settings', body: JSON.stringify({ autoCollect: true }) }),
+      makeRes(),
+    )
+    assert.ok(ticks.length > 0, 'the plugin must have armed its timer')
+
+    const emit = (type, data) => host.emit('session/event', session('session-person'), { type, seq: now, data })
+    const speak = (kind) => {
+      now += 1000
+      emit('user/message', { source: { kind } })
+    }
+    const endCleanTurn = () => emit('turn/end', { turn: 1, reason: { kind: 'completed' } })
+    const idle = (minutes) => {
+      now += minutes * 60 * 1000
+      for (const tick of ticks) tick()
+    }
+
+    speak('user')
+    endCleanTurn()
+    idle(31)
+    await settle()
+    assert.equal(person.sent.length, 1, 'a quiet conversation with a person in it is asked once')
+
+    // What the conversation receives next is the plugin's own question, and answering it
+    // ends a clean turn of its own — the shape that used to restart the whole cycle.
+    speak('plugin:dsh-global-todo')
+    emit('turn/start', { turn: 2 })
+    endCleanTurn()
+    idle(3 * 60)
+    await settle()
+    assert.equal(person.sent.length, 1, 'the plugin must not answer its own question by asking again')
+
+    // A person writing is the one thing that arms it once more.
+    speak('user')
+    endCleanTurn()
+    idle(31)
+    await settle()
+    assert.equal(person.sent.length, 2, 'a person re-arms the conversation')
+  } finally {
+    globalThis.setInterval = realSetInterval
+    Date.now = realNow
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
 test('a plugin-written message must not move the current conversation', async () => {
   // The incident this guards: a hand-off injects a user-role message into its
   // target, so tracking "any user-authored message" pulled the current

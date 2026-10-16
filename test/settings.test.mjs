@@ -96,6 +96,7 @@ test('the automatic collect decision names why it stays quiet', () => {
       sessionId: over.sessionId ?? 'session-me',
       recentSessionId: over.recentSessionId ?? 'session-me',
       turnReason: over.turnReason ?? 'completed',
+      humanAt: over.humanAt,
       // Quiet long enough unless a test says otherwise.
       idleMs: over.idleMs ?? 60 * 60 * 1000,
       now: at,
@@ -107,8 +108,27 @@ test('the automatic collect decision names why it stays quiet', () => {
   assert.equal(decide({ turnReason: 'error' }).reason, 'turn-error')
   assert.equal(decide({ recentSessionId: 'session-other' }).reason, 'not-the-users-conversation')
   assert.equal(decide({ recentSessionId: '' }).reason, 'not-the-users-conversation')
-  assert.equal(decide({ settings: { asked: { 'session-me': at - 1000 } } }).reason, 'cooldown')
-  assert.equal(decide({ settings: { asked: { 'session-me': at - 31 * 60 * 1000 } } }).ask, true)
+  // Asked with nobody answering: quiet for as long as it takes. This is the rule that ends
+  // the loop the plugin's own question used to drive — the question is a message in the
+  // conversation, so without it the same conversation was asked again every half hour.
+  assert.equal(decide({ settings: { asked: { 'session-me': at - 1000 } } }).reason, 'awaiting-human')
+  assert.equal(decide({ settings: { asked: { 'session-me': at - 31 * 60 * 1000 } } }).reason, 'awaiting-human')
+  // A person writing *after* the question re-arms it, and the ordinary timing rules apply
+  // again: too soon is still too soon, long enough is a yes.
+  const answered = (askedAgo) => ({
+    settings: { asked: { 'session-me': at - askedAgo } },
+    humanAt: { 'session-me': at - Math.floor(askedAgo / 2) },
+  })
+  assert.equal(decide(answered(1000)).reason, 'cooldown')
+  assert.equal(decide(answered(31 * 60 * 1000)).ask, true)
+  // A person who wrote *before* the question did not answer it, so it stays quiet.
+  assert.equal(
+    decide({
+      settings: { asked: { 'session-me': at - 1000 } },
+      humanAt: { 'session-me': at - 5000 },
+    }).reason,
+    'awaiting-human',
+  )
   assert.deepEqual(decide({}), { ask: true, reason: 'ok' })
   // The rule asked for: a conversation still being worked in is never asked, and not knowing
   // how long it has been quiet counts as "not yet".

@@ -88,11 +88,13 @@ Your list is not touched by install or uninstall: it lives outside the plugin, a
   (which honours `--trusted-host`); the plugin's own loopback check is only the fallback for a
   Host without that service. `/health` reports `fence` so you can see which one is in force.
 - **Auto-collect (off by default)** — a panel switch. When on, a conversation you are in that
-  finishes a clean turn is asked once whether anything needs following up, at most once every 30
-  minutes, and only if you are actually in that conversation (never a dispatch target, a subagent
-  or a background run). Aborted and failed turns are skipped, and the cooldown is booked before
-  the question is asked so a repeated event cannot become a loop. The switch is Host state, so it
-  survives the panel being closed and is reported by `/health`.
+  finishes a clean turn is asked once whether anything needs following up, but only once it has
+  been quiet for 30 minutes, and only if you are actually in that conversation (never a dispatch
+  target, a subagent or a background run). Aborted and failed turns are skipped. The question is
+  itself a message in the conversation, so it restarts the quiet clock — which is why **only a
+  message you wrote arms it again**: one question per turn from you, and it can never chase its own
+  answer. The switch is Host state, so it survives the panel being closed and is reported by
+  `/health`.
 - **Collect per conversation** — the `Collect` action sits on each conversation's group header in
   the list, asks *that* conversation to record what needs following up, and the items land under
   it. The toolbar keeps a "collect from this chat" fallback, shown only when the current
