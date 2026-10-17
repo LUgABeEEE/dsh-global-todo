@@ -547,7 +547,9 @@ person between projects, so the file is global and the panel groups nothing by d
 ## Compatibility
 
 - Written against the `0.2.x` service surface and the `defineTool`-era output contract
-  (`output.schema` + `output.render`), verified on `0.2.0-rc.2`.
+  (`output.schema` + `output.render`), verified on `0.2.1-rc.2` — where the Host also mounts
+  its own directory picker, so the panel's picker path is the shell's native dialog and the
+  built-in browser is the fallback rather than the normal case.
 - The client half depends only on the frozen platform module table (`react`), the
   `sidebar.panellist` and `main` slots, `ctx.locale` and `ctx.slots`.
 - Panel colors come exclusively from `--dsw-alias-*` / `--dsw-specific-*` theme tokens, so

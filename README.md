@@ -40,7 +40,7 @@ profile already installed, or whatever `DSH_PLAYWRIGHT` points at.
 
 ## Requirements
 
-- DeepSeek Harness `0.2.x` (developed and verified against `0.2.0-rc.2`)
+- DeepSeek Harness `0.2.x` (developed and verified against `0.2.1-rc.2`)
 - Node.js `>= 22.19.0` (the Web profile's own requirement)
 - No runtime dependencies. Nothing is imported from `@deepseek-ai/*`.
 

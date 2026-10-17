@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Verified against DSH `0.2.1-rc.2`, and the picker notes now say what is true.** Nothing in
+  the plugin had to change: the tool schemas still pass the Host's own validator, every service
+  it injects is still there, and the client half touches only `slots` / `locale` / `effect` /
+  `uiWorkspace`, whose contract did not move. What moved is the Host — 0.2.1 mounts its own
+  directory picker, so the panel's `选择` is now the shell's native dialog and the built-in
+  browser is a fallback rather than the normal case. Three comments and one notice said
+  otherwise and have been corrected: a note that still claims a capability is missing is worse
+  than no note, because the next reader plans around it.
+
 ## [0.3.0] — 2026-10-17
 
 The round after 0.2.0: `/health` grew counters and a JSON export/import round trip, an agent

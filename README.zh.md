@@ -36,7 +36,7 @@ HTML（不依赖宿主、零依赖），再以 1280×720 拍进 `docs/screenshot
 
 ## 环境要求
 
-- DeepSeek Harness `0.2.x`（按 `0.2.0-rc.2` 开发与验证）
+- DeepSeek Harness `0.2.x`（按 `0.2.1-rc.2` 开发与验证）
 - Node.js `>= 22.19.0`（Web profile 本身的要求）
 - **零运行期依赖**，也不 import 任何 `@deepseek-ai/*` 包
 
