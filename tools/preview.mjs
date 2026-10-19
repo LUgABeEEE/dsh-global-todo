@@ -24,6 +24,11 @@ const OUT_ARG = process.argv.slice(2).find((argument) => argument.startsWith('-'
 const OUT = OUT_ARG === undefined ? path.join(root, 'preview', 'panel.html') : path.resolve(OUT_ARG)
 const source = readFileSync(CLIENT, 'utf8')
 
+// Read the version from the package instead of hardcoding it: the preview is where the
+// README screenshots come from, and a footer that says the wrong version is exactly the
+// kind of drift that made the last release notes outdated.
+const PACKAGE = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'))
+
 const NOW = Date.now()
 const MINUTE = 60 * 1000
 const HOUR = 3600 * 1000
@@ -404,7 +409,7 @@ globalThis.fetch = async (url) => {
         ok: true,
         data: {
           plugin: 'dsh-global-todo',
-          version: '0.3.1',
+          version: PACKAGE.version,
           store: { file: '/home/me/.dsh/global-todo/todos.json' },
           dispatch: { agents: true },
           // The automatic collect switch is a Host setting; the panel only mirrors it. The

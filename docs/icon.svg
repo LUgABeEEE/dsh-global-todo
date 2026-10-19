@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Global todos">
+  <rect width="512" height="512" rx="116" fill="#0d6b5e"/>
+  <rect x="92" y="104" width="328" height="304" rx="32" fill="#f4faf8"/>
+  <g>
+    <circle cx="152" cy="184" r="23" fill="#e7f2ef"/>
+    <path d="M141 184l8 8 15-17" fill="none" stroke="#0d6b5e" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="198" y="174" width="168" height="20" rx="10" fill="#c8d6d1"/>
+  </g>
+  <g>
+    <circle cx="152" cy="264" r="23" fill="#e7f2ef"/>
+    <path d="M141 264l8 8 15-17" fill="none" stroke="#0d6b5e" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="198" y="254" width="132" height="20" rx="10" fill="#c8d6d1"/>
+  </g>
+  <g>
+    <circle cx="152" cy="344" r="23" fill="#f7edda"/>
+    <circle cx="152" cy="344" r="9" fill="#c98a1e"/>
+    <rect x="198" y="334" width="150" height="20" rx="10" fill="#d8e2de"/>
+  </g>
+</svg>

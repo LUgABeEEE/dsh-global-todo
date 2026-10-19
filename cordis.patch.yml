@@ -21,3 +21,9 @@
         # Reject links whose file path does not exist at write time. `false` lets
         # you attach a document before creating it.
         requireExistingFiles: true
+        # Inject the short usage guidance into every turn. `false` leaves the tools
+        # available but stops asking the model to record things on its own.
+        guidance: true
+        # Starting point for the panel's built-in folder browser when the shell has
+        # no native picker. Empty = home directory, then the Host's cwd.
+        browseRoot: ''

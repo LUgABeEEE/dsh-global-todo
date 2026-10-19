@@ -36,8 +36,12 @@ HTML（不依赖宿主、零依赖），再以 1280×720 拍进 `docs/screenshot
 
 ## 环境要求
 
-- DeepSeek Harness `0.2.x`（按 `0.2.1-rc.2` 开发与验证）
+- DeepSeek Harness `0.2.x`（按 `0.2.1-rc.2` 开发与验证；`engines.dsh` 是 `>=0.2.0-rc.1 <0.3.0`，
+  区间外的宿主会**整层跳过**这个 bundle，不是警告）
 - Node.js `>= 22.19.0`（Web profile 本身的要求）
+- **Web 客户端**：面板由宿主的 web server 提供。headless / ACP / SDK 只有 Agent 工具、没有面板；
+  Electron 式桌面端（file:// + IPC）暂不支持
+- 宿主升级后要**刷新页面**——客户端模块图属于页面启动时那个 release
 - **零运行期依赖**，也不 import 任何 `@deepseek-ai/*` 包
 
 ## 安装
@@ -52,6 +56,9 @@ dsh plugin --profile web add /绝对路径/dsh-global-todo
 
 插件是宿主组合里的**一行 Loader**，不是热加载脚本：**装完要重启宿主**（`dsh web`），
 再刷新页面。侧栏会出现「待办」入口。
+
+npm 上的包才是事实来源。社区目录可能落后于 npm、或指向某个旧 release；需要确定版本时
+直接钉版本（`dsh plugin --profile web add dsh-global-todo@0.4.0`）。
 
 回滚：
 
@@ -129,13 +136,14 @@ dsh plugin --profile web remove dsh-global-todo
 
 | 方法 | 路径 | 参数 |
 |---|---|---|
-| GET | `/api/global-todo/list` | `status`、`query`、`tag`、`sort`、`limit` |
+| GET | `/api/global-todo/list` | `status`、`query`、`tag`、`sort`、`limit`——被截断时响应带 `matched` 与 `truncated` |
+| GET | `/api/global-todo/dirs` | `path?`——列子目录，供面板内置的目录浏览器使用（宿主自己的选择器在时会优先） |
 | GET | `/api/global-todo/get` | `id` |
 | GET | `/api/global-todo/export` | ——（存储用的那份 JSON 文档，用于备份或迁移） |
 | POST | `/api/global-todo/import` | `{ doc, mode?: replace\|merge }`——`replace` 是无损往返，`merge` 同 id 覆盖、新 id 追加（面板用的是这个） |
 | POST | `/api/global-todo/note` | `{ id, text }`（追加进展记录） |
 | POST | `/api/global-todo/capture` | `{ sessionId? }`（请当前对话把要跟进的事抓进清单） |
-| GET | `/api/global-todo/health` | —（数据位置、统计、派发能力，以及**工具注册状态**与**自动收尾观察者是否挂上**——这两种失败是静默的，所以必须能查；还有 `metrics`：派发成功率、工具调用次数、清单增长） |
+| GET | `/api/global-todo/health` | —（数据位置、统计、派发能力，以及**工具注册状态**与**自动收尾观察者是否挂上**——这两种失败是静默的，所以必须能查；还有 `metrics`：派发成功率、工具调用次数、清单增长；`autoCollect`：每个候选对话**为什么被问/没被问**、计次，以及设置文件是怎么加载进来的） |
 | POST | `/api/global-todo/create` | `{ title, description?, links?, tags?, priority?, dueAt? }` |
 | POST | `/api/global-todo/update` | `{ id, ...字段, by?: human\|agent }` |
 | POST | `/api/global-todo/status` | `{ id, status, by?: human\|agent }` |
@@ -143,6 +151,9 @@ dsh plugin --profile web remove dsh-global-todo
 | POST | `/api/global-todo/restore` | `{ todo }` —— 原样还原被删除的记录（撤销） |
 | POST | `/api/global-todo/link` | `{ id, add?: [...], remove?: [值 或 下标] }` |
 | POST | `/api/global-todo/dispatch` | `{ id, mode?: auto\|bound\|new\|current, sessionId?, dir? }` |
+| POST | `/api/global-todo/assign` | `{ ids, items?, target?, dir? }`——一次把多条交给 Agent；配不上的 id 原样报回，不擅自送到别处 |
+| POST | `/api/global-todo/settings` | `{ autoCollect?, idleMinutes?, cooldownMinutes?, exemptWorkspaces? }`——自动获取的开关与阈值 |
+| POST | `/api/global-todo/diagnostics` | `{ scope, status?, reason?, message?, url? }`——面板自己上报的错误 |
 
 `/update` 与 `/status` 的 `by` 说明这次写是谁做的：不传（面板就是这样）就是人在键盘前，
 脚本替 agent 干活时写 `by: 'agent'`，而不是被记成人的操作。传别的值是 `400`——
@@ -200,7 +211,12 @@ npm run check     # 解析全部文件、校验发布形态；本机有 DSH prof
                   # 自己的校验器逐条验证工具 schema
 npm test          # 100+ 单元/契约/bundle 测试，零依赖
 npm run verify    # 两者都跑
+npm run check:matrix  # 当前 dsh 与 engines.dsh 的实际匹配，再跑 manifest/bundle/
+                      # 工具 schema 三类契约（不写 preview）
 ```
+
+`engines.dsh` 是唯一真正决定“装不装得上”的版本事实：区间外的宿主会**整层跳过**这个
+bundle，而不是警告；所以放宽区间之前先跑 `check:matrix`。
 
 **没有构建步骤。** 宿主半区是 `lib/` 下的纯 ESM；客户端半区是一个自注册到
 `window.__ModuleLoader__` 的普通脚本——不需要打包器、不需要 TypeScript 工具链、

@@ -15,7 +15,7 @@ so the file stays readable, hand-editable and diffable.
 | `title` | string | 1–200 characters, trimmed |
 | `description` | string | up to 10 000 characters, Markdown-ish plain text |
 | `status` | `open` \| `doing` \| `done` \| `cancelled` | `doing` means someone is on it |
-| `priority` | `low` \| `normal` \| `high` | three levels people actually use |
+| `priority` | `low` \| `normal` \| `high` \| `urgent` | `urgent` was added in front of the first three; `normal` stays the default |
 | `dueAt` | ISO-8601 string \| `null` | canonicalised to UTC on write |
 | `tags` | string[] | ≤ 20, each ≤ 32, de-duplicated case-insensitively |
 | `links` | `{ kind: 'url' \| 'file', value, title }[]` | documents and addresses |
@@ -25,11 +25,15 @@ so the file stays readable, hand-editable and diffable.
 | `updatedBy` | `human` \| `agent` | which side changed it last |
 | `doneAt` | epoch ms \| `null` | set on `done`, cleared on leaving `done` |
 | `sessionId` | string | the conversation this todo owns; `''` until handed off |
+| `originDir` | string | the working directory it was written from; resolves a hand-off's cwd |
+| `originSessionId` | string | the conversation that wrote it; the panel groups by this |
 | `lastDispatch` | `{ at, mode, ok, sessionId?, error? }` \| `null` | last hand-off, including its failure reason |
+| `completion` | `{ at, by, summary, sessionId, artifacts }` \| `null` | what the finishing turn said and produced; cleared on reopen |
+| `notes` | `{ at, by, text }[]` | append-only progress notes, capped at `LIMITS.notes` |
 | `activity` | `{ at, by, kind, summary? }[]` | trimmed to `activityLimit` (default 50) |
 
 The activity kinds are `created`, `updated`, `status`, `done`, `reopened`, `linked`,
-`unlinked`, `dispatched`, `dispatch-failed`.
+`unlinked`, `dispatched`, `dispatch-failed`, `noted`, `completed`.
 
 ## Storage
 
@@ -192,7 +196,9 @@ that fills itself with noise gets ignored, and then the real items get ignored t
   remembered from the conversation's own events rather than looked up when the timer runs: these
   conversations are idle most of the time, and an idle one is exactly the one the Host may have
   unloaded, where a live lookup answers `''` and the exemption would stop applying to the only
-  conversations it exists for;
+  conversations it exists for. A directory nobody can name is therefore treated as **un-askable**
+  rather than as exempt-or-allowed: the exemption cannot be checked against a place that cannot be
+  named, and the safe direction is silence (`unknown-dir`);
 - **only clean turns**: an aborted, failed or truncated turn is not a moment to ask;
 - **one question per message the person wrote**. The question is itself a message in the
   conversation, so it restarted the quiet clock, and the answer to it ended a clean turn — which
@@ -207,6 +213,27 @@ that fills itself with noise gets ignored, and then the real items get ignored t
 The switch lives on the Host rather than in the panel because the Host is what acts on it: the
 panel may be closed when the question is due, and `/health` reports the state so the mirror can
 never drift from the thing it mirrors.
+
+### What it did is part of the feature
+
+A gate whose reason is discarded is a gate nobody can debug. The decision layer always knew why a
+conversation was skipped — off, exempt, not idle yet, awaiting a person, cooling down — but the
+timer kept only the verdict, so `/health` could say `enabled: true` while nothing ever happened and
+offer no way to tell why. The whole decision list is reported now (`autoCollect.decisions`, capped
+at twenty), along with the last decision, how many candidates are waiting, and in-memory counters
+for asked / succeeded / failed / dropped.
+
+The settings file reports how it loaded (`file` / `missing` / `corrupt`) and when. "Off" because a
+person turned it off and "off" because the file could not be read looked identical from the panel,
+and the second one is a silent failure rather than a decision.
+
+A failed question is not an answer. The booking used to survive a failed request, and
+`awaiting-human` then kept that conversation quiet until somebody happened to speak again: one
+transient resume failure switched the feature off for that conversation, permanently and
+invisibly. A failure now releases the booking, schedules a bounded retry (1 / 5 / 25 minutes,
+three attempts), and only then drops the candidate with the reason recorded. The request itself is
+bounded too: an `agents.resume` that never settles used to leave the global `asking` flag set,
+which silenced the feature for every conversation rather than the broken one.
 
 ## An action belongs where its subject is unambiguous
 

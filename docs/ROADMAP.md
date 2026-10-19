@@ -4,8 +4,9 @@ What could come next, ordered by value against effort. Everything here is a
 proposal, not a commitment.
 
 This file was audited against the tree: everything under **Landed** is in the code
-today, with the `file:line` that shows it. Line numbers move, so the durable part
-of a citation is the function or the label beside it.
+today, cited by the file and the function that shows it. Line numbers were removed
+after they drifted by dozens of lines: the function or the label beside a citation
+is the durable part, and a stale number is worse than none.
 
 ## Landed
 
@@ -28,80 +29,87 @@ Things that used to sit on the Next list (or in the Later table) and are facts i
 tree now.
 
 **Attachment health** — a file link is probed when the list is read, never when it is
-stored: `annotateLinks()` (`lib/service.js:347`) sets `missing: true` for a path
-that no longer resolves (`lib/service.js:360`), and both read routes apply it
-(`GET /list` `lib/routes.js:257`, `GET /get` `lib/routes.js:311`). The panel
-shows the chip on the row and in the detail (`lib/client.js:1408`,
-`lib/client.js:1678`) with the label 「文件不在了」 (`lib/client.js:209`); the render
-check asserts it (`tools/preview.mjs:572`).
+stored: `annotateLinks()` (`lib/service.js`) sets `missing: true` for a path
+that no longer resolves (`lib/service.js`), and both read routes apply it
+(`GET /list` `lib/routes.js`, `GET /get` `lib/routes.js`). The panel
+shows the chip on the row and in the detail (`lib/client.js`,
+`lib/client.js`) with the label 「文件不在了」 (`lib/client.js`); the render
+check asserts it (`tools/preview.mjs`).
 
 Still owed from the original idea: 「重新挂载」 next to a dead link, and a unit test for
 `annotateLinks` itself — today the render assertion is the only coverage.
 
-**Smarter search** — `parseQuery()` (`lib/service.js:129`) turns `tag:发布`,
-`#发布`, `level:p0` (aliases at `lib/service.js:117`), `is:…` and `has:…` into
-filters, and `matchesSyntax()` (`lib/service.js:152`) applies `is:overdue`,
+**Smarter search** — `parseQuery()` (`lib/service.js`) turns `tag:发布`,
+`#发布`, `level:p0` (aliases at `lib/service.js`), `is:…` and `has:…` into
+filters, and `matchesSyntax()` (`lib/service.js`) applies `is:overdue`,
 `is:due`, `is:active`, `has:link`, `has:note` and `is:<status>`; free text
-still has to match every word (`lib/service.js:196`). The panel advertises the syntax
-on the search box (`lib/client.js:210`, `lib/client.js:2705`) and the render check
-asserts the hint (`tools/preview.mjs:573`). Test: `test/service.test.mjs`, "the
+still has to match every word (`lib/service.js`). The panel advertises the syntax
+on the search box (`lib/client.js`) and the render check
+asserts the hint (`tools/preview.mjs`). Test: `test/service.test.mjs`, "the
 search box understands tag:, is:, has: and level: tokens".
 
 Not landed from the same idea: `before:` / `after:` date bounds.
 
-**Progress notes** — an append-only trail per todo: `addNote()` (`lib/model.js:387`),
-repaired on load by `normalizeNotes()` (`lib/model.js:361`), reached through
-`note()` (`lib/service.js:329`), `POST /note` (`lib/routes.js:423`) and the agent
-tool `global_todo_note` (`lib/tools.js:618`), and shown as 「进展记录」 in the detail
-(`lib/client.js:200`, `lib/client.js:1648`). Tests: `test/model.test.mjs:210`,
-`test/tools.test.mjs:301`, `test/routes.test.mjs:495`.
+**Progress notes** — an append-only trail per todo: `addNote()` (`lib/model.js`),
+repaired on load by `normalizeNotes()` (`lib/model.js`), reached through
+`note()` (`lib/service.js`), `POST /note` (`lib/routes.js`) and the agent
+tool `global_todo_note` (`lib/tools.js`), and shown as 「进展记录」 in the detail
+(`lib/client.js`). Tests: `test/model.test.mjs`,
+`test/tools.test.mjs`, `test/routes.test.mjs`.
 
 **JSON export and import** — `GET /export` hands back the store's own document and
-`POST /import` writes one back (`lib/routes.js:320`, `lib/routes.js:332`), through
-`exportDocument()` / `importDocument()` (`lib/service.js:536`,
-`lib/service.js:554`). `replace` is a byte-for-byte round trip; `merge` updates by
+`POST /import` writes one back (`lib/routes.js`), through
+`exportDocument()` / `importDocument()` (`lib/service.js`,
+`lib/service.js`). `replace` is a byte-for-byte round trip; `merge` updates by
 id and appends what is new. The panel has 导出 / 导入 in the header
-(`lib/client.js:2570`, `lib/client.js:2580`) and imports in merge mode on purpose: a
+(`lib/client.js`) and imports in merge mode on purpose: a
 file picked by mistake must not erase the list. Round trip: `test/transfer.test.mjs`,
 "an export imported back reproduces the list exactly".
 
 Not landed: the Markdown / TaskPaper formats this entry used to ask for, and the 1 MiB
-request cap stays (`lib/routes.js:32`), so a list exported beyond that size cannot be
+request cap stays (`lib/routes.js`), so a list exported beyond that size cannot be
 imported back through the route.
 
 **Metrics in /health** — the health reply now carries `metrics`
-(`lib/routes.js:349`): dispatch success rate, agent tool call counts, and list growth
+(`lib/routes.js`): dispatch success rate, agent tool call counts, and list growth
 (created / removed / restored / imports / noted, current size, peak), built in
 `lib/metrics.js`. The counters are in memory and reset with the Host, and the field is
 `null` when nothing mounted them — an absent metric is not a zero. Test:
 `test/metrics.test.mjs`.
 
 **Reopen, with an honest trail** — a wrongly-finished todo has a dedicated way back:
-`reopen()` (`lib/service.js:318`) does `done` / `cancelled` → `open` and refuses anything else,
-reached by the tool `global_todo_reopen` (`lib/tools.js:747`); the reason it records lands in
-the activity trail via `setStatus()` (`lib/model.js:536`, `lib/model.js:554`). Writing through
+`reopen()` (`lib/service.js`) does `done` / `cancelled` → `open` and refuses anything else,
+reached by the tool `global_todo_reopen` (`lib/tools.js`); the reason it records lands in
+the activity trail via `setStatus()` (`lib/model.js`). Writing through
 the panel's routes no longer forces a false provenance: `/update` and `/status`
-(`lib/routes.js:462`, `lib/routes.js:471`) take an explicit `by: 'agent'` and default to the
-person, and anything else is a 400 (`actorOf` at `lib/routes.js:254`). Tests:
-`test/tools.test.mjs:230`, `test/routes.test.mjs:142`.
+(`lib/routes.js`) take an explicit `by: 'agent'` and default to the
+person, and anything else is a 400 (`actorOf` at `lib/routes.js`). Tests:
+`test/tools.test.mjs`, `test/routes.test.mjs`.
 
 Not landed: the same `by` on `/create`, `/note`, `/remove` and `/link`, which still record the
 person — the agent has its own tools for those. `/restore` (the panel's undo) has no agent-facing
 equivalent at all, so nothing there can be misattributed today.
 
+**Automatic collect with a memory** — the decision layer keeps its reasons: `/health` reports
+every waiting candidate's verdict (`off`, `exempt-workspace`, `unknown-dir`, `retry-wait`,
+`awaiting-human`, `not-idle-yet`, `cooldown`), the last one, and in-memory counters for
+asked / succeeded / failed / dropped (`explainAutoCollect` in `lib/settings.js`, `autoCollectState`
+in `lib/index.js`). A failed question releases its booking and retries after 1 / 5 / 25 minutes
+(`retryDelayMs`), and an ask that never settles is bounded by a ten-second timeout. An unknown
+working directory is never asked, because the exemption cannot be checked against it.
 ### Partly landed
 
 - **Batch and multi-select** — the selection mode, its per-row markers and the batch
-  一键分配 are in (`lib/client.js:2209`, `lib/client.js:2884`, `POST /assign` at
-  `lib/routes.js:413`, `assignMany()` at `lib/dispatch.js:195`; tests
-  `test/dispatch.test.mjs:657`). Batch 完成 / 打标签 across a selection do not exist.
+  一键分配 are in (`lib/client.js`, `POST /assign` at
+  `lib/routes.js`, `assignMany()` at `lib/dispatch.js`; tests
+  `test/dispatch.test.mjs`). Batch 完成 / 打标签 across a selection do not exist.
 - **Session read-back** — `sessionAlive` is on every listed todo
-  (`lib/routes.js:259`, `lib/dispatch.js:698`). Reading what that session last said,
+  (`lib/routes.js`, `lib/dispatch.js`). Reading what that session last said,
   and linking to it, is not: `lib/completion.js` reads `assistant/message` only to
   close a todo this plugin dispatched, and stores one summary in its completion record.
 - **What the agents produced** — the per-todo record with a summary and the changed
-  files landed (`completeTodo()` at `lib/model.js:415`, 「完成记录」 at
-  `lib/client.js:1648`, the 已完成 filter and group at `lib/client.js:153`). The
+  files landed (`completeTodo()` at `lib/model.js`, 「完成记录」 at
+  `lib/client.js`, the 已完成 filter and group at `lib/client.js`). The
   cross-todo "what did the sessions finish this week, and what did they touch" view did
   not.
 
@@ -163,14 +171,14 @@ something you can review, and would be the honest way to show that a hand-off di
 
 | Idea | Note |
 |---|---|
-| Image attachments | `kind: 'image'` next to `url` / `file`. The shape is already prepared for it, but `LINK_KINDS` is still `['url', 'file']` (`lib/links.js:21`). |
-| Official `storageDomain` backend | A second store backend behind the same interface; the file stays the default because it is the feature. Today there is one backend and it says so (`kind: 'json'`, `lib/store.js:212`). |
+| Image attachments | `kind: 'image'` next to `url` / `file`. The shape is already prepared for it, but `LINK_KINDS` is still `['url', 'file']` (`lib/links.js`). |
+| Official `storageDomain` backend | A second store backend behind the same interface; the file stays the default because it is the feature. Today there is one backend and it says so (`kind: 'json'`, `lib/store.js`). |
 | Virtualised list | Only needed past a few hundred rows; measure first. Nothing in `lib/client.js` virtualises today. |
 | Drag to reorder | Manual order is meaningful to some people; it also needs a stable `position` field and a decision about how it interacts with due-date grouping. |
 | Multi-list / projects | A `list` field with one default list; deferred because "global single list" is the current identity. |
-| Archive instead of delete | Keeps history without cluttering. `POST /remove` deletes for real (`lib/routes.js:445`); only the panel's short undo brings a record back. |
+| Archive instead of delete | Keeps history without cluttering. `POST /remove` deletes for real (`lib/routes.js`); only the panel's short undo brings a record back. |
 | Cross-machine conflict notice | The file is portable (NAS, sync folder). Detect "changed underneath me" and offer a reload instead of a silent overwrite — `store.read` still trusts the file whenever it parses. |
-| Capture from outside the chat | Notifications, mail, announcements — the sources `dsh-todo-list` reads. Needs an ingest path and a policy for deduplication; `POST /capture` only asks a conversation to collect (`lib/routes.js:418`). |
+| Capture from outside the chat | Notifications, mail, announcements — the sources `dsh-todo-list` reads. Needs an ingest path and a policy for deduplication; `POST /capture` only asks a conversation to collect (`lib/routes.js`). |
 | Accessible-only sweep | Full keyboard path is close; a screen-reader pass over the panel and the group headers is still owed. |
 
 ## Explicitly not planned

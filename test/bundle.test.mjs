@@ -313,7 +313,9 @@ test('the factory returns a mountable plugin declaring its services', () => {
   // through `inject` (the shipped panels declare the same list), and a service
   // that is used but not declared is exactly how the hand-off picker rendered
   // empty and the receipt's jump button did nothing.
-  assert.deepEqual(plugin.inject, ['sessions', 'uiWorkspace', 'workspaces', 'slots', 'locale'])
+  // `workspaces` used to be declared here and never read; a declared-but-unused
+  // service makes the panel harder to mount in a lean client composition.
+  assert.deepEqual(plugin.inject, ['sessions', 'uiWorkspace', 'slots', 'locale'])
   assert.equal(typeof plugin.apply, 'function')
 })
 
@@ -430,9 +432,29 @@ test('only theme tokens that exist are used', () => {
 })
 
 test('no literal colors leak into the stylesheet', () => {
-  const css = source.slice(source.indexOf('const CSS = `'), source.indexOf('.gt-root'))
+  // Slice to the end of the template literal, not to the first '.gt-root' inside it.
+  // The old end index sat 14 characters into the CSS, so this guard never actually
+  // looked at a single colour and every literal would have passed.
+  const start = source.indexOf('const CSS = `')
+  const css = source.slice(start, source.indexOf('`', start + 'const CSS = `'.length))
   assert.doesNotMatch(css, /#[0-9a-fA-F]{3,8}\b/, 'use theme tokens instead of hex colors')
   assert.doesNotMatch(css, /\brgba?\(/, 'use theme tokens instead of rgb()')
+})
+
+test('the two dictionaries cover the same keys, and English stays English', () => {
+  const block = (marker) => {
+    const start = source.indexOf(marker)
+    return source.slice(start, source.indexOf('\n    }', start))
+  }
+  const keys = (marker) => [...block(marker).matchAll(/^ {6}'([^']+)':/gm)].map((match) => match[1])
+  const zhKeys = [...new Set(keys('const zh = {'))]
+  const enKeys = new Set(keys('const en = {'))
+  // A missing key silently falls back to Chinese, which an English reader sees as a bug.
+  assert.deepEqual(zhKeys.filter((key) => !enKeys.has(key)), [], 'every Chinese key has an English one')
+  const enCjk = [...block('const en = {').matchAll(/^ {6}'([^']+)': '([^']*)'/gm)]
+    .filter((match) => /[\u4e00-\u9fff]/.test(match[2]))
+    .map((match) => match[1])
+  assert.deepEqual(enCjk, [], 'no English value is actually Chinese')
 })
 
 test('the panel talks to the host over a document-relative path', () => {

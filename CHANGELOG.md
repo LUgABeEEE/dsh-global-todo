@@ -7,6 +7,86 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-10-19
+
+The first release after the plugin was listed in a community catalog. It is a reliability
+release: the features that already existed now tell the truth — a sort that honours every level,
+a page that says it was cut, a language setting that applies, and an automatic collector that can
+explain itself and survives a failed question.
+
+- **An unknown working directory is a reason not to ask.** The exemption is keyed on where a
+  conversation works; a place nobody can name cannot be checked against it, and asking there would
+  volunteer a question in a workspace somebody may well have excluded. The decision now reports
+  `unknown-dir` and stays quiet, and the panel's switch tooltip says so. The cost is a conversation
+  whose cwd the Host never reported, which the event tracker normally supplies on its first message.
+
+- **The automatic collect switch shows the last decision.** `/health` now reports the full decision
+  list, so the switch's tooltip can say *why* nothing has happened — not quiet long enough, waiting
+  for you, cooling down, retrying, or an exempt workspace — together with how many candidates are
+  waiting and how many are due.
+
+- **The automatic collect switch can explain itself.** The decision layer knew why a conversation
+  was skipped — switched off, exempt, not quiet yet, waiting for a person, cooling down — and the
+  timer threw that reason away, so `/health` could report `enabled: true` while nothing ever
+  happened and give no way to tell why. The whole decision list is reported now, with the last one,
+  the number of waiting candidates, and in-memory counters for asked / succeeded / failed / dropped.
+  The settings file also reports how it loaded (`file` / `missing` / `corrupt`): "off because
+  somebody turned it off" and "off because the file was unreadable" used to look identical.
+
+- **A failed question no longer silences a conversation.** The cooldown was booked before the ask
+  and survived a failed request, so `awaiting-human` kept that conversation quiet until a person
+  happened to speak again — one transient resume failure turned the feature off for that
+  conversation, permanently and invisibly. A failure now releases the booking and schedules a
+  bounded retry (1 / 5 / 25 minutes, three attempts) before dropping the candidate with the reason
+  recorded. The ask is bounded too: an `agents.resume` that never settles now times out after ten
+  seconds instead of leaving the global `asking` flag set and silencing every conversation.
+
+- **A priority sort that put `urgent` last.** The rank table was written when there were three
+  levels, and adding a fourth did not touch it: the comparator read `undefined` for `urgent` and
+  produced `NaN`, so `sort=priority` (and the panel's level grouping) moved P0 to the bottom.
+  Every level now has a rank, and the test names all four in order.
+
+- **The list stopped at 200 without saying so.** `/list` cut the page at a fixed limit while
+  `counts` was computed over the whole file, so a list of 350 showed "350 open" above 200 rows.
+  The reply now carries `matched` (before the cut) and `truncated`, the panel prints "showing the
+  first N of M", and `global_todo_list` tells the model the same thing instead of letting it
+  reason about a page as if it were the whole set.
+
+- **The panel described the quiet window with the cooldown number.** The hint said "quiet for
+  {n} minutes" while `{n}` was `cooldownMinutes`; the gate it describes is `idleMinutes`, and the
+  two only looked identical because both default to 30. A hint that lies once the value is
+  changed is worse than no hint.
+
+- **Switching the interface language did nothing.** `resolveLang` read `locale` / `id` / `language`
+  / `current` from the locale snapshot, but the snapshot carries `active`; the value was never
+  found and the panel always fell back to `navigator.language`. It reads `active` first now, and
+  the unused `workspaces` client dependency is gone.
+
+- **The English panel was partly Chinese.** Seventeen keys — the whole `note.*` and `completion.*`
+  groups, plus `link.missing`, `search.hint` and `detail.notes` — existed only in the Chinese
+  dictionary and silently fell back; `meta.completed` was Chinese in the English table as well.
+  Both tables now carry the same 186 keys, guarded by a test that also refuses a Chinese value in
+  the English one.
+
+- **Two empty states, one wrong.** The panel decided between "no todos yet" and "nothing in this
+  filter" by looking at the current filter, so "all" with a search term and an empty list showed
+  the wrong sentence. The decision now uses the list's real size and whether a search is active.
+
+- **Opening a row near the bottom did nothing visible.** The detail expanded below the viewport;
+  the row now scrolls into view when it opens.
+
+- **The no-literal-colours test was checking fourteen characters.** It sliced from `const CSS =`
+  to the first `.gt-root` inside the stylesheet, so it never inspected a colour. The slice now
+  runs to the end of the template, which makes the guard real — and the theme-token rule is the
+  one thing that keeps dark mode working.
+
+- **Documentation that had drifted from the tree.** Both READMEs gained the five routes they were
+  missing (`note`, `dirs`, `settings`, `assign`, `diagnostics`); `docs/DESIGN.md` records the four
+  fields and two activity kinds added since the table was written; `cordis.patch.yml` names
+  `guidance` and `browseRoot`, which a wholesale `config` override would otherwise drop;
+  `docs/ROADMAP.md` cites files and functions instead of line numbers that had moved by dozens of
+  lines.
+
 - **The contribution terms are written down.** MIT in, MIT out — no CLA, no copyright assignment —
   so a future patch cannot quietly stay its author's property and block a license change years
   later. The READMEs also say plainly that this is a community plugin, not a DeepSeek project.

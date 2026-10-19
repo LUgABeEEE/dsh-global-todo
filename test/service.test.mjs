@@ -100,11 +100,35 @@ test('sorting by created, updated, due and priority behaves predictably', async 
     assert.deepEqual(ordered.todos.map((todo) => todo.id), [third.id, second.id, first.id])
     const byDue = await env.service.list({ status: 'all', sort: 'due' })
     assert.equal(byDue.todos[0].id, second.id)
+    // Every level the model can hold needs a rank. `urgent` was added without one,
+    // so the comparator produced NaN and P0 items sorted last.
+    const urgent = await env.service.create({ title: 'urgent', priority: 'urgent' })
+    const low = await env.service.create({ title: 'low', priority: 'low' })
     const byPriority = await env.service.list({ status: 'all', sort: 'priority' })
-    assert.equal(byPriority.todos[0].id, third.id)
+    assert.deepEqual(
+      byPriority.todos.map((todo) => todo.id),
+      [urgent.id, third.id, second.id, first.id, low.id],
+      'urgent -> high -> normal -> low, newest first inside a rank',
+    )
     await env.service.update(first.id, { title: 'first again' })
     const byUpdated = await env.service.list({ status: 'all', sort: 'updated' })
     assert.equal(byUpdated.todos[0].id, first.id)
+  } finally {
+    await env.cleanup()
+  }
+})
+
+test('a page cut by the limit reports what it matched', async () => {
+  const env = await harness()
+  try {
+    for (const title of ['a', 'b', 'c']) await env.service.create({ title })
+    const page = await env.service.list({ status: 'all', limit: 2 })
+    assert.equal(page.todos.length, 2)
+    assert.equal(page.matched, 3, 'matched counts before the page is cut')
+    assert.equal(page.truncated, true)
+    const whole = await env.service.list({ status: 'all', limit: 50 })
+    assert.equal(whole.matched, 3)
+    assert.equal(whole.truncated, false)
   } finally {
     await env.cleanup()
   }

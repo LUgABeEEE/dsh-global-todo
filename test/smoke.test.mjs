@@ -443,6 +443,99 @@ test('a conversation is asked once, and only a person re-arms it', async () => {
   }
 })
 
+test('a failed question is retried after a backoff instead of silencing the conversation', async () => {
+  // The failure mode: a question that could not be delivered still booked the cooldown, so
+  // `awaiting-human` kept that conversation quiet until a person happened to speak again.
+  const dir = await mkdtemp(path.join(tmpdir(), 'gt-smoke-retry-'))
+  const realSetInterval = globalThis.setInterval
+  const realNow = Date.now
+  const ticks = []
+  let now = 1_000_000_000
+  try {
+    globalThis.setInterval = (callback) => {
+      ticks.push(callback)
+      return { unref() {} }
+    }
+    Date.now = () => now
+
+    const agents = makeAgents()
+    const host = makeHost({
+      tools: {},
+      webServer: {},
+      agents,
+      agentDefaultModel: { currentSelection: () => ({ provider: 'deepseek', model: 'deepseek-chat' }) },
+    })
+    apply(host.ctx, { storePath: path.join(dir, 'todos.json'), requireExistingFiles: false })
+
+    const person = agents.live('session-person')
+    const delivered = []
+    let failuresLeft = 1
+    // `followup` is what the dispatcher calls; throwing here is exactly a resume that failed.
+    person.followup = (message) => {
+      if (failuresLeft > 0) {
+        failuresLeft -= 1
+        throw new Error('the conversation could not be resumed')
+      }
+      delivered.push(message)
+    }
+
+    await host.state.routes.get('/api/global-todo/settings').handler(
+      makeReq({
+        method: 'POST',
+        url: '/api/global-todo/settings',
+        body: JSON.stringify({ autoCollect: true }),
+      }),
+      makeRes(),
+    )
+
+    const session = (id) => ({ id, header: { id } })
+    const emit = (type, data) => host.emit('session/event', session('session-person'), { type, seq: now, data })
+    const health = async () => {
+      const res = makeRes()
+      await host.state.routes.get('/api/global-todo/health').handler(makeReq({ url: '/api/global-todo/health' }), res)
+      return res.json().data
+    }
+    const idle = (minutes) => {
+      now += minutes * 60 * 1000
+      for (const tick of ticks) tick()
+    }
+
+    now += 1000
+    emit('user/message', { source: { kind: 'user' } })
+    emit('turn/end', { turn: 1, reason: { kind: 'completed' } })
+    idle(31)
+    await pollUntil(async () => {
+      const current = await health()
+      return current.autoCollect.stats.failed === 1 && current.autoCollect.lastRetry !== null
+    }, 'the failed question and its retry to be recorded')
+
+    const failed = await health()
+    assert.match(failed.autoCollect.error, /resumed/)
+    assert.equal(failed.autoCollect.waiting, 1, 'the candidate is kept for the retry')
+    assert.ok(failed.autoCollect.lastRetry.nextAt > now, 'the retry waits at least one delay')
+    assert.equal(failed.autoCollect.stats.asked, 1)
+    assert.equal(delivered.length, 0)
+
+    // Another tick before the delay expires must not try again.
+    idle(0.5)
+    await settle()
+    assert.equal((await health()).autoCollect.stats.asked, 1, 'no retry before the backoff')
+
+    // After it, the same conversation is asked once, and the failure stops counting.
+    idle(2)
+    await pollUntil(() => delivered.length === 1, 'the retry to be delivered')
+    const after = await health()
+    assert.equal(after.autoCollect.stats.succeeded, 1)
+    assert.equal(after.autoCollect.stats.failed, 1)
+    assert.equal(after.autoCollect.lastRetry, null, 'a success clears the pending retry')
+    assert.equal(after.autoCollect.lastAsk.sessionId, 'session-person')
+  } finally {
+    globalThis.setInterval = realSetInterval
+    Date.now = realNow
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
 test('a quiet conversation never has its open todos closed for it', async () => {
   // The incident this encodes: on the night of 2026-10-15 a conversation that had gone quiet
   // had eight todos it had written closed with a template summary — including one waiting on a

@@ -9,7 +9,9 @@ import {
   createSettings,
   decideAutoCollect,
   dueAutoCollect,
+  explainAutoCollect,
   normalizeSettings,
+  retryDelayMs,
 } from '../lib/settings.js'
 
 test('settings default to off, and every field is repaired rather than trusted', () => {
@@ -76,6 +78,83 @@ test('settings round-trip through the file, and defaults survive a broken one', 
   }
 })
 
+test('a failed question can be unbooked, and the file says how it loaded', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'gt-settings-info-'))
+  const file = path.join(dir, 'settings.json')
+  try {
+    const missing = createSettings({ file })
+    await missing.load()
+    assert.equal(missing.info().source, 'missing', 'a first run is not a corrupt file')
+    assert.equal(missing.info().error, null)
+
+    await writeFile(file, JSON.stringify({ version: 1, autoCollect: true }), 'utf8')
+    const loaded = createSettings({ file })
+    await loaded.load()
+    assert.equal(loaded.info().source, 'file')
+    assert.equal(loaded.get().autoCollect, true)
+
+    // The failure path: a question was booked, the ask failed, and the booking must go —
+    // otherwise `awaiting-human` keeps the conversation quiet until a person speaks.
+    await loaded.rememberAsked('session-me', 1_000)
+    assert.equal(loaded.get().asked['session-me'], 1_000)
+    await loaded.forgetAsked('session-me')
+    assert.equal(loaded.get().asked['session-me'], undefined)
+    const reopened = createSettings({ file })
+    await reopened.load()
+    assert.equal(reopened.get().asked['session-me'], undefined, 'the unbooking reached the disk')
+
+    await writeFile(file, '{ not json', 'utf8')
+    const corrupt = createSettings({ file })
+    await corrupt.load()
+    assert.equal(corrupt.info().source, 'corrupt')
+    assert.ok(corrupt.info().error.length > 0, 'a broken file has to name why it fell back')
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('retry delays back off, and a scheduled retry is a named reason', () => {
+  assert.equal(retryDelayMs(1), 60_000)
+  assert.equal(retryDelayMs(2), 300_000)
+  assert.equal(retryDelayMs(3), 1_500_000)
+  assert.equal(retryDelayMs(99), 1_500_000, 'the backoff stays capped')
+  assert.equal(retryDelayMs(0), 60_000, 'a junk count means the first delay, not none')
+
+  const settings = { ...SETTINGS_DEFAULTS, autoCollect: true, asked: {} }
+  const at = 1_000_000
+  const decide = (over = {}) =>
+    decideAutoCollect({
+      settings,
+      sessionId: 'session-me',
+      recentSessionId: 'session-me',
+      turnReason: 'completed',
+      sessionDir: '/repo',
+      idleMs: 60 * 60 * 1000,
+      now: at,
+      ...over,
+    })
+  assert.equal(decide({ retryAt: { 'session-me': at + 1 } }).reason, 'retry-wait')
+  assert.equal(decide({ retryAt: { 'session-me': at - 1 } }).ask, true)
+
+  // The decision list keeps the reason and the quiet time: /health used to have neither.
+  const decisions = explainAutoCollect({
+    pending: { 'session-me': at - 120_000, 'session-other': at - 120_000 },
+    activityAt: { 'session-me': at - 60_000 },
+    dirAt: { 'session-me': '/repo', 'session-other': '/repo' },
+    settings,
+    recentSessionId: 'session-me',
+    now: at,
+  })
+  assert.deepEqual(
+    decisions.map((decision) => [decision.sessionId, decision.reason]),
+    [
+      ['session-me', 'not-idle-yet'],
+      ['session-other', 'no-activity'],
+    ],
+  )
+  assert.equal(decisions[0].idleMs, 60_000, 'the quiet time is reported, not just the verdict')
+})
+
 test('a write that lands while the startup read is in flight is not undone by it', async () => {
   const dir = await mkdtemp(path.join(tmpdir(), 'gt-settings-startup-'))
   const file = path.join(dir, 'settings.json')
@@ -108,7 +187,8 @@ test('the automatic collect decision names why it stays quiet', () => {
       recentSessionId: over.recentSessionId ?? 'session-me',
       turnReason: over.turnReason ?? 'completed',
       humanAt: over.humanAt,
-      sessionDir: over.sessionDir,
+      // A known directory by default: an unknown one is now its own reason to stay quiet.
+      sessionDir: over.sessionDir ?? '/repo',
       // Quiet long enough unless a test says otherwise.
       idleMs: over.idleMs ?? 60 * 60 * 1000,
       now: at,
@@ -150,10 +230,11 @@ test('the automatic collect decision names why it stays quiet', () => {
     decide({ settings: exempted, sessionDir: '/home/me/workspace/示例工作区/nested' }).reason,
     'exempt-workspace',
   )
-  // A shared prefix is a different place, and an unknown directory is not an exemption.
+  // A shared prefix is a different place, and an unknown directory is never asked at all:
+  // a place nobody can name cannot be checked against an exemption, so the safe answer is
+  // silence. The event tracker normally reports the cwd on the first message.
   assert.equal(decide({ settings: exempted, sessionDir: '/home/me/workspace/示例工作区2' }).ask, true)
-  assert.equal(decide({ settings: exempted, sessionDir: '' }).ask, true)
-  assert.equal(decide({ settings: exempted }).ask, true, 'a directory nobody reported is not exempt')
+  assert.equal(decide({ settings: exempted, sessionDir: '' }).reason, 'unknown-dir')
   // The rule asked for: a conversation still being worked in is never asked, and not knowing
   // how long it has been quiet counts as "not yet".
   assert.equal(decide({ idleMs: 29 * 60 * 1000 }).reason, 'not-idle-yet')
@@ -164,6 +245,7 @@ test('the automatic collect decision names why it stays quiet', () => {
       sessionId: 'session-me',
       recentSessionId: 'session-me',
       turnReason: 'completed',
+      sessionDir: '/repo',
       // No idle information at all: fail closed rather than ask.
       now: at,
     }).reason,
@@ -182,6 +264,7 @@ test('only a conversation that has gone quiet is due', () => {
     dueAutoCollect({
       pending: { 'session-me': now - 60_000 },
       activityAt: { 'session-me': now - 60_000 },
+      dirAt: { 'session-me': '/repo' },
       settings,
       recentSessionId: 'session-me',
       now,
@@ -194,6 +277,7 @@ test('only a conversation that has gone quiet is due', () => {
     dueAutoCollect({
       pending: { 'session-me': now - 31 * 60_000 },
       activityAt: { 'session-me': now - 31 * 60_000 },
+      dirAt: { 'session-me': '/repo' },
       settings,
       recentSessionId: 'session-me',
       now,
@@ -206,6 +290,7 @@ test('only a conversation that has gone quiet is due', () => {
     dueAutoCollect({
       pending: { 'session-other': now - 31 * 60_000 },
       activityAt: { 'session-other': now - 31 * 60_000 },
+      dirAt: { 'session-other': '/repo' },
       settings,
       recentSessionId: 'session-me',
       now,
@@ -216,6 +301,7 @@ test('only a conversation that has gone quiet is due', () => {
     dueAutoCollect({
       pending: { 'session-me': now - 31 * 60_000 },
       activityAt: { 'session-me': now - 31 * 60_000 },
+      dirAt: { 'session-me': '/repo' },
       settings: { ...settings, asked: { 'session-me': now - 60_000 } },
       recentSessionId: 'session-me',
       now,
@@ -225,7 +311,20 @@ test('only a conversation that has gone quiet is due', () => {
 
   // A session with no known activity is never due: not knowing is a reason to wait.
   assert.deepEqual(
-    dueAutoCollect({ pending: { 'session-me': now }, activityAt: {}, settings, recentSessionId: 'session-me', now }),
+    dueAutoCollect({ pending: { 'session-me': now }, activityAt: {}, dirAt: { 'session-me': '/repo' }, settings, recentSessionId: 'session-me', now }),
     [],
+  )
+
+  // An unknown working directory is never due either: the exemption cannot be checked.
+  assert.deepEqual(
+    dueAutoCollect({
+      pending: { 'session-me': now - 31 * 60_000 },
+      activityAt: { 'session-me': now - 31 * 60_000 },
+      settings,
+      recentSessionId: 'session-me',
+      now,
+    }),
+    [],
+    'an unknown directory is not a place to volunteer a question',
   )
 })

@@ -40,8 +40,14 @@ profile already installed, or whatever `DSH_PLAYWRIGHT` points at.
 
 ## Requirements
 
-- DeepSeek Harness `0.2.x` (developed and verified against `0.2.1-rc.2`)
+- DeepSeek Harness `0.2.x` (developed and verified against `0.2.1-rc.2`; `engines.dsh` is
+  `>=0.2.0-rc.1 <0.3.0`, and a Host outside it skips the bundle instead of warning)
 - Node.js `>= 22.19.0` (the Web profile's own requirement)
+- A **Web** client: the panel is served by the Host's web server. Headless / ACP / SDK keep the
+  agent tools but have no panel; an Electron-style desktop client (file:// + IPC) is not
+  supported yet
+- After a Host upgrade, refresh the page — the client module graph belongs to the release the
+  page booted with
 - No runtime dependencies. Nothing is imported from `@deepseek-ai/*`.
 
 ## Install
@@ -56,6 +62,10 @@ dsh plugin --profile web add /absolute/path/to/dsh-global-todo
 
 The plugin is a Loader row, not a hot-loaded script: **restart the host** (`dsh web`)
 after installing, then refresh the page. A "待办 / Todos" entry appears in the sidebar.
+
+The npm package is the source of truth. A community catalog can lag behind it or point at an
+older release; pin the version you want (`dsh plugin --profile web add dsh-global-todo@0.4.0`)
+when it matters.
 
 To roll back:
 
@@ -224,12 +234,13 @@ fence when that service is present, and by a strict loopback check otherwise.
 
 | Method | Path | Body / query |
 |---|---|---|
-| GET | `/api/global-todo/list` | `status`, `query`, `tag`, `sort`, `limit` |
+| GET | `/api/global-todo/list` | `status`, `query`, `tag`, `sort`, `limit` — the reply carries `matched` and `truncated` when the page was cut |
+| GET | `/api/global-todo/dirs` | `path?` — list subdirectories for the panel's built-in folder picker (the shell's own picker is preferred when mounted) |
 | GET | `/api/global-todo/get` | `id` |
 | GET | `/api/global-todo/export` | — (the store's own JSON document, for backup or migration) |
 | POST | `/api/global-todo/import` | `{ doc, mode?: replace\|merge }` — `replace` is an exact round trip, `merge` updates by id and appends (what the panel sends) |
 | POST | `/api/global-todo/capture` | `{ sessionId? }` — ask the current conversation to collect its follow-ups |
-| GET | `/api/global-todo/health` | — (store location, counts, dispatch capabilities, plus **tool registration** and **whether the completion watcher attached** — both fail quietly, so both are reported — and `metrics`: dispatch success rate, agent tool calls, list growth) |
+| GET | `/api/global-todo/health` | — (store location, counts, dispatch capabilities, plus **tool registration** and **whether the completion watcher attached** — both fail quietly, so both are reported — and `metrics`: dispatch success rate, agent tool calls, list growth; `autoCollect`: why each waiting conversation was or was not asked, counters, and how the settings file loaded) |
 | POST | `/api/global-todo/create` | `{ title, description?, links?, tags?, priority?, dueAt? }` |
 | POST | `/api/global-todo/update` | `{ id, ...fields, by?: human\|agent }` |
 | POST | `/api/global-todo/status` | `{ id, status, by?: human\|agent }` |
@@ -237,6 +248,9 @@ fence when that service is present, and by a strict loopback check otherwise.
 | POST | `/api/global-todo/restore` | `{ todo }` — put a removed record back verbatim (undo) |
 | POST | `/api/global-todo/link` | `{ id, add?: [...], remove?: [value \| index] }` |
 | POST | `/api/global-todo/dispatch` | `{ id, mode?: auto\|bound\|new\|current, sessionId?, dir? }` |
+| POST | `/api/global-todo/assign` | `{ ids, items?, target?, dir? }` — hand several todos over in one call; an id that matches nothing comes back instead of being sent elsewhere |
+| POST | `/api/global-todo/settings` | `{ autoCollect?, idleMinutes?, cooldownMinutes?, exemptWorkspaces? }` — the Host-side switches behind automatic collect |
+| POST | `/api/global-todo/diagnostics` | `{ scope, status?, reason?, message?, url? }` — the panel's own error report |
 
 `by` on `/update` and `/status` says whose write this is: omitted (what the panel sends) it is
 the person at the keyboard, and a script acting for the agent says `by: 'agent'` rather than
@@ -299,7 +313,12 @@ npm run check     # parse every file, assert the shipping shape, and — when a 
                   # Host's own validator
 npm test          # 100+ unit, contract and bundle tests, zero dependencies
 npm run verify    # both
+npm run check:matrix  # the running dsh against engines.dsh, then the manifest,
+                      # bundle and tool-schema contracts (no preview writes)
 ```
+
+`engines.dsh` is the one version fact that matters: a Host outside it skips the whole bundle
+instead of warning, so `check:matrix` is the smoke to run before widening the range.
 
 There is **no build step**. The host half is plain ESM under `lib/`; the client half is a
 classic script that registers itself with `window.__ModuleLoader__`, so no bundler,

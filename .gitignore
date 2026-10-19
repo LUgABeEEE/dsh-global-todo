@@ -19,3 +19,6 @@ preview/
 # Local data: the list itself never belongs in the repository
 todos.json
 todos.json.*
+
+# AgentTeams working state (task graph, mailboxes) is local to a session
+.agent-teams/
