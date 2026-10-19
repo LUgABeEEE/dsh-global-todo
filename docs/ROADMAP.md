@@ -110,6 +110,9 @@ in `skipped[]`, and archived/cancelled rows deliberately do not block a new one.
 counts a disagreement once (`externalChanges`, `lastExternalAt` in `lib/store.js`; surfaced by
 `/health.store`). The panel shows a one-line notice instead of letting a synced folder change the
 list silently.
+**Side detail on wide windows** — above 1100px the open row's detail becomes a card at the
+panel's right edge instead of pushing the list down (CSS-only over the same markup; one detail
+implementation), while narrow windows keep the inline expansion.
 ### Partly landed
 
 - **Batch and multi-select** — the selection mode, its per-row markers and the batch

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.4] — 2026-10-19
+
+Opening a todo on a wide screen used to push the list down and leave half the window unused.
+
+- **The open row's detail is now a card beside the list**, above a 1100px viewport: it sits at
+  the panel's right edge, the list keeps its own column, and the card scrolls on its own. Narrow
+  windows keep the familiar inline expansion. The change is CSS-only over the existing markup —
+  `.gt-root[data-wide-detail]` plus one media query — so there is still exactly one detail
+  implementation; a second wide-screen render path would drift from the inline one at the first
+  field change.
 ## [0.4.3] — 2026-10-19
 
 The list is meant to live in a synced folder; a change from another machine should not be
