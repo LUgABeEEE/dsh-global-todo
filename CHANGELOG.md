@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] — 2026-10-19
+
+The last two loose ends from the D4 audit.
+
+- **The idle window is editable where the switch is.** It was already in the settings file and
+  the API; now the panel has a number field next to 自动获取, writing on blur so typing 1 on the
+  way to 120 does not save 1.
+- **The inbox can be worked in batches.** In the inbox view, the selection bar offers 确认
+  (removes the inbox mark) and 丢弃 (archives and removes it) instead of complete/archive, which
+  do not mean anything for records nobody has confirmed yet.
 ## [0.5.0] — 2026-10-19
 
 The last two pieces of the automatic-capture plan: an external door, and somewhere for its
