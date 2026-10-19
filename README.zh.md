@@ -120,7 +120,7 @@ dsh plugin --profile web remove dsh-global-todo
 | `global_todo_capture` | **一次登记多条**（批量抓取）：用户说「抓一下待办」，或你一轮里发现好几件要跟进的；逐条校验，坏的那条只跳过它自己 |
 | `global_todo_list` | 按状态/标签/关键词查询，每条都带上加入时间 |
 | `global_todo_get` | 读一条的全文，含附件与最近一次派发 |
-| `global_todo_update` | 改任意字段；`""` 清空，`[]` 清空列表 |
+| `global_todo_update` | 改任意字段，包括 `status`（`archived` 归档而不删除）；`""` 清空，`[]` 清空列表 |
 | `global_todo_link` | 挂上或摘掉文档与地址 |
 | `global_todo_done` | 标完成 / 标回未完成 / 标进行中 |
 | `global_todo_reopen` | 把**被误标完成**的一条标回未完成（只做 `done` / `cancelled` → `open`）；本来就未完成的会被拒绝，动作按 agent 记进活动轨迹 |
@@ -143,6 +143,7 @@ dsh plugin --profile web remove dsh-global-todo
 | POST | `/api/global-todo/import` | `{ doc, mode?: replace\|merge }`——`replace` 是无损往返，`merge` 同 id 覆盖、新 id 追加（面板用的是这个） |
 | POST | `/api/global-todo/note` | `{ id, text }`（追加进展记录） |
 | POST | `/api/global-todo/capture` | `{ sessionId? }`（请当前对话把要跟进的事抓进清单） |
+| POST | `/api/global-todo/bulk` | `{ ids, status?, addTags?, removeTags? }`——一次改一整批；失效的 id 进 `unmatched`，不会让整批失败 |
 | GET | `/api/global-todo/health` | —（数据位置、统计、派发能力，以及**工具注册状态**与**自动收尾观察者是否挂上**——这两种失败是静默的，所以必须能查；还有 `metrics`：派发成功率、工具调用次数、清单增长；`autoCollect`：每个候选对话**为什么被问/没被问**、计次，以及设置文件是怎么加载进来的） |
 | POST | `/api/global-todo/create` | `{ title, description?, links?, tags?, priority?, dueAt? }` |
 | POST | `/api/global-todo/update` | `{ id, ...字段, by?: human\|agent }` |

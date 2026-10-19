@@ -134,6 +134,33 @@ test('a page cut by the limit reports what it matched', async () => {
   }
 })
 
+test('bulk status and tags apply per record and report stale ids', async () => {
+  const env = await harness()
+  try {
+    const first = await env.service.create({ title: 'first' })
+    const second = await env.service.create({ title: 'second' })
+    const tagged = await env.service.bulk([first.id, second.id, 't-missing'], { addTags: ['批量'] })
+    assert.equal(tagged.updated, 2)
+    assert.deepEqual(tagged.unmatched, ['t-missing'])
+    assert.deepEqual((await env.service.get(first.id)).tags, ['批量'])
+
+    const done = await env.service.bulk([first.id, second.id], { status: 'done' })
+    assert.equal(done.updated, 2)
+    assert.equal((await env.service.get(first.id)).status, 'done')
+
+    // Archive is a status, and an archived record leaves the active view without
+    // losing its history.
+    await env.service.bulk([second.id], { status: 'archived' })
+    assert.equal((await env.service.get(second.id)).status, 'archived')
+    const active = await env.service.list({ status: 'active' })
+    assert.ok(!active.todos.some((todo) => todo.id === second.id))
+    const archived = await env.service.list({ status: 'archived' })
+    assert.deepEqual(archived.todos.map((todo) => todo.id), [second.id])
+  } finally {
+    await env.cleanup()
+  }
+})
+
 test('update reports changed fields, and unknown ids are a typed not-found', async () => {
   const env = await harness()
   try {

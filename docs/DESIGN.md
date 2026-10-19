@@ -14,7 +14,7 @@ so the file stays readable, hand-editable and diffable.
 | `id` | string | `t-` + 8 hex; unique within the file |
 | `title` | string | 1–200 characters, trimmed |
 | `description` | string | up to 10 000 characters, Markdown-ish plain text |
-| `status` | `open` \| `doing` \| `done` \| `cancelled` | `doing` means someone is on it |
+| `status` | `open` \| `doing` \| `done` \| `cancelled` \| `archived` | `doing` means someone is on it; `archived` keeps the record out of the active view without deleting it |
 | `priority` | `low` \| `normal` \| `high` \| `urgent` | `urgent` was added in front of the first three; `normal` stays the default |
 | `dueAt` | ISO-8601 string \| `null` | canonicalised to UTC on write |
 | `tags` | string[] | ≤ 20, each ≤ 32, de-duplicated case-insensitively |

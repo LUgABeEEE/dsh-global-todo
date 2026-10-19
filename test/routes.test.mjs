@@ -95,6 +95,7 @@ test('the route surface is exactly the documented one', async () => {
       env.routes.map((route) => route.path.replace(`${ROUTE_BASE}/`, '')).sort(),
       [
         'assign',
+        'bulk',
         'capture',
         'create',
         'diagnostics',

@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] — 2026-10-19
+
+The half-finished half: the selection could only be assigned, and the only way to get a record out
+of the list was to delete it. Both are now actions of their own.
+
+- **A selection can be completed, archived and tagged.** `POST /bulk` applies one change across the
+  picked rows, and the selection bar gained 完成 / 归档 / a tag field. Each record still goes through
+  the same validation and activity trail as a single edit; an id that no longer exists is reported
+  in `unmatched` rather than failing the whole batch, because a selection is a human gesture and one
+  stale row must not discard the other nine.
+
+- **Archive instead of delete.** `archived` joined the statuses, so a finished-or-abandoned record can
+  leave the active view without losing its history. The panel offers 归档 / 取消归档 in the row menu,
+  the filter chip appears only once something is archived, and `global_todo_update` now accepts
+  `status` at all — before this, marking something in progress required the tool named
+  `global_todo_done`, which is exactly the kind of name/capability mismatch that makes a model misuse
+  a tool.
+
+Still deliberately out of scope for this release: the wide two-column detail layout, and the
+cross-machine conflict check — both deserve their own pass rather than riding along with a data-model
+change.
 ## [0.4.0] — 2026-10-19
 
 The first release after the plugin was listed in a community catalog. It is a reliability

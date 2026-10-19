@@ -194,7 +194,7 @@ Your list is not touched by install or uninstall: it lives outside the plugin, a
 | `global_todo_capture` | **Record a batch**: for 「抓一下待办」 or a turn that produced several follow-ups; each entry is validated on its own |
 | `global_todo_list` | Query by state, tag or text; every row carries its creation time |
 | `global_todo_get` | Read one item in full, including attachments and the last hand-off |
-| `global_todo_update` | Change any field of one item; `""` clears, `[]` empties |
+| `global_todo_update` | Change any field of one item, including `status` (`archived` archives without deleting); `""` clears, `[]` empties |
 | `global_todo_link` | Attach or detach documents and addresses |
 | `global_todo_done` | Mark done, back to open, or in progress |
 | `global_todo_reopen` | Put a **wrongly finished** item back (`done` / `cancelled` → `open`); refuses anything else, and the trail records it as the agent |
@@ -240,6 +240,7 @@ fence when that service is present, and by a strict loopback check otherwise.
 | GET | `/api/global-todo/export` | — (the store's own JSON document, for backup or migration) |
 | POST | `/api/global-todo/import` | `{ doc, mode?: replace\|merge }` — `replace` is an exact round trip, `merge` updates by id and appends (what the panel sends) |
 | POST | `/api/global-todo/capture` | `{ sessionId? }` — ask the current conversation to collect its follow-ups |
+| POST | `/api/global-todo/bulk` | `{ ids, status?, addTags?, removeTags? }` — one change across a selection; a stale id lands in `unmatched` instead of failing the batch |
 | GET | `/api/global-todo/health` | — (store location, counts, dispatch capabilities, plus **tool registration** and **whether the completion watcher attached** — both fail quietly, so both are reported — and `metrics`: dispatch success rate, agent tool calls, list growth; `autoCollect`: why each waiting conversation was or was not asked, counters, and how the settings file loaded) |
 | POST | `/api/global-todo/create` | `{ title, description?, links?, tags?, priority?, dueAt? }` |
 | POST | `/api/global-todo/update` | `{ id, ...fields, by?: human\|agent }` |

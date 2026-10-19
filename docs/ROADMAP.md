@@ -97,6 +97,11 @@ asked / succeeded / failed / dropped (`explainAutoCollect` in `lib/settings.js`,
 in `lib/index.js`). A failed question releases its booking and retries after 1 / 5 / 25 minutes
 (`retryDelayMs`), and an ask that never settles is bounded by a ten-second timeout. An unknown
 working directory is never asked, because the exemption cannot be checked against it.
+**Batch completion and tagging, and archive** — `/bulk` applies a status or tag change across a
+selection in one request; a stale id is reported in `unmatched` instead of discarding the batch
+(`bulk()` in `lib/service.js`, `runBulk` in `lib/client.js`). `archived` joined the statuses, so a
+record can leave the active view without being deleted; the filter chip only appears once something
+is archived, and `global_todo_update` finally accepts `status`.
 ### Partly landed
 
 - **Batch and multi-select** — the selection mode, its per-row markers and the batch
