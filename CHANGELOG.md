@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.5] — 2026-10-19
+
+Polishing where the side detail sits, now that it exists.
+
+- **The card is bracketed between the toolbar and the footer**, so it no longer covers the dir
+  controls or the store line; the toolbar keeps its full width and only the list gives way; the
+  card scrolls as one column instead of pushing the footer around. Same CSS-only mechanism, no
+  markup change.
 ## [0.4.4] — 2026-10-19
 
 Opening a todo on a wide screen used to push the list down and leave half the window unused.

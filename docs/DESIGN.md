@@ -61,8 +61,9 @@ $DSH_HOME/global-todo/todos.json     ← { version: 1, todos: [ … ] }
 
 Expanding a row inline is right on a narrow window and wrong on a wide one: the list jumps, the
 row you were reading slides away, and the rest of the screen sits empty. Above 1100px the open
-row's detail is lifted out of the flow into a card at the panel's right edge, and the list gets
-right padding equal to that card. This is a CSS-only override over unchanged markup
+row's detail is lifted out of the flow into a card bracketed between the toolbar and the footer
+at the panel's right edge; only the list gives way (the toolbar keeps full width), and the list gets
+padding equal to that card. This is a CSS-only override over unchanged markup
 (`.gt-root[data-wide-detail]` plus one media query) precisely so there is still exactly one
 detail implementation — a second render path for wide screens would drift from the inline one at
 the first field change.
