@@ -142,6 +142,40 @@ test('damaged rows are skipped while healthy rows survive', async () => {
   }
 })
 
+
+test('a change made outside this process is reported once, our own writes are not', async () => {
+  const space = await workspace()
+  try {
+    const store = createStore({ file: space.file })
+    const todo = { id: 't-1', title: 'A', createdAt: 1, updatedAt: 1, links: [], tags: [], activity: [] }
+    await store.update((doc) => {
+      doc.todos.push(todo)
+      return { next: doc.todos, result: null }
+    })
+    assert.equal((await store.describe()).externalChanges, 0, 'our own write is the baseline')
+    await store.update((doc) => {
+      doc.todos.push({ ...todo, id: 't-2', title: 'B' })
+      return { next: doc.todos, result: null }
+    })
+    assert.equal((await store.describe()).externalChanges, 0, 'a second own write is still not external')
+
+    // Another machine (or a sync client) writes the same file.
+    const doc = JSON.parse(await readFile(space.file, 'utf8'))
+    doc.todos.push({ ...todo, id: 't-3', title: 'C' })
+    await writeFile(space.file, `${JSON.stringify(doc, null, 2)}\n`)
+    assert.equal((await store.all()).length, 3)
+    const after = await store.describe()
+    assert.equal(after.externalChanges, 1)
+    assert.equal(typeof after.lastExternalAt, 'number')
+
+    // Polling again must not count the same change twice.
+    await store.all()
+    assert.equal((await store.describe()).externalChanges, 1)
+  } finally {
+    await space.cleanup()
+  }
+})
+
 test('an unwritable location reports itself instead of throwing raw errors', async () => {
   const space = await workspace()
   try {

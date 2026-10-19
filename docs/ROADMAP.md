@@ -106,6 +106,10 @@ is archived, and `global_todo_update` finally accepts `status`.
 `findDuplicate` (`lib/capture.js`): normalized title against live rows, a close paraphrase inside
 72 hours, and the same errand finished in the last 7 days. The decision is pure, the reason lands
 in `skipped[]`, and archived/cancelled rows deliberately do not block a new one.
+**A change made elsewhere is visible** — the store fingerprints the file on every read/write and
+counts a disagreement once (`externalChanges`, `lastExternalAt` in `lib/store.js`; surfaced by
+`/health.store`). The panel shows a one-line notice instead of letting a synced folder change the
+list silently.
 ### Partly landed
 
 - **Batch and multi-select** — the selection mode, its per-row markers and the batch

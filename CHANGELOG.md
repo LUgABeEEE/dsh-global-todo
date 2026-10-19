@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.3] — 2026-10-19
+
+The list is meant to live in a synced folder; a change from another machine should not be
+something you find out about a day later.
+
+- **A file changed elsewhere is counted and reported.** The store keeps an `mtimeMs:size`
+  fingerprint of the file as this process last read or wrote it; a read that disagrees with it
+  increments `externalChanges` (once per change, not once per poll) and records
+  `lastExternalAt`, both surfaced through `/health.store`. The panel turns a new count into a
+  one-line notice. Reads still trust a file that parses — this process cannot merge two writers'
+  intent — but the person can see that it happened.
 ## [0.4.2] — 2026-10-19
 
 Noise is the failure mode that matters for a list other people are asked to trust.

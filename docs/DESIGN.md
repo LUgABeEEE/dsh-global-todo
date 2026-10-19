@@ -57,6 +57,16 @@ $DSH_HOME/global-todo/todos.json     ← { version: 1, todos: [ … ] }
   version, and a future migration step would run before the first write, keeping the old
   file as a backup.
 
+## A shared file changes without asking
+
+The list is deliberately portable — a notes repo, a synced folder, a NAS — so another machine
+writing the same file is a normal event. It must not be a silent one either: the store keeps a
+`mtimeMs:size` fingerprint of the file as it last read or wrote it, and a read that disagrees
+means somebody else changed it. That is counted once per change (not once per poll, which would
+be noise) and exported through `describe()` as `externalChanges` / `lastExternalAt`; the panel
+turns a new count into a one-line notice. `store.read` still trusts a file that parses, because
+**this process** has no way to merge two writers' intent — but the person can now see that it
+happened instead of discovering it a day later.
 ## Attachments: references, not uploads
 
 An attachment is either an address (`http`/`https`) or an absolute path. Rules:
