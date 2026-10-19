@@ -1,3 +1,25 @@
+## [0.6.0] — 2026-10-20
+
+A design pass over the whole panel: one list, fewer competing controls, one type scale.
+
+- **The layout is a column, not a wrapping row.** `.gt-root`/`.gt-inner` gained `min-width: 0` so the
+  column shrinks with its slot instead of overflowing at 1280 and 1100; the header wraps its actions
+  and the toolbar is two semantic rows (filter/search above, context above the list). The working
+  directory, handoff target and browse controls move behind a single Context toggle, collapsed by
+  default.
+- **Five type sizes and one weight scale.** 20/28 panel title, 14/22 row title, 13/20 controls and
+  body, 12/18 metadata and section labels, 11.5 mono for paths. Buttons, inputs and tabs share a
+  28px control height; the settings card is a 340px floating inspector (fixed, mutually exclusive
+  with the detail card) instead of an in-flow block that pushed the list down.
+- **Rows read top-down.** The title opens the detail (the kebab remains as a redundant door); the
+  dispatch button is a quiet action instead of an outlined primary; metadata loses the origin path
+  and the stray separator (CSS-generated dots), and tags cap at four. Group-level priority hides
+  while the group is expanded, where every row already shows it.
+- **Copy and states.** Full-width colons no longer leak into the English UI, `1 items` is fixed,
+  priority chips say Urgent/High/Normal/Low instead of P-codes, the empty state has a primary
+  action, the error banner can be dismissed, and the reminder bar keeps its accent on a 2px edge
+  (amber text failed contrast). The footer's store path and version move into Settings → About.
+
 ## [0.5.3] — 2026-10-20
 
 Settings a person can reach, and reminders that behave like reminders.

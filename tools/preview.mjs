@@ -575,7 +575,7 @@ function checkRenderedPanel(html, detail, select) {
   // The live-session badge: the sample row is bound to a running conversation.
   expect(html.includes('gt-chip-ok'), 'the running-session badge lost its colour')
   expect(html.includes('会话在跑'), 'the running-session badge label is missing')
-  expect(html.includes('P0 紧急'), 'the P0 label is missing')
+  expect(html.includes('紧急'), 'the urgent label is missing')
   // Progress notes and dead attachments are user-facing facts, so they are asserted
   // rather than assumed to render. The row shows the count; the detail — which only
   // exists for the open row — carries the trail.
