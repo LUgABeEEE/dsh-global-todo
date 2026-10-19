@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2] — 2026-10-19
+
+No code change. `0.3.1` was published to npm by hand, so it carries no provenance attestation;
+this release republishes the same source tree through the repository's `publish.yml` workflow,
+which authenticates with OIDC (Trusted Publishing) instead of a token. From here on a release is
+a tag: npm signs the attestation that ties the tarball to this commit and this workflow.
+
 ## [0.3.1] — 2026-10-17
 
 A compatibility release rather than a feature one: DeepSeek Harness moved to `0.2.1-rc.2`, and
