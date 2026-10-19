@@ -360,6 +360,12 @@ docs/          DESIGN.md (data model and rejected alternatives), ROADMAP.md
 
 Contributions are welcome — read [CONTRIBUTING.md](CONTRIBUTING.md) first.
 
+## Feedback
+
+Questions, bug reports and ideas go to [Discussions](https://github.com/LUgABeEEE/dsh-global-todo/discussions).
+When reporting a bug, include the DSH version, the plugin version from the panel footer, your OS and
+the steps that reproduce it; a screenshot of the notice is worth more than a paragraph. Security
+issues go through [SECURITY.md](SECURITY.md) instead, not the discussion board.
 ## Security
 
 The HTTP surface is local-only, the list is a local file, and no credential is ever stored.

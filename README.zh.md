@@ -251,6 +251,11 @@ docs/          DESIGN.md（数据模型与取舍）、ROADMAP.md
 
 欢迎贡献，先读 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
+## 反馈
+
+问题、bug 和想法都发到 [Discussions](https://github.com/LUgABeEEE/dsh-global-todo/discussions)。
+报 bug 时带上 DSH 版本、面板页脚里的插件版本、系统，以及能复现的步骤；提示语截图比一段描述更有用。
+安全问题请走 [SECURITY.md](SECURITY.md)，不要发在讨论区。
 ## 安全
 
 HTTP 接口只服务本机，清单是本地文件，任何凭据都不会被存储。
