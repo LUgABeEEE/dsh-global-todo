@@ -157,6 +157,13 @@ rest of the batch — a partial success is reported as a partial success, never 
 The ceiling: **capture ends at the list.** Nothing the plugin does starts work by itself;
 "hand it to an agent" is always a human click.
 
+
+The gate has to be narrower than "remember things": a capture run that re-registers what the list
+already holds is how a trusted list becomes noise. So an item is refused, with the reason on the
+record, when its normalized title matches a live row, when a close paraphrase (Dice over character
+bigrams, 0.8) appears in the last 72 hours, or when the same errand was finished within 7 days.
+Archived and cancelled rows are history a person set aside and must not block a new one; the rules
+are pure and live in `lib/capture.js` so they can be tested without a store.
 ## A fallback must never quietly outrank the real rule
 
 The routes are fenced: the Host's connection service decides (`isTrustedApiRequest` against

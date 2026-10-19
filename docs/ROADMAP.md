@@ -102,6 +102,10 @@ selection in one request; a stale id is reported in `unmatched` instead of disca
 (`bulk()` in `lib/service.js`, `runBulk` in `lib/client.js`). `archived` joined the statuses, so a
 record can leave the active view without being deleted; the filter chip only appears once something
 is archived, and `global_todo_update` finally accepts `status`.
+**A capture gate, not a title comparison** — before `global_todo_capture` writes an item it asks
+`findDuplicate` (`lib/capture.js`): normalized title against live rows, a close paraphrase inside
+72 hours, and the same errand finished in the last 7 days. The decision is pure, the reason lands
+in `skipped[]`, and archived/cancelled rows deliberately do not block a new one.
 ### Partly landed
 
 - **Batch and multi-select** — the selection mode, its per-row markers and the batch

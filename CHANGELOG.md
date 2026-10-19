@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.2] — 2026-10-19
+
+Noise is the failure mode that matters for a list other people are asked to trust.
+
+- **Capture decides with a gate, not a title comparison.** The old check compared normalized
+  titles exactly against active rows, which missed the ordinary case — same errand, different
+  wording — and happily re-admitted something finished yesterday. `lib/capture.js` now refuses an
+  item when its normalized title matches a live row, when a close paraphrase (Dice over character
+  bigrams, 0.8) appears within 72 hours, or when the same errand was finished in the last 7 days.
+  Archived and cancelled rows are set-aside history and do not block a new one; every refusal
+  carries its reason in `skipped[]`.
 ## [0.4.1] — 2026-10-19
 
 The half-finished half: the selection could only be assigned, and the only way to get a record out

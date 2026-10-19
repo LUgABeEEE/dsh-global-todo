@@ -227,6 +227,12 @@ produces noise, and a noisy list is worse than an empty one:
 The boundary: it **records, it never starts work**. The list belongs to the human, and
 starting a task stays a human decision (see the non-goals in [ROADMAP](docs/ROADMAP.md)).
 
+
+Capture is not allowed to become noise. Before an item is written, the same normalized title
+(full-width, case, spacing and punctuation folded away), a close paraphrase within the last 72
+hours (Dice similarity over character bigrams, 0.8), and the same errand finished in the last 7
+days are all refused with a reason on the record; archived and cancelled rows do not block a
+new one. The rules live in `lib/capture.js` and are tested on their own.
 ### HTTP API
 
 The panel talks to the host over these routes. They are fenced by the host connection
