@@ -15,6 +15,13 @@ test('only active, past-due, not-yet-announced records are reminders', () => {
   assert.equal(dueReminders([{ ...past, id: 't-1', dueAt: null }], { now: NOW }).length, 0)
 })
 
+test('a lead time announces before the deadline', () => {
+  const todo = { ...base, id: 't-lead' }
+  const before = Date.parse('2026-10-19T09:55:00Z')
+  assert.equal(dueReminders([todo], { now: before }).length, 0)
+  assert.equal(dueReminders([todo], { now: before, leadMs: 10 * 60 * 1000 }).length, 1)
+})
+
 test('announced reminders stay quiet until the deadline changes', () => {
   const todo = { ...base, id: 't-1' }
   assert.equal(dueReminders([todo], { now: NOW, reminded: { 't-1': base.dueAt } }).length, 0)

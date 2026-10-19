@@ -1,3 +1,18 @@
+## [0.5.3] — 2026-10-20
+
+Settings a person can reach, and reminders that behave like reminders.
+
+- **A settings popover.** Reminders and the external ingest door were both API-only; the header
+  now opens a small panel for the reminder switch, the lead time, the ingest switch, the token
+  (generate a fresh one in place; leave blank to keep the current) and the inbox confidence
+  threshold. The token still never comes back from the host.
+- **Reminders gained a lead time and a switch.** remindersEnabled and reminderLeadMinutes live in
+  settings; the host sweep reads them each tick, announces at dueAt minus lead, and clears the due
+  list when reminders are off.
+- **Browser notifications are opt-in.** When the panel is open and a new deadline becomes due, it
+  fires a system notification if permission was granted; otherwise the due bar offers to ask for
+  permission. The notification is a bonus — the bar is the source of truth.
+
 # Changelog
 
 All notable changes to this project are documented in this file.
