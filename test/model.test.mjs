@@ -155,7 +155,7 @@ test('counts summarise a list', () => {
   ]
   setStatus(todos[1], 'done', { now: NOW })
   const summary = counts(todos, NOW)
-  assert.deepEqual(summary, { total: 2, open: 1, doing: 0, done: 1, cancelled: 0, archived: 0, overdue: 1 })
+  assert.deepEqual(summary, { total: 2, open: 1, doing: 0, done: 1, cancelled: 0, archived: 0, overdue: 1, inbox: 0 })
 })
 
 test('loading tolerates damage: bad rows and bad attachments are dropped, the rest survives', () => {

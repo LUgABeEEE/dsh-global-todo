@@ -79,6 +79,16 @@ be noise) and exported through `describe()` as `externalChanges` / `lastExternal
 turns a new count into a one-line notice. `store.read` still trusts a file that parses, because
 **this process** has no way to merge two writers' intent — but the person can now see that it
 happened instead of discovering it a day later.
+## An external door with a waiting room
+
+Ingest is the only entrance a person did not open in a conversation, so it is closed by default:
+`ingestEnabled` must be true and `ingestToken` must match (compared over SHA-256 digests, in
+constant time), and `/health` reports only `tokenSet`. Every item names a source kind and a
+confidence; a kind outside the whitelist is refused rather than filed as "unknown". Below
+`ingestConfirmBelow` the record is created with the `inbox` tag — it exists, but it is not on the
+list until a person confirms it. Confirming removes the tag, discarding archives the record, and a
+weekly sweep archives what nobody touched in seven days. Provenance survives as a `source:<kind>`
+tag, because "where did this come from" is the first question a surprised person asks.
 ## Attachments: references, not uploads
 
 An attachment is either an address (`http`/`https`) or an absolute path. Rules:

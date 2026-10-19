@@ -77,6 +77,7 @@ async function harness(options = {}) {
     ...(options.rootCtx === undefined ? {} : { rootCtx: options.rootCtx }),
     ...(options.diagnostics === undefined ? {} : { diagnostics: options.diagnostics }),
     ...(options.logger === undefined ? {} : { logger: options.logger }),
+    ...(options.settings === undefined ? {} : { settings: options.settings }),
   })
   const call = async (suffix, request) => {
     const route = routes.find((candidate) => candidate.path === `${ROUTE_BASE}${suffix}`)
@@ -87,6 +88,33 @@ async function harness(options = {}) {
   }
   return { dir, service, routes, call, dispatched, cleanup: () => rm(dir, { recursive: true, force: true }) }
 }
+
+
+test('ingest is closed until enabled, refuses a wrong token, and writes through the service', async () => {
+  const state = { ingestEnabled: false, ingestToken: 'secret-token-1234567890', ingestSources: ['mail'], ingestConfirmBelow: 0.8 }
+  const env = await harness({ settings: { get: () => state } })
+  try {
+    const disabled = await env.call('/ingest', makeReq({ method: 'POST', url: `${ROUTE_BASE}/ingest`, body: JSON.stringify({ items: [] }) }))
+    assert.equal(disabled.statusCode, 403)
+
+    state.ingestEnabled = true
+    const wrong = await env.call('/ingest', makeReq({ method: 'POST', url: `${ROUTE_BASE}/ingest`, headers: { host: '127.0.0.1:3080', authorization: 'Bearer nope' }, body: JSON.stringify({ items: [] }) }))
+    assert.equal(wrong.statusCode, 401)
+
+    const items = [{ title: '来自邮件的事', source: { kind: 'mail' }, confidence: 0.4 }]
+    const dry = await env.call('/ingest', makeReq({ method: 'POST', url: `${ROUTE_BASE}/ingest`, headers: { host: '127.0.0.1:3080', authorization: 'Bearer secret-token-1234567890' }, body: JSON.stringify({ items, dryRun: true }) }))
+    assert.equal(dry.statusCode, 200)
+    assert.equal(dry.json().data.preview.length, 1)
+    assert.equal((await env.service.list({ status: 'all' })).todos.length, 0)
+
+    const real = await env.call('/ingest', makeReq({ method: 'POST', url: `${ROUTE_BASE}/ingest`, headers: { host: '127.0.0.1:3080', authorization: 'Bearer secret-token-1234567890' }, body: JSON.stringify({ items }) }))
+    assert.equal(real.statusCode, 200)
+    assert.equal(real.json().data.accepted, 1)
+    assert.equal(real.json().data.created[0].tags.includes('inbox'), true)
+  } finally {
+    await env.cleanup()
+  }
+})
 
 test('the route surface is exactly the documented one', async () => {
   const env = await harness()
@@ -105,6 +133,7 @@ test('the route surface is exactly the documented one', async () => {
         'get',
         'health',
         'import',
+        'ingest',
         'link',
         'list',
         'note',

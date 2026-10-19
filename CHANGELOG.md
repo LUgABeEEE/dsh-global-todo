@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-10-19
+
+The last two pieces of the automatic-capture plan: an external door, and somewhere for its
+uncertain items to wait.
+
+- **`POST /ingest` is the only external entrance.** It is closed until `ingestEnabled` is true
+  and a token is set; the token is compared in constant time, never returned by `/health`, and
+  the settings file is chmod 600 because it may hold it. Every item must name a source
+  (`mail` / `notification` / `announcement`) and a confidence, so nothing anonymous lands in the
+  list.
+- **Low-confidence items wait in an inbox instead of joining the list.** Below
+  `ingestConfirmBelow` (default 0.8) a record is tagged `inbox`; the panel shows an inbox filter
+  chip, a 待确认 badge, and 确认 / 丢弃 in the row menu. Confirming only removes the mark;
+  discarding archives it. A weekly sweep archives inbox records nobody confirmed in seven days,
+  so the inbox cannot become a second list.
+- Items still pass the same dedupe gate as `global_todo_capture`; provenance stays visible as a
+  `source:<kind>` tag after confirmation.
 ## [0.4.7] — 2026-10-19
 
 Verified against the running GUI this time, with measured numbers instead of arithmetic.

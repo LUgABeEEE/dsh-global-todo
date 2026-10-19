@@ -113,6 +113,9 @@ list silently.
 **Side detail on wide windows** — above 1100px the open row's detail becomes a card at the
 panel's right edge instead of pushing the list down (CSS-only over the same markup; one detail
 implementation), while narrow windows keep the inline expansion.
+**External ingest with an inbox** — `POST /ingest` takes source-tagged, confidence-scored items
+behind a Bearer token; low-confidence records wait in an `inbox` tag view with 确认 / 丢弃 and a
+seven-day sweep, so an external source cannot silently fill the list.
 ### Partly landed
 
 - **Batch and multi-select** — the selection mode, its per-row markers and the batch
