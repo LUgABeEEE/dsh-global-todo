@@ -20,6 +20,11 @@ permissions:
 
 jobs:
   publish:
+    # Only this public repository owns the npm package. The private mirror
+    # (dsh-global-todo-private) shares package.json but holds unsanitized
+    # history; npm's trusted publisher is bound here, so a publish from the
+    # mirror would 404 — and must never be allowed to succeed.
+    if: github.repository == 'LUgABeEEE/dsh-global-todo'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
