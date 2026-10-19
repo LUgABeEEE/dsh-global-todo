@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **The contribution terms are written down.** MIT in, MIT out — no CLA, no copyright assignment —
+  so a future patch cannot quietly stay its author's property and block a license change years
+  later. The READMEs also say plainly that this is a community plugin, not a DeepSeek project.
+
 ## [0.3.2] — 2026-10-19
 
 No code change. `0.3.1` was published to npm by hand, so it carries no provenance attestation;

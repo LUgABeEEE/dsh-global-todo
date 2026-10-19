@@ -342,3 +342,6 @@ Please report vulnerabilities as described in [SECURITY.md](SECURITY.md).
 ## License
 
 [MIT](LICENSE) © 2026 LUgABeEEE
+
+A community plugin, not a DeepSeek project: the `dsh` prefix marks the ecosystem it plugs into, not
+an endorsement. "DeepSeek" and "DeepSeek Harness" remain their owners' marks.

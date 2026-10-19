@@ -242,3 +242,5 @@ HTTP 接口只服务本机，清单是本地文件，任何凭据都不会被存
 ## 许可
 
 [MIT](LICENSE) © 2026 LUgABeEEE
+
+社区插件，不是 DeepSeek 官方项目：包名里的 `dsh` 只表示它接入的生态，不代表任何背书；「DeepSeek」与「DeepSeek Harness」的相关权利归其所有者。

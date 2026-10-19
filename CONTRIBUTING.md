@@ -56,6 +56,20 @@ Node 22.19 or newer is all you need.
 - **No secrets, ever.** The store is local and the plugin stores no credentials. The URL
   rule that refuses `user:password@` exists for this reason — do not relax it.
 
+## Licensing of contributions
+
+The plugin is [MIT](LICENSE)-licensed, and contributions arrive under the same terms — no CLA, no
+copyright assignment. Opening a pull request is the agreement. If that is not something you can do
+(an employer owns your work, say), say so in the PR before writing much code and we will work out
+the shape of the contribution first.
+
+Why this is written down rather than assumed: without a statement, a patch stays the property of
+whoever wrote it, and one unrelated contribution would be enough to block the project from ever
+changing its license without tracking that person down. Inbound = outbound, said once, keeps that
+door closed.
+
+`Signed-off-by` is welcome but not required.
+
 ## Releasing
 
 Facts checked on 2026-10-14, so nobody has to re-derive them:
