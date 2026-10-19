@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.2] — 2026-10-19
+
+Three things the leaders in this category do that we did not.
+
+- **Deadlines now say something.** A 30-second host sweep finds active records whose `dueAt` has
+  passed and that were not announced yet; the panel shows a due bar, clicking an item opens it,
+  and acknowledging clears it. The announced set lives in memory, so a restart re-announces an
+  unacknowledged deadline once — the offline catch-up a reminder should have. A postponed
+  deadline is a new reminder; an announced one stays quiet.
+- **Readable numbers: `#42`.** Records get a stable, human-facing sequence number assigned on
+  create and backfilled in creation order for legacy files; deleting #1 does not renumber #2. It
+  shows in the panel meta, in tool output and in the list line, so "把 #42 交给 Agent" means the
+  same thing to both sides.
+- **Import previews before writing.** The panel runs a dry run first and shows 新增/更新 counts
+  with a confirm button; a wrong file can no longer overwrite by mis-click. The preview is also
+  available as `dryRun` on the route.
 ## [0.5.1] — 2026-10-19
 
 The last two loose ends from the D4 audit.

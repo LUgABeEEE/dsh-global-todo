@@ -1,6 +1,6 @@
 {
   "name": "dsh-global-todo",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "icon": "./docs/icon.svg",
   "description": "Global, cross-session todos for DeepSeek Harness: one list owned by the human and the agent together, with creation time, attached documents and links, and one-click hand-off to an agent session. 全局待办：跨会话一份清单，记录加入时间，可挂文档与地址，可一键交给 Agent 继续干。",
   "type": "module",

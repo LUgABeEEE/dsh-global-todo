@@ -161,6 +161,67 @@ test('bulk status and tags apply per record and report stale ids', async () => {
   }
 })
 
+test('readable numbers are stable across deletes and backfilled for legacy files', async () => {
+  const env = await harness()
+  try {
+    const first = await env.service.create({ title: 'first' })
+    const second = await env.service.create({ title: 'second' })
+    assert.equal(first.seq, 1)
+    assert.equal(second.seq, 2)
+    await env.service.remove(first.id)
+    // Deleting #1 must not renumber #2.
+    assert.equal((await env.service.get(second.id)).seq, 2)
+    const third = await env.service.create({ title: 'third' })
+    assert.equal(third.seq, 3)
+  } finally {
+    await env.cleanup()
+  }
+})
+
+test('a legacy file without numbers is numbered in creation order on read', async () => {
+  const env = await harness()
+  try {
+    const { writeFile } = await import('node:fs/promises')
+    const path = await import('node:path')
+    const legacy = {
+      version: 1,
+      todos: [
+        { id: 't-b', title: 'B', createdAt: 2000, updatedAt: 2000, links: [], tags: [], activity: [] },
+        { id: 't-a', title: 'A', createdAt: 1000, updatedAt: 1000, links: [], tags: [], activity: [] },
+      ],
+    }
+    await writeFile(path.join(env.dir, 'todos.json'), JSON.stringify(legacy))
+    // Re-open the same file through a new store so the read happens fresh.
+    const { createStore } = await import('../lib/store.js')
+    const store = createStore({ file: path.join(env.dir, 'todos.json') })
+    const todos = await store.all()
+    assert.deepEqual(todos.map((todo) => [todo.id, todo.seq]), [['t-b', 2], ['t-a', 1]])
+  } finally {
+    await env.cleanup()
+  }
+})
+
+test('an import preview reports new and updated records without writing', async () => {
+  const env = await harness()
+  try {
+    const existing = await env.service.create({ title: 'existing' })
+    const doc = {
+      todos: [
+        { ...existing, title: 'existing (edited)' },
+        { id: 't-new', title: 'new', createdAt: 1, updatedAt: 1, links: [], tags: [], activity: [] },
+      ],
+    }
+    const preview = await env.service.importDocument(doc, { mode: 'merge', dryRun: true })
+    assert.equal(preview.dryRun, true)
+    assert.equal(preview.wouldCreate, 1)
+    assert.equal(preview.wouldUpdate, 1)
+    assert.equal((await env.service.list({ status: 'all' })).todos.length, 1)
+    assert.equal((await env.service.get(existing.id)).title, 'existing')
+  } finally {
+    await env.cleanup()
+  }
+})
+
 test('update reports changed fields, and unknown ids are a typed not-found', async () => {
   const env = await harness()
   try {

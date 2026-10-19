@@ -140,7 +140,8 @@ dsh plugin --profile web remove dsh-global-todo
 | GET | `/api/global-todo/dirs` | `path?`——列子目录，供面板内置的目录浏览器使用（宿主自己的选择器在时会优先） |
 | GET | `/api/global-todo/get` | `id` |
 | GET | `/api/global-todo/export` | ——（存储用的那份 JSON 文档，用于备份或迁移） |
-| POST | `/api/global-todo/import` | `{ doc, mode?: replace\|merge }`——`replace` 是无损往返，`merge` 同 id 覆盖、新 id 追加（面板用的是这个） |
+| POST | `/api/global-todo/import` | `{ doc, mode?: replace\|merge, dryRun? }`——`replace` 是无损往返，`merge` 同 id 覆盖、新 id 追加（面板用的是这个）；`dryRun` 只返回 `wouldCreate` / `wouldUpdate`，不落盘 |
+| POST | `/api/global-todo/reminders/ack` | `{ ids }`——这些已到期的提醒不再列出来 |
 | POST | `/api/global-todo/note` | `{ id, text }`（追加进展记录） |
 | POST | `/api/global-todo/capture` | `{ sessionId? }`（请当前对话把要跟进的事抓进清单） |
 | POST | `/api/global-todo/bulk` | `{ ids, status?, addTags?, removeTags? }`——一次改一整批；失效的 id 进 `unmatched`，不会让整批失败 |

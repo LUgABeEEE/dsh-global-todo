@@ -244,7 +244,8 @@ fence when that service is present, and by a strict loopback check otherwise.
 | GET | `/api/global-todo/dirs` | `path?` — list subdirectories for the panel's built-in folder picker (the shell's own picker is preferred when mounted) |
 | GET | `/api/global-todo/get` | `id` |
 | GET | `/api/global-todo/export` | — (the store's own JSON document, for backup or migration) |
-| POST | `/api/global-todo/import` | `{ doc, mode?: replace\|merge }` — `replace` is an exact round trip, `merge` updates by id and appends (what the panel sends) |
+| POST | `/api/global-todo/import` | `{ doc, mode?: replace\|merge, dryRun? }` — `replace` is an exact round trip, `merge` updates by id and appends (what the panel sends); `dryRun` returns `wouldCreate` / `wouldUpdate` and writes nothing |
+| POST | `/api/global-todo/reminders/ack` | `{ ids }` — stop listing these passed deadlines as due |
 | POST | `/api/global-todo/capture` | `{ sessionId? }` — ask the current conversation to collect its follow-ups |
 | POST | `/api/global-todo/bulk` | `{ ids, status?, addTags?, removeTags? }` — one change across a selection; a stale id lands in `unmatched` instead of failing the batch |
 | POST | `/api/global-todo/ingest` | `{ items: [{ title, source: { kind }, confidence }], dryRun? }` with `Authorization: Bearer <settings.ingestToken>` — external items; below `ingestConfirmBelow` they wait in the inbox |
