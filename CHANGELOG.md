@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.7] — 2026-10-19
+
+Verified against the running GUI this time, with measured numbers instead of arithmetic.
+
+- **The card no longer overlaps the list by its own padding.** `width: 360px` was applied
+  content-box, so the card was 394px wide while the list reserved 380px — a 14px overlap that
+  only showed up in a live box measurement. It is `box-sizing: border-box` now (990–1350 against
+  a list ending at 970 at 1440×900).
+- **Its vertical brackets come from the list, not the panel.** The panel fills the window, so
+  measuring its bottom put the card over the footer; the anchors now come from `.gt-groups`
+  (top + 10) and its bottom (+ 8 gap above the footer).
 ## [0.4.6] — 2026-10-19
 
 The card existed; where it landed depended on a viewport assumption that the real shell does not
