@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.6] — 2026-10-19
+
+The card existed; where it landed depended on a viewport assumption that the real shell does not
+honour.
+
+- **The detail card is measured from the panel, not from `50vw`.** In the GUI the plugin slot does
+  not fill the window, so the viewport-derived right edge put the card on top of the list; the card
+  now measures `.gt-inner` on open, on window resize and on a slot resize (sidebar collapse), and
+  positions itself from that rectangle. The CSS fallback (used by the static previews, which are
+  server-rendered and run no effects) assumes the centred 980px column.
 ## [0.4.5] — 2026-10-19
 
 Polishing where the side detail sits, now that it exists.

@@ -63,7 +63,9 @@ Expanding a row inline is right on a narrow window and wrong on a wide one: the 
 row you were reading slides away, and the rest of the screen sits empty. Above 1100px the open
 row's detail is lifted out of the flow into a card bracketed between the toolbar and the footer
 at the panel's right edge; only the list gives way (the toolbar keeps full width), and the list gets
-padding equal to that card. This is a CSS-only override over unchanged markup
+padding equal to that card. The card's offsets are measured from the panel's own column on mount
+and on resize — the slot does not always fill the window, so a viewport-derived offset put the card
+over the list inside the real GUI. This is a CSS-only override over unchanged markup
 (`.gt-root[data-wide-detail]` plus one media query) precisely so there is still exactly one
 detail implementation — a second render path for wide screens would drift from the inline one at
 the first field change.
