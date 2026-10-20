@@ -18,7 +18,7 @@ Three things it does that a session-local plan cannot:
 dsh plugin add dsh-global-todo
 ```
 
-[中文说明](README.zh.md) · [5-minute quickstart](docs/QUICKSTART.md) · [FAQ](docs/FAQ.md) · [Every state has a baseline image](#screenshots) · [Design notes](docs/DESIGN.md)
+[在线主页](https://lugabeeee.github.io/dsh-global-todo/) · [中文说明](README.zh.md) · [5-minute quickstart](docs/QUICKSTART.md) · [FAQ](docs/FAQ.md) · [Every state has a baseline image](#screenshots) · [Design notes](docs/DESIGN.md)
 
 ---
 

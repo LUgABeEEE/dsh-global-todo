@@ -1,3 +1,12 @@
+## [0.11.1] — 2026-10-20
+
+Two small things the release exposed.
+
+- **`homepage` points at the live page** (GitHub Pages) instead of the README anchor, so npm
+  visitors land on the tour rather than a wall of Markdown.
+- **Both READMEs link the page**; the Chinese one also gained the quickstart/FAQ links it was
+  missing.
+
 ## [0.11.0] — 2026-10-20
 
 Documentation and demo, treated as part of the product.
