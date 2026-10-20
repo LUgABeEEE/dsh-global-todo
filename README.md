@@ -18,7 +18,7 @@ Three things it does that a session-local plan cannot:
 dsh plugin add dsh-global-todo
 ```
 
-[中文说明](README.zh.md) · [Every state has a baseline image](#screenshots) · [Design notes](docs/DESIGN.md)
+[中文说明](README.zh.md) · [5-minute quickstart](docs/QUICKSTART.md) · [FAQ](docs/FAQ.md) · [Every state has a baseline image](#screenshots) · [Design notes](docs/DESIGN.md)
 
 ---
 
@@ -38,6 +38,93 @@ one record:
 | Context | title + state | description + **documents and addresses** |
 | Hand-off | — | **one click: reuse the bound conversation or open a session** |
 | Storage | session event log | one JSON file you can `cat`, edit, diff and back up |
+
+## What 0.9 and 0.10 added (and the two just before)
+
+Six surfaces these READMEs had never explained. Session read-back and evidence came in 0.9;
+Markdown and the weekly report in 0.10; steps in 0.8 and the review mark in 0.7, which until now
+only existed in the changelog. Each changes what a record can carry, or what you can do with it
+after the fact.
+
+### Steps: a plan inside the todo
+
+A todo can carry up to 20 steps of 200 characters (`LIMITS` in `lib/model.js`). A step is
+`{ text, done }` — a line inside one unit of work, not a subtask with its own id and status.
+
+- **Add them** in "More fields" → Steps, one per line.
+- **Tick them** in the detail panel; the row shows `steps 2/5`.
+- **Hand off** and the dispatch prompt numbers them, prefixing finished ones with `[已完成]`.
+- **Export** and Markdown writes them as nested `- [ ]` lines; import reads them back.
+
+### Evidence: the sentence it came from
+
+`evidence` is the sentence a captured todo came from, quoted verbatim, up to 300 characters.
+`global_todo_capture` asks the model for it, `global_todo_add` accepts it, and the detail panel
+shows it as a blockquote under **In the author's words**. A todo you typed yourself has none.
+
+The field exists for one reason: a capture without its source reads as an opinion later. It is
+also in the Markdown export (`原话:`).
+
+### Session read-back
+
+A hand-off starts work in another conversation, so the detail panel answers "what did it say"
+without switching away. `GET /api/global-todo/session?id=` returns `alive`, `dir` and a `tail`
+of the last assistant message; the panel shows **Session read-back** with running / dormant, the
+last sentence, and a button that opens that conversation.
+
+The tail is bounded and in memory: 200 conversations, 400 characters each, filled from every
+`assistant/message`. Nothing is written to disk, so a Host restart forgets it. A missing tail is
+normal — this process has not seen that conversation speak.
+
+### Review: "done" is a claim
+
+When an agent finishes (`global_todo_done`, or the watcher on a clean turn), the record becomes
+done **and** carries `review: { pending: true }`. The row gets a **Needs review** badge and the
+header a **Review** chip with the count.
+
+| Answer | Effect |
+|---|---|
+| **Confirm done** | stays done, the mark is dropped, the activity trail records who confirmed |
+| **Send back** | back to `open`; `doneAt` and the completion record are cleared; a `reopened` activity entry is added |
+
+Both answers are recorded as the person's action. Sending back deletes nothing: title,
+description, steps, attachments and progress notes stay.
+
+### Markdown in and out
+
+The JSON export is the round-trip format. Markdown is the one you read, diff and edit by hand:
+
+```text
+- [ ] 标题
+      优先级: 高 · 截止: 2026-10-21T18:00 · 标签: 发布, 文档
+      原话: …
+      描述: 第一行
+      - [x] 一步
+```
+
+| Direction | Where | Behaviour |
+|---|---|---|
+| Out | **More actions → Export Markdown**, or `GET /export?format=md` | Grouped 未完成 / 已完成 / 已归档; metadata indented under each task |
+| In | **More actions → Import** (a `.md` file), or `POST /import { markdown }` | Creates new todos through `create`; Markdown has no ids, so it never overwrites an existing record |
+
+Tolerant by design: unknown lines are ignored, an unparseable date is dropped, and a file with no
+`- [ ]` line is refused with a reason. Field labels are Chinese (`优先级 / 截止 / 标签 / 原话 /
+描述 / 附件 / #`), and import reads the same set.
+
+### Weekly report
+
+**More actions → This week** (`GET /report?days=7`) answers "what moved, and did any of it land
+in code". Everything is derived from completion records; nothing is stored.
+
+| Field | Meaning |
+|---|---|
+| `finished` | completions in the window, newest first, with the actor and the summary |
+| `sessions` | distinct conversations those completions came from |
+| `created` | todos added in the window |
+| `pendingReview` | done items still waiting for an answer |
+| `files` | file artifacts touched, most frequent first — 12 listed, `fileCount` total |
+
+`days` above 90 is clamped to 90; a missing or non-positive value falls back to 7.
 
 ## Screenshots
 
@@ -63,6 +150,9 @@ These are produced by `npm run screenshots` (which chains `npm run preview`): th
 half is rendered to static HTML with no Host and no dependencies, then photographed at 1280×720
 into `docs/screenshots/`. Playwright is not a dependency — the tool borrows the copy a DSH
 profile already installed, or whatever `DSH_PLAYWRIGHT` points at.
+
+What each file shows, and when it is regenerated, is indexed in
+[docs/screenshots/README.md](docs/screenshots/README.md).
 
 ## Requirements
 
@@ -90,7 +180,7 @@ The plugin is a Loader row, not a hot-loaded script: **restart the host** (`dsh 
 after installing, then refresh the page. A "待办 / Todos" entry appears in the sidebar.
 
 The npm package is the source of truth. A community catalog can lag behind it or point at an
-older release; pin the version you want (`dsh plugin --profile web add dsh-global-todo@0.4.0`)
+older release; pin the version you want (`dsh plugin --profile web add dsh-global-todo@0.10.0`)
 when it matters.
 
 To roll back:
@@ -118,8 +208,8 @@ Your list is not touched by install or uninstall: it lives outside the plugin, a
   documents and addresses (with 打开 / 复制路径 on each); read the activity trail.
 - **Undo a delete** — deleting keeps the record for eight seconds and offers 撤销, which
   restores it verbatim: same id, same creation time, same attachments.
-- **Keyboard** — `/` focuses search, `n` focuses the new-todo field, `Esc` collapses the
-  open detail. Row actions appear on hover or keyboard focus.
+- **Keyboard** — `/` focuses search, `n` focuses the new-todo field while the add form is
+  open, `Esc` collapses the open detail. Row actions appear on hover or keyboard focus.
 - **Reachable from the LAN and from a tunnel** — the routes defer to the Host's connection fence
   (which honours `--trusted-host`); the plugin's own loopback check is only the fallback for a
   Host without that service. `/health` reports `fence` so you can see which one is in force.
@@ -253,12 +343,12 @@ produces noise, and a noisy list is worse than an empty one:
 The boundary: it **records, it never starts work**. The list belongs to the human, and
 starting a task stays a human decision (see the non-goals in [ROADMAP](docs/ROADMAP.md)).
 
-
 Capture is not allowed to become noise. Before an item is written, the same normalized title
 (full-width, case, spacing and punctuation folded away), a close paraphrase within the last 72
 hours (Dice similarity over character bigrams, 0.8), and the same errand finished in the last 7
 days are all refused with a reason on the record; archived and cancelled rows do not block a
 new one. The rules live in `lib/capture.js` and are tested on their own.
+
 ### HTTP API
 
 The panel talks to the host over these routes. They are fenced by the host connection
@@ -272,6 +362,7 @@ fence when that service is present, and by a strict loopback check otherwise.
 | GET | `/api/global-todo/export` | — (the store's own JSON document; `?format=md` gives a Markdown task list) |
 | POST | `/api/global-todo/import` | `{ doc, mode?: replace\|merge, dryRun? }` — `replace` is an exact round trip, `merge` updates by id and appends (what the panel sends); `dryRun` returns `wouldCreate` / `wouldUpdate` and writes nothing |
 | POST | `/api/global-todo/reminders/ack` | `{ ids }` — stop listing these passed deadlines as due |
+| POST | `/api/global-todo/note` | `{ id, text }` — append a progress note |
 | POST | `/api/global-todo/capture` | `{ sessionId? }` — ask the current conversation to collect its follow-ups |
 | POST | `/api/global-todo/bulk` | `{ ids, status?, addTags?, removeTags? }` — one change across a selection; a stale id lands in `unmatched` instead of failing the batch |
 | POST | `/api/global-todo/ingest` | `{ items: [{ title, source: { kind }, confidence }], dryRun? }` with `Authorization: Bearer <settings.ingestToken>` — external items; below `ingestConfirmBelow` they wait in the inbox |
@@ -349,7 +440,7 @@ and [docs/ROADMAP.md](docs/ROADMAP.md) for what could come next.
 npm run check     # parse every file, assert the shipping shape, and — when a DSH
                   # profile is present — validate every tool schema against the
                   # Host's own validator
-npm test          # 100+ unit, contract and bundle tests, zero dependencies
+npm test          # 257 unit, contract and bundle tests, zero dependencies
 npm run verify    # both
 npm run check:matrix  # the running dsh against engines.dsh, then the manifest,
                       # bundle and tool-schema contracts (no preview writes)
@@ -366,6 +457,7 @@ page refresh; host-half edits need a host restart.
 ```sh
 npm run preview       # render the panel to preview/panel.html (+ detail and selection variants)
 npm run screenshots   # re-photograph those previews into docs/screenshots/, 1280×720
+npm run tour          # rebuild docs/screenshots/tour.gif from those PNGs (needs ffmpeg)
 ```
 
 The PNGs under `docs/screenshots/` ship with the package and are embedded in both
@@ -373,20 +465,30 @@ READMEs, so re-run `npm run screenshots` whenever the panel UI changes.
 
 ```text
 lib/
-  index.js     host entry: store + service + dispatcher + the three surfaces
-  store.js     one JSON file: atomic writes, serialized updates, tolerant loads
-  model.js     the todo entity: validation, patches, status, attachments, activity
-  links.js     attachment rules (pure: no filesystem access)
-  service.js   the single write path, filters and sorting
-  routes.js    the HTTP surface for the panel
-  tools.js     the ten agent tools
-  dispatch.js  handing a todo to an agent session
-  errors.js    typed failures with stable machine codes
-  client.js    the browser half (panel + sidebar entry)
-test/          unit, service, tool, route, dispatch, bundle and manifest tests
-tools/         preview.mjs — render the panel to static HTML without a Host
-               screenshot.mjs — photograph those previews (borrows the profile's Playwright)
-docs/          DESIGN.md (data model and rejected alternatives), ROADMAP.md
+  index.js       host entry: store + service + dispatcher + the optional surfaces
+  store.js       one JSON file: atomic writes, serialized updates, tolerant loads
+  model.js       the todo entity: validation, patches, status, attachments, steps, review, notes
+  links.js       attachment rules (pure: no filesystem access)
+  service.js     the single write path, filters, sorting and the dispatch prompt
+  routes.js      the HTTP surface for the panel
+  tools.js       the ten agent tools
+  dispatch.js    handing a todo to an agent session (auto / bound / new / current)
+  completion.js  the clean-turn watcher behind automatic completion
+  capture.js     the capture duplicate gate (title, paraphrase, recent done)
+  ingest.js      the external door and its inbox rules
+  markdown.js    Markdown export and tolerant import
+  report.js      the weekly aggregate over completion records
+  reminders.js   the due rule behind the reminder strip
+  settings.js    host-side switches and the automatic-collect policy
+  metrics.js     in-memory counters reported by /health
+  diagnostics.js the bounded client error log
+  errors.js      typed failures with stable machine codes
+  client.js      the browser half (panel + sidebar entry)
+test/            unit, service, tool, route, dispatch, bundle and manifest tests
+tools/           preview.mjs — render the panel to static HTML without a Host
+                 screenshot.mjs — photograph those previews (borrows the profile's Playwright)
+                 tour.mjs — assemble the README tour GIF from those PNGs
+docs/            DESIGN.md (data model and rejected alternatives), ROADMAP.md
 ```
 
 Contributions are welcome — read [CONTRIBUTING.md](CONTRIBUTING.md) first.
@@ -397,6 +499,7 @@ Questions, bug reports and ideas go to [Discussions](https://github.com/LUgABeEE
 When reporting a bug, include the DSH version, the plugin version from the panel footer, your OS and
 the steps that reproduce it; a screenshot of the notice is worth more than a paragraph. Security
 issues go through [SECURITY.md](SECURITY.md) instead, not the discussion board.
+
 ## Security
 
 The HTTP surface is local-only, the list is a local file, and no credential is ever stored.

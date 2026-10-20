@@ -1,3 +1,25 @@
+## [0.11.0] — 2026-10-20
+
+Documentation and demo, treated as part of the product.
+
+- **A standalone landing page** at `docs/index.html` (GitHub Pages): hero with the install line and
+  a 24-second captioned tour, the three claims with evidence, a five-step strip through the real
+  screenshots, an honest comparison against `todo_write` and kanban boards, a 3×3 grid of every
+  conditional state, and a footer with the data path. One file, inline CSS, no CDN, bilingual
+  toggle, 15 images all verified to decode.
+- **`docs/screenshots/demo.mp4`** — a 24s captioned tour built from the same real renders by
+  `ffmpeg` (not a screen recording, and the page says so), plus the existing GIF for places that
+  cannot autoplay video.
+- **`docs/QUICKSTART.md`** (five minutes, click by click) and **`docs/FAQ.md`** (14 real questions
+  answered against the code), and `docs/screenshots/README.md` indexing what each baseline shows
+  and what a static image cannot prove.
+- **READMEs explain 0.7–0.10 at last**: steps, evidence, read-back, review, Markdown, weekly report.
+  English and Chinese kept as mirror images; stale claims (`21 routes`, `100+ tests`, `@0.4.0`)
+  corrected to 24 / 257 / 0.10.0.
+- **Fixed the two mismatches the docs pass found**: the capture prompt said 200 characters where
+  `LIMITS.evidence` is 300, and `package.json` did not publish the new docs (so their links would
+  have 404'd on npm).
+
 ## [0.10.0] — 2026-10-20
 
 The two remaining high-value items, plus the layout bug written down.

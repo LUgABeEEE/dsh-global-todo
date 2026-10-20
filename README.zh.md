@@ -14,7 +14,7 @@
 dsh plugin add dsh-global-todo
 ```
 
-[English](README.md) · [每个条件状态都有基线图](#截图) · [设计说明](docs/DESIGN.md)
+[English](README.md) · [5 分钟上手](docs/QUICKSTART.md) · [常见问题](docs/FAQ.md) · [每个条件状态都有基线图](#截图) · [设计说明](docs/DESIGN.md)
 
 ---
 
@@ -32,6 +32,85 @@ DSH 自带的 `todo_write` 属于**某一个 agent 会话**：整表替换、三
 | 上下文 | 标题 + 状态 | 描述 + **文档与地址** |
 | 交给 Agent | 无 | **一键：复用已绑定会话，或新开一个** |
 | 存储 | 会话事件日志 | 一个 JSON 文件，能 `cat`、能手改、能 diff、能备份 |
+
+## 0.9 / 0.10 补了什么（以及再往前两版）
+
+六个这两份 README 一直没讲的能力：会话回读与原话是 0.9 的，Markdown 与本周报告是 0.10 的，
+步骤是 0.8 的，待确认标记是 0.7 的——后两个此前只写在 CHANGELOG 里。每一个都改变了记录能装什么，
+或者改变了事后能拿它做什么。
+
+### 步骤：待办里的一份计划
+
+一条待办最多 20 个步骤、每步 200 字（`lib/model.js` 的 `LIMITS`）。步骤是 `{ text, done }`——
+一条工作里的一行，不是有自己 id 和状态的子任务。
+
+- **加**：新增表单的「更多字段」→ 步骤，一行一步。
+- **勾**：详情里每步一个勾选框；行上显示「步骤 2/5」。
+- **交出去**：派发提示词会把步骤编号，已完成的加 `[已完成]` 前缀。
+- **导出**：Markdown 里写成缩进的 `- [ ]`，导入时读回来。
+
+### 原话：这条是从哪句话来的
+
+`evidence` 是抓取时那条待办**来自的原话**，逐字引用，最多 300 字。`global_todo_capture` 会向模型要它，
+`global_todo_add` 也收，详情里以引用块显示在「原话」下面；你自己敲的条目没有这一项。
+
+它只为一件事存在：没有出处的一次抓取，过几天看起来就像一句观点。Markdown 导出里也有这一行（`原话:`）。
+
+### 会话回读
+
+派发是在**另一个对话**里开工，所以详情要能回答「它说了什么」，不用切过去。
+`GET /api/global-todo/session?id=` 返回 `alive`、`dir` 和最后一条 assistant 消息的 `tail`；
+详情里就是「会话回读」：在跑 / 已休眠、最后一句，以及一个打开该对话的按钮。
+
+tail 有上限、只在内存里：200 个会话、每个 400 字，来自每条 `assistant/message`。不落盘，宿主一重启就忘。
+查不到 tail 是正常情况——这个进程没见那个对话说过话。
+
+### 待确认：Agent 的「做完了」只是声明
+
+Agent 收尾时（`global_todo_done`，或干净一轮后的自动收尾），记录会变成已完成，**同时**带上
+`review: { pending: true }`。行上有「待确认」徽标，顶部多一个带计数的「待确认」筛选。
+
+| 你的回答 | 结果 |
+|---|---|
+| **确认完成** | 保持已完成，标记清除，动态里记下是谁确认的 |
+| **退回清单** | 回到 `open`，`doneAt` 与完成记录清空，动态里加一条 `reopened` |
+
+两个回答都按**人**的动作记录。退回不删除任何东西：标题、描述、步骤、附件、进展记录都还在。
+
+### Markdown 进与出
+
+JSON 导出是往返格式；Markdown 是拿来读、diff、手改的那份：
+
+```text
+- [ ] 标题
+      优先级: 高 · 截止: 2026-10-21T18:00 · 标签: 发布, 文档
+      原话: …
+      描述: 第一行
+      - [x] 一步
+```
+
+| 方向 | 入口 | 行为 |
+|---|---|---|
+| 出 | **更多操作 → 导出 Markdown**，或 `GET /export?format=md` | 按「未完成 / 已完成 / 已归档」分组，元数据缩进在每条下面 |
+| 入 | **更多操作 → 导入**（选 `.md`），或 `POST /import { markdown }` | 走正常 `create` 新建；Markdown 没有 id，所以**永远不会覆盖**已有记录 |
+
+解析是容错的：不认识的行直接忽略，日期解析失败就丢掉那一项，整份文件里没有一行 `- [ ]` 会明确报错。
+字段标注固定是中文（`优先级 / 截止 / 标签 / 原话 / 描述 / 附件 / #`），导入按同一套读。
+
+### 本周报告
+
+**更多操作 → 本周报告**（`GET /report?days=7`）回答「这一周动了什么、有没有落到代码上」。
+全部从完成记录推出来，不存任何东西。
+
+| 字段 | 含义 |
+|---|---|
+| `finished` | 窗口内完成的条目，最新在前，带完成者和说明 |
+| `sessions` | 这些完成来自多少个不同的对话 |
+| `created` | 窗口内新增的条数 |
+| `pendingReview` | 已完成但还没人回答的条数 |
+| `files` | 触及的文件，按次数排序——列 12 个，`fileCount` 是总数 |
+
+`days` 超过 90 会被压到 90；缺省或非正数按 7 算。
 
 ## 截图
 
@@ -55,6 +134,8 @@ DSH 自带的 `todo_write` 属于**某一个 agent 会话**：整表替换、三
 图都由 `npm run screenshots`（内部串起 `npm run preview`）生成：先把真实的客户端半区渲染成静态
 HTML（不依赖宿主、零依赖），再以 1280×720 拍进 `docs/screenshots/`。Playwright 不是依赖——工具
 借的是 DSH profile 里已经装好的那份，或 `DSH_PLAYWRIGHT` 指向的那份。
+
+每张图显示什么状态、什么时候重新生成，见 [docs/screenshots/README.md](docs/screenshots/README.md)。
 
 ## 环境要求
 
@@ -80,7 +161,7 @@ dsh plugin --profile web add /绝对路径/dsh-global-todo
 再刷新页面。侧栏会出现「待办」入口。
 
 npm 上的包才是事实来源。社区目录可能落后于 npm、或指向某个旧 release；需要确定版本时
-直接钉版本（`dsh plugin --profile web add dsh-global-todo@0.4.0`）。
+直接钉版本（`dsh plugin --profile web add dsh-global-todo@0.10.0`）。
 
 回滚：
 
@@ -105,7 +186,7 @@ dsh plugin --profile web remove dsh-global-todo
 - **详情**：就地改标题/描述/优先级/截止；挂上或摘掉文档与地址（每条都带「打开 / 复制路径」）；
   查看动态（谁在什么时候做了什么）。
 - **删除可撤销**：删掉的记录保留 8 秒，点「撤销」原样恢复——同一个 id、同一个加入时间、同样的附件。
-- **键盘**：`/` 聚焦搜索，`n` 聚焦新建，`Esc` 收起详情；行内操作在悬停或键盘聚焦时出现。
+- **键盘**：`/` 聚焦搜索；新增输入框展开后，`n` 聚焦它；`Esc` 收起详情。行内操作在悬停或键盘聚焦时出现。
 - **访问地址**：面板可以正常从宿主的**本机**、**受信任的局域网地址**（`--trusted-host` 里那些，如 `192.168.1.10:3080`）以及隧道访问——路由会交给宿主的连接围栏判断；只有宿主的围栏**不存在**时才退回「只接受本机请求」的保守检查。`/health` 里的 `fence` 会告诉你当前实际是哪一种。
 - **自动获取（可关，默认关）**：面板上的「自动获取」开关。打开后——你在某个对话里**正常收完一轮**、那个对话**安静满 30 分钟**、且**你人就在那个对话里**（不是派发目标/子 Agent/后台任务），插件才会自动问它一次「有没有要跟进的事」。中断/失败的轮次不问。**它问过之后，只有你在那个对话里再说一句话才会重新问**——因为那条提问本身就是对话里的一条消息，会重置安静计时、并让它自己的回答收尾成一轮，曾经正是这一点让同一个对话整夜追着自己反复问；冷却只是次要的阻尼。开关是**宿主状态**（面板关着也生效，`/health` 可见），关掉就完全靠你和 Agent 手动记。另外每个对话分组旁边有一个**「豁免」**按钮：点一下就把**该对话所在的工作区**整个排除在自动获取之外（再点一下取消）。这是给由机器驱动的对话准备的——比如微信机器人所在的聊天区，它们的会话重启后会换新 id，所以豁免**记在目录上而不是某一条对话上**，才不会悄悄失效。
 - **主动记**：插件会往 system prompt 里注入一段引导，列出该主动记的具体情形（跨会话的跟进、「先做 X 再 Y」、一轮收尾时发现还有一步），并明确写上「问用户要不要记是错的，直接记」。
@@ -148,8 +229,29 @@ dsh plugin --profile web remove dsh-global-todo
 | `global_todo_reopen` | 把**被误标完成**的一条标回未完成（只做 `done` / `cancelled` → `open`）；本来就未完成的会被拒绝，动作按 agent 记进活动轨迹 |
 | `global_todo_remove` | 永久删除（做完的请标记，不要删） |
 
-系统提示词里会注入一小段用法指引，让模型知道这份清单存在、以及它和内建 `todo_write`
-的区别。不想要就把 `guidance` 设成 `false`。
+### 实际联通检查
+
+测试用的是替身；`npm run check:live` 检查的是**真正接上线的**宿主：面板实际会调的路由、它实际读的清单，
+以及一条「删掉再撤销」之后仍然完整的记录。它会临时建一条记录，往返后逐字段比对（id、加入时间、附件、
+标签、级别、截止、描述），确认绑定记录带 `sessionAlive` / `sessionDir`，最后即使失败也会删掉这条临时记录。
+它需要一个在跑的宿主，所以不在 `verify` 里。
+
+### 主动抓取
+
+插件会往 system prompt 里注入一段引导（用 `guidance: false` 关掉）。它把两侧都写清楚：只写「记得记事」的
+提示词只会制造噪音，而吵闹的清单比空清单更糟。
+
+- **主动记**：用户提到需要跨会话跟进的事（等对方回复、下周要交、待确认的决定、答应别人的事）、
+  一轮结束时还有一步不该在本会话继续、或用户说「记一下 / 别忘了 / 回头办」；
+- **不要记**：你这一步就能做完的、本会话内的计划、纯闲聊；
+- 记完用**一句话**说明记了什么，别复述整条描述；
+- 用户说**「抓一下待办」**，就扫最近对话，用 `global_todo_capture` 一次登记，再回一句汇总。
+
+边界是：它**只负责记，从不擅自开工**。清单属于人，开不开工是人决定的（见 [ROADMAP](docs/ROADMAP.md) 里的非目标）。
+
+抓取不能变成噪音。写进去之前，同一个规范化标题（全半角、大小写、空格、标点都折叠掉）、
+最近 72 小时内意思很接近的转述（按字符二元组的 Dice 相似度，0.8），以及 7 天内刚做完的同一件事，
+都会被拒绝，并在记录上写出原因；已归档和已取消的条目不挡新条目。规则在 `lib/capture.js`，单独测试。
 
 ### HTTP 接口
 
@@ -237,7 +339,7 @@ epoch 与 ISO，派发提示词也带上它。因为「这事什么时候落到�
 ```sh
 npm run check     # 解析全部文件、校验发布形态；本机有 DSH profile 时，还会用宿主
                   # 自己的校验器逐条验证工具 schema
-npm test          # 100+ 单元/契约/bundle 测试，零依赖
+npm test          # 257 单元/契约/bundle 测试，零依赖
 npm run verify    # 两者都跑
 npm run check:matrix  # 当前 dsh 与 engines.dsh 的实际匹配，再跑 manifest/bundle/
                       # 工具 schema 三类契约（不写 preview）
@@ -253,6 +355,7 @@ CI 里也没有构建产物。改 `lib/client.js` 刷新页面即生效；改宿
 ```sh
 npm run preview       # 把面板渲染成 preview/panel.html（另附详情态与选择态）
 npm run screenshots   # 把这些预览重新拍成 docs/screenshots/，1280×720
+npm run tour          # 用这些 PNG 重新拼 docs/screenshots/tour.gif（需要 ffmpeg）
 ```
 
 `docs/screenshots/` 下那几张 PNG 会随包发布、并嵌在两份 README 里，所以面板 UI 一改就要重跑
@@ -260,20 +363,30 @@ npm run screenshots   # 把这些预览重新拍成 docs/screenshots/，1280×72
 
 ```text
 lib/
-  index.js     宿主入口：store + service + dispatcher + 三个挂载面
-  store.js     一个 JSON 文件：原子写、串行更新、容错读取
-  model.js     待办实体：校验、补丁、状态、附件、动态
-  links.js     附件规则（纯函数，不碰文件系统）
-  service.js   唯一写入路径、筛选与排序
-  routes.js    面板用的 HTTP 接口
-  tools.js     十个 Agent 工具
-  dispatch.js  把待办交给 agent 会话
-  errors.js    带机器码的类型化失败
-  client.js    浏览器半区（面板 + 侧栏入口）
-test/          单元、service、工具、路由、派发、bundle、manifest 测试
-tools/         preview.mjs —— 不依赖宿主，把面板渲染成静态 HTML
-               screenshot.mjs —— 把预览拍成 PNG（借 profile 里的 Playwright）
-docs/          DESIGN.md（数据模型与取舍）、ROADMAP.md
+  index.js       宿主入口：store + service + dispatcher + 可选挂载面
+  store.js       一个 JSON 文件：原子写、串行更新、容错读取
+  model.js       待办实体：校验、补丁、状态、附件、步骤、待确认、进展
+  links.js       附件规则（纯函数，不碰文件系统）
+  service.js     唯一写入路径、筛选、排序与派发提示词
+  routes.js      面板用的 HTTP 接口
+  tools.js       十个 Agent 工具
+  dispatch.js    把待办交给 agent 会话（auto / bound / new / current）
+  completion.js  干净一轮之后的自动收尾观察者
+  capture.js     抓取去重闸门（同名、近义转述、刚完成）
+  ingest.js      外部写入入口与收件箱规则
+  markdown.js    Markdown 导出与容错导入
+  report.js      从完成记录推出来的周报
+  reminders.js   到点提醒的判定规则
+  settings.js    宿主侧开关与自动获取策略
+  metrics.js     /health 里的进程内计数
+  diagnostics.js 有上限的面板错误日志
+  errors.js      带机器码的类型化失败
+  client.js      浏览器半区（面板 + 侧栏入口）
+test/            单元、service、工具、路由、派发、bundle、manifest 测试
+tools/           preview.mjs —— 不依赖宿主，把面板渲染成静态 HTML
+                 screenshot.mjs —— 把预览拍成 PNG（借 profile 里的 Playwright）
+                 tour.mjs —— 用这些 PNG 拼 README 里的 tour.gif
+docs/            DESIGN.md（数据模型与取舍）、ROADMAP.md
 ```
 
 欢迎贡献，先读 [CONTRIBUTING.md](CONTRIBUTING.md)。
@@ -283,6 +396,7 @@ docs/          DESIGN.md（数据模型与取舍）、ROADMAP.md
 问题、bug 和想法都发到 [Discussions](https://github.com/LUgABeEEE/dsh-global-todo/discussions)。
 报 bug 时带上 DSH 版本、面板页脚里的插件版本、系统，以及能复现的步骤；提示语截图比一段描述更有用。
 安全问题请走 [SECURITY.md](SECURITY.md)，不要发在讨论区。
+
 ## 安全
 
 HTTP 接口只服务本机，清单是本地文件，任何凭据都不会被存储。

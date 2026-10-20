@@ -1,0 +1,871 @@
+<!doctype html>
+<html lang="zh-Hans" data-lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>全局待办 · dsh-global-todo — DeepSeek Harness 的跨会话清单</title>
+<meta name="description" content="dsh-global-todo：DeepSeek Harness 的跨会话待办清单。一个属于你的 JSON 文件，你和 Agent 读写同一份，一键交给某个对话继续干，Agent 说的「做完了」要人确认才算。">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0c0f13" media="(prefers-color-scheme: dark)">
+<style>
+  :root {
+    --maxw: 1100px;
+    --pad: 20px;
+    --radius: 14px;
+    --bg: #fbfbfa;
+    --surface: #ffffff;
+    --surface-2: #f3f4f2;
+    --ink: #14171a;
+    --ink-2: #3a4149;
+    --ink-3: #5a6470;
+    --line: #e3e5e2;
+    --line-strong: #c9cec9;
+    --accent: #1b4fd8;
+    --accent-ink: #ffffff;
+    --accent-soft: #edf1fe;
+    --accent-wash: #f3f6ff;
+    --code-bg: #11151b;
+    --code-ink: #dde5ef;
+    --header-bg: rgba(251, 251, 250, 0.86);
+    --shadow: 0 1px 2px rgba(16, 24, 40, 0.05), 0 18px 40px -22px rgba(16, 24, 40, 0.28);
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0c0f13;
+      --surface: #12161c;
+      --surface-2: #151a21;
+      --ink: #e9edf3;
+      --ink-2: #c3cad4;
+      --ink-3: #9aa4b2;
+      --line: #242b34;
+      --line-strong: #37414d;
+      --accent: #8fb0ff;
+      --accent-ink: #0a1a44;
+      --accent-soft: #182137;
+      --accent-wash: #141c2b;
+      --code-bg: #070a0e;
+      --code-ink: #dde5ef;
+      --header-bg: rgba(12, 15, 19, 0.86);
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 18px 40px -24px rgba(0, 0, 0, 0.7);
+    }
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  img { display: block; max-width: 100%; height: auto; }
+  a { color: var(--accent); text-decoration: none; text-underline-offset: 0.18em; }
+  a:hover { text-decoration: underline; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+  ::selection { background: var(--accent-soft); color: var(--ink); }
+
+  h1, h2, h3 { text-wrap: balance; }
+  p { text-wrap: pretty; }
+
+  .wrap { width: min(100% - (2 * var(--pad)), var(--maxw)); margin-inline: auto; }
+
+  .skip {
+    position: absolute; left: -9999px; top: 0; z-index: 60;
+    background: var(--surface); color: var(--ink);
+    padding: 10px 16px; border: 1px solid var(--line); border-radius: 0 0 10px 0;
+    font-size: 14px;
+  }
+  .skip:focus { left: 0; }
+
+  [data-lang="zh"] .en { display: none; }
+  [data-lang="en"] .zh { display: none; }
+
+  /* ---------- header ---------- */
+  .site-header {
+    position: sticky; top: 0; z-index: 30;
+    background: var(--header-bg);
+    -webkit-backdrop-filter: saturate(140%) blur(10px);
+    backdrop-filter: saturate(140%) blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .header-inner {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px 24px; flex-wrap: wrap;
+    min-height: 58px; padding-block: 9px;
+  }
+  .brand { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); font-weight: 650; letter-spacing: -0.01em; }
+  .brand:hover { text-decoration: none; }
+  .brand-mark { position: relative; flex: none; width: 22px; height: 22px; border-radius: 7px; background: var(--accent); }
+  .brand-mark::after {
+    content: ""; position: absolute; left: 7px; top: 5px; width: 8px; height: 5px;
+    border-left: 2px solid var(--accent-ink); border-bottom: 2px solid var(--accent-ink);
+    transform: rotate(-45deg);
+  }
+  .brand-name { font-size: 15px; }
+  .brand-pkg {
+    font-family: var(--mono); font-size: 11.5px; font-weight: 500; color: var(--ink-3);
+    border: 1px solid var(--line); border-radius: 999px; padding: 2px 9px;
+  }
+  .nav { display: flex; align-items: center; gap: 18px; font-size: 14px; }
+  .nav a { color: var(--ink-2); }
+  .nav a:hover { color: var(--accent); }
+  .nav .nav-ext { font-family: var(--mono); font-size: 12.5px; }
+  .lang-toggle {
+    appearance: none; -webkit-appearance: none;
+    font: inherit; font-size: 12.5px; line-height: 1.4; letter-spacing: 0.02em;
+    color: var(--ink-2); background: transparent;
+    border: 1px solid var(--line-strong); border-radius: 999px;
+    padding: 5px 12px; cursor: pointer; min-width: 54px;
+  }
+  .lang-toggle:hover { color: var(--accent); border-color: var(--accent); }
+
+  /* ---------- hero ---------- */
+  .hero {
+    padding-block: clamp(36px, 5.5vw, 68px) clamp(44px, 6vw, 88px);
+    background:
+      radial-gradient(820px 340px at 8% -8%, var(--accent-soft), transparent 70%),
+      radial-gradient(620px 300px at 100% 0%, var(--accent-soft), transparent 68%);
+  }
+  .hero-grid { display: grid; grid-template-columns: minmax(0, 1.03fr) minmax(0, 1fr); gap: clamp(28px, 4vw, 52px); align-items: center; }
+  .eyebrow {
+    display: flex; align-items: center; gap: 10px;
+    margin: 0 0 18px; font-size: 12.5px; letter-spacing: 0.05em; color: var(--ink-3);
+  }
+  .eyebrow::before { content: ""; display: block; width: 18px; height: 2px; background: var(--accent); border-radius: 2px; flex: none; }
+  h1 { margin: 0 0 16px; font-size: clamp(2.4rem, 5.6vw, 3.7rem); line-height: 1.03; letter-spacing: -0.035em; font-weight: 700; }
+  .lede { margin: 0 0 28px; max-width: 33em; color: var(--ink-2); font-size: clamp(1.02rem, 1.6vw, 1.2rem); line-height: 1.68; }
+
+  .install {
+    max-width: 520px; margin: 0 0 24px;
+    border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--surface); box-shadow: var(--shadow); overflow: hidden;
+  }
+  .install-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 12px 16px 0; font-size: 12px; color: var(--ink-3); font-family: var(--mono); letter-spacing: 0.04em; }
+  .install-head .hint { font-family: var(--sans); letter-spacing: 0; }
+  .cmd {
+    margin: 9px 0 0; padding: 14px 16px;
+    background: var(--code-bg); color: var(--code-ink);
+    font-family: var(--mono); font-size: 13.5px; line-height: 1.5;
+    overflow-x: auto; white-space: pre;
+    -webkit-user-select: all; user-select: all; cursor: text;
+  }
+  .cmd:focus-visible { outline-offset: -2px; border-radius: 0; }
+  .install-note { margin: 0; padding: 11px 16px 13px; font-size: 12.5px; line-height: 1.6; color: var(--ink-3); border-top: 1px solid var(--line); }
+
+  .meta { display: flex; flex-wrap: wrap; gap: 7px; list-style: none; margin: 0 0 22px; padding: 0; }
+  .meta li {
+    font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.02em; color: var(--ink-3);
+    background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px;
+  }
+  .hero-more { margin: 0; font-size: 14px; font-weight: 600; }
+
+  .shot { margin: 0; }
+  .shot img {
+    width: 100%; border-radius: 12px;
+    border: 1px solid var(--line-strong); background: var(--surface-2); box-shadow: var(--shadow);
+  }
+  .shot figcaption { margin-top: 12px; font-size: 12.5px; line-height: 1.55; color: var(--ink-3); }
+
+  .demo { margin-top: clamp(36px, 4.5vw, 62px); }
+  .demo figure { margin: 0; max-width: 900px; }
+  .demo video {
+    display: block; width: 100%; height: auto; aspect-ratio: 16 / 9;
+    border-radius: 12px; border: 1px solid var(--line-strong);
+    background: #000; box-shadow: var(--shadow);
+  }
+  .demo figcaption { margin-top: 12px; font-size: 12.5px; line-height: 1.6; color: var(--ink-3); max-width: 62ch; }
+
+  /* ---------- sections ---------- */
+  section { padding-block: clamp(48px, 6.5vw, 84px); }
+  .band { background: var(--surface-2); border-block: 1px solid var(--line); }
+  .section-head { max-width: 64ch; margin-bottom: clamp(28px, 3.6vw, 42px); }
+  h2 { margin: 0 0 14px; font-size: clamp(1.55rem, 3.2vw, 2.1rem); line-height: 1.16; letter-spacing: -0.025em; font-weight: 680; }
+  .section-lede { margin: 0; color: var(--ink-2); font-size: 1.01rem; line-height: 1.72; }
+
+  /* ---------- claims ---------- */
+  .claims { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(16px, 2vw, 22px); }
+  .claim {
+    display: flex; flex-direction: column; gap: 13px;
+    padding: clamp(20px, 2.4vw, 26px);
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  }
+  .claim-no { margin: 0; font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.1em; color: var(--accent); }
+  .claim h3 { margin: 0; font-size: 1.08rem; line-height: 1.4; letter-spacing: -0.01em; font-weight: 650; }
+  .claim p { margin: 0; font-size: 14.5px; line-height: 1.72; color: var(--ink-2); }
+  .claim .ev {
+    margin-top: auto; padding-top: 14px; border-top: 1px solid var(--line);
+    display: flex; flex-direction: column; gap: 9px;
+  }
+  .claim .ev pre {
+    margin: 0; padding: 12px 13px; overflow-x: auto;
+    background: var(--code-bg); color: var(--code-ink);
+    border-radius: 9px; font-family: var(--mono); font-size: 11.8px; line-height: 1.6;
+  }
+  .claim .ev-note { margin: 0; font-size: 12.5px; line-height: 1.6; color: var(--ink-3); }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 7px; }
+  .chip {
+    font-size: 12px; line-height: 1.4; padding: 3px 9px; border-radius: 999px;
+    border: 1px solid var(--line-strong); color: var(--ink-2); background: var(--surface);
+  }
+  .chip--accent { color: var(--accent); background: var(--accent-soft); border-color: transparent; }
+
+  /* ---------- how it works ---------- */
+  .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: clamp(14px, 1.8vw, 20px); }
+  .step { display: flex; flex-direction: column; gap: 9px; min-width: 0; }
+  .step-no { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; color: var(--accent); }
+  .step h3 { margin: 0; font-size: 0.98rem; font-weight: 650; line-height: 1.4; letter-spacing: -0.005em; }
+  .step p { margin: 0; font-size: 12.8px; line-height: 1.65; color: var(--ink-2); }
+  .thumb {
+    display: block; margin-top: auto; border-radius: 10px; overflow: hidden;
+    border: 1px solid var(--line); background: var(--surface); box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+  }
+  .thumb img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; object-position: top left; }
+  .thumb:hover { border-color: var(--line-strong); }
+  .shots-note { margin: 20px 0 0; font-size: 12.5px; color: var(--ink-3); }
+
+  /* ---------- comparison ---------- */
+  .table-wrap {
+    overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--surface); -webkit-overflow-scrolling: touch;
+  }
+  table { width: 100%; min-width: 700px; border-collapse: collapse; font-size: 14px; }
+  caption { caption-side: top; text-align: left; padding: 14px 18px; font-size: 12.5px; color: var(--ink-3); border-bottom: 1px solid var(--line); }
+  th, td { text-align: left; vertical-align: top; padding: 13px 18px; line-height: 1.62; }
+  thead th { font-size: 12.5px; font-weight: 600; color: var(--ink-2); background: var(--surface-2); border-bottom: 1px solid var(--line); white-space: nowrap; }
+  thead th.col-this { color: var(--accent); }
+  tbody th { font-weight: 600; color: var(--ink); white-space: nowrap; }
+  tbody td { color: var(--ink-2); border-top: 1px solid var(--line); }
+  tbody th { border-top: 1px solid var(--line); }
+  tbody td.col-this { background: var(--accent-wash); color: var(--ink); }
+  tbody tr:first-child th, tbody tr:first-child td { border-top: 0; }
+
+  .nots { list-style: none; margin: 26px 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 32px; }
+  .nots li { position: relative; padding-left: 18px; font-size: 14px; line-height: 1.68; color: var(--ink-2); }
+  .nots li::before { content: ""; position: absolute; left: 0; top: 0.68em; width: 8px; height: 2px; border-radius: 2px; background: var(--accent); }
+  .nots strong { color: var(--ink); font-weight: 600; }
+  .finep { margin: 22px 0 0; max-width: 70ch; font-size: 13.5px; line-height: 1.7; color: var(--ink-3); }
+
+  /* ---------- states ---------- */
+  .states { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: clamp(16px, 2vw, 22px); }
+  .state figure { margin: 0; }
+  .state a { display: block; border-radius: 10px; }
+  .state img {
+    width: 100%; aspect-ratio: 16 / 9; object-fit: cover; object-position: top left;
+    border: 1px solid var(--line); border-radius: 10px; background: var(--surface);
+  }
+  .state a:hover img { border-color: var(--line-strong); }
+  .state figcaption { margin-top: 10px; font-size: 12.5px; line-height: 1.5; color: var(--ink-3); }
+  .state figcaption b { display: block; margin-bottom: 2px; font-size: 13px; font-weight: 600; color: var(--ink); }
+
+  /* ---------- footer ---------- */
+  .site-footer { border-top: 1px solid var(--line); background: var(--surface-2); padding-block: 40px 48px; }
+  .footer-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 26px 40px; align-items: start; }
+  .footer-brand { margin: 0 0 6px; font-weight: 650; letter-spacing: -0.01em; }
+  .footer-line { margin: 0; font-size: 12.8px; line-height: 1.65; color: var(--ink-3); max-width: 46ch; }
+  .footer-links { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13.5px; }
+  .footer-links a { color: var(--ink-2); }
+  .footer-links a:hover { color: var(--accent); }
+  .footer-small { margin: 22px 0 0; padding-top: 18px; border-top: 1px solid var(--line); font-size: 12.3px; line-height: 1.7; color: var(--ink-3); max-width: 80ch; }
+  code { font-family: var(--mono); font-size: 0.9em; }
+  :not(pre) > code { background: var(--surface); border: 1px solid var(--line); border-radius: 5px; padding: 0.08em 0.34em; color: var(--ink); white-space: nowrap; }
+  .band :not(pre) > code, .site-footer :not(pre) > code { background: var(--bg); }
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 1000px) {
+    .hero-grid { grid-template-columns: minmax(0, 1fr); }
+    .hero-grid .shot { order: 2; }
+    .hero-grid .hero-copy { order: 1; }
+    .install { max-width: none; }
+    .claims { grid-template-columns: minmax(0, 1fr); }
+    .claim { gap: 11px; }
+    .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 18px; }
+    .nots { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 760px) {
+    .nav { gap: 14px; }
+    .nav .nav-section { display: none; }
+    .footer-grid { grid-template-columns: minmax(0, 1fr); }
+    .steps { grid-template-columns: minmax(0, 1fr); }
+    .step { display: grid; grid-template-columns: 1fr minmax(0, 40%); gap: 4px 16px; align-items: start; }
+    .step-no { grid-column: 1; }
+    .step h3 { grid-column: 1; }
+    .step p { grid-column: 1; }
+    .step .thumb { grid-column: 2; grid-row: 1 / span 3; margin-top: 0; }
+  }
+  @media (max-width: 460px) {
+    :root { --pad: 16px; }
+    .brand-pkg { display: none; }
+    .header-inner { min-height: 52px; }
+    .step { grid-template-columns: minmax(0, 1fr); }
+    .step .thumb { grid-column: 1; grid-row: auto; margin-top: 6px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+<a class="skip" href="#main"><span class="zh">跳到正文</span><span class="en" lang="en">Skip to content</span></a>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="#top">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name"><span class="zh">全局待办</span><span class="en" lang="en">Global todos</span></span>
+      <span class="brand-pkg">dsh-global-todo</span>
+    </a>
+    <nav class="nav" aria-label="页面导航">
+      <a class="nav-section" href="#claims"><span class="zh">三件事</span><span class="en" lang="en">Claims</span></a>
+      <a class="nav-section" href="#how"><span class="zh">怎么走</span><span class="en" lang="en">How it works</span></a>
+      <a class="nav-section" href="#compare"><span class="zh">对比</span><span class="en" lang="en">Compare</span></a>
+      <a class="nav-section" href="#states"><span class="zh">状态图</span><span class="en" lang="en">States</span></a>
+      <a class="nav-ext" href="https://github.com/LUgABeEEE/dsh-global-todo" rel="noopener">GitHub</a>
+      <a class="nav-ext" href="https://www.npmjs.com/package/dsh-global-todo" rel="noopener">npm</a>
+      <button class="lang-toggle" type="button" id="langToggle" aria-label="切换语言 / Switch language">
+        <span class="zh" aria-hidden="true">EN</span><span class="en" lang="en" aria-hidden="true">中文</span>
+      </button>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <section class="hero" id="top" aria-labelledby="hero-title">
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <p class="eyebrow">
+          <span class="zh">DeepSeek Harness 插件</span>
+          <span class="en" lang="en">DeepSeek Harness plugin</span>
+        </p>
+        <h1 id="hero-title"><span class="zh">全局待办</span><span class="en" lang="en">Global todos</span></h1>
+        <p class="lede">
+          <span class="zh">一份跨会话的待办清单：一个属于你的文件，你和 Agent 读写同一份，一键交给某个对话继续干。</span>
+          <span class="en" lang="en">A cross-session todo list for DeepSeek Harness: one file you own, written by you and your agent, handed to a conversation in one click.</span>
+        </p>
+
+        <div class="install">
+          <div class="install-head">
+            <span class="label">shell · npm</span>
+            <span class="hint"><span class="zh">点一下选中整条</span><span class="en" lang="en">click to select the line</span></span>
+          </div>
+          <pre class="cmd" tabindex="0" aria-label="安装命令：dsh plugin add dsh-global-todo"><code>dsh plugin add dsh-global-todo</code></pre>
+          <p class="install-note">
+            <span class="zh">装完要重启宿主（<code>dsh web</code>）再刷新页面。面板只在 Web 客户端；headless、ACP、SDK 拿到的是工具，没有面板。需要 DSH 0.2.x 与 Node ≥ 22.19。</span>
+            <span class="en" lang="en">Restart the host (<code>dsh web</code>) and reload the page. The panel exists only in the Web client; headless, ACP and SDK get the tools without it. Requires DSH 0.2.x and Node ≥ 22.19.</span>
+          </p>
+        </div>
+
+        <ul class="meta">
+          <li>MIT</li>
+          <li><span class="zh">10 个 Agent 工具</span><span class="en" lang="en">10 agent tools</span></li>
+          <li><span class="zh">零运行期依赖</span><span class="en" lang="en">no runtime deps</span></li>
+          <li><span class="zh">只有一份清单</span><span class="en" lang="en">one list only</span></li>
+        </ul>
+        <p class="hero-more">
+          <a href="#how"><span class="zh">看一条待办怎么走完 →</span><span class="en" lang="en">Follow one todo through →</span></a>
+        </p>
+      </div>
+
+      <figure class="shot">
+        <img src="screenshots/tour.gif" width="960" height="540" alt="面板录屏：清单、详情、步骤、待确认、收件箱、提醒与批量选择依次出现" decoding="async">
+        <figcaption>
+          <span class="zh">面板实况。录屏由 <code>npm run tour</code> 生成，不是手绘示意图。</span>
+          <span class="en" lang="en">The panel in use. Recorded by <code>npm run tour</code>, not a mockup.</span>
+        </figcaption>
+      </figure>
+    </div>
+
+    <div class="wrap demo">
+      <figure>
+        <video src="screenshots/demo.mp4" controls muted loop playsinline preload="metadata" poster="screenshots/tour.gif" width="100%" aria-label="24 秒字幕导览：面板的清单、详情、待确认与收件箱状态"></video>
+        <figcaption>
+          <span class="zh">24 秒字幕导览（由真实渲染生成，不是录屏）。播放不了视频的地方，页面顶部的 GIF 是同一段导览。</span>
+          <span class="en" lang="en">A 24-second captioned tour generated from real renders, not screen-recorded. Where video cannot play, the GIF at the top of this page is the same tour.</span>
+        </figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section id="claims" aria-labelledby="claims-title">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">
+          <span class="zh">三件事</span>
+          <span class="en" lang="en">Three claims</span>
+        </p>
+        <h2 id="claims-title">
+          <span class="zh">会话级计划做不到的三件事</span>
+          <span class="en" lang="en">Three things a session-local plan cannot do</span>
+        </h2>
+        <p class="section-lede">
+          <span class="zh">DSH 自带的 <code>todo_write</code> 属于某一个 agent 会话：整表替换、三个状态、会话一关计划就翻篇。这份清单补的不是功能数量，是归属。</span>
+          <span class="en" lang="en">The built-in <code>todo_write</code> belongs to one agent session: whole-list replacement, three states, and a plan that ends when the session does. This list is about ownership, not feature count.</span>
+        </p>
+      </div>
+
+      <div class="claims">
+        <article class="claim">
+          <p class="claim-no">01</p>
+          <h3>
+            <span class="zh">一个 JSON 文件就是全部</span>
+            <span class="en" lang="en">One JSON file is the whole list</span>
+          </h3>
+          <p>
+            <span class="zh">清单在 <code>$DSH_HOME/global-todo/todos.json</code>：没有数据库，没有服务端。能 <code>cat</code>、能 diff、能提交进仓库、能丢进同步盘，拷到另一台机器就接着用。</span>
+            <span class="en" lang="en">The list lives at <code>$DSH_HOME/global-todo/todos.json</code>: no database, no server. <code>cat</code> it, diff it, commit it, drop it in a sync folder, copy it to another machine.</span>
+          </p>
+          <div class="ev">
+            <pre><code>{
+  "version": 1,
+  "todos": [{
+    "id": "t-4f1a9c02",
+    "title": "等交换机到货后重测内网吞吐",
+    "createdAt": 1768867200000,
+    "steps": [{ "text": "换上万兆模块", "done": false }]
+  }]
+}</code></pre>
+            <p class="ev-note">
+              <span class="zh">写入走「临时文件 + rename」，人和 Agent 的改动串在同一把写锁后面；文件坏了报 <code>store-corrupt</code>，不会静默清空。</span>
+              <span class="en" lang="en">Writes go to a temp file and are renamed into place, behind one lock shared by panel and tools. A corrupt file raises <code>store-corrupt</code> instead of being silently emptied.</span>
+            </p>
+          </div>
+        </article>
+
+        <article class="claim">
+          <p class="claim-no">02</p>
+          <h3>
+            <span class="zh">交接是一个按钮</span>
+            <span class="en" lang="en">Hand-off is a button</span>
+          </h3>
+          <p>
+            <span class="zh">四种模式：<code>current</code> 当前对话、<code>auto</code> 先复用已绑定的会话、<code>new</code> 总是新开、<code>bound</code> 只发已绑定的那个。新会话要工作目录，所以派发前会检查；三者都定位不到就明确拒绝并说明原因。</span>
+            <span class="en" lang="en">Four modes: <code>current</code>, <code>auto</code> (reuse the bound conversation first), <code>new</code>, and <code>bound</code>. A new session needs a working directory, so the hand-off checks it and refuses with a reason when none can be found.</span>
+          </p>
+          <div class="ev">
+            <pre><code>1. [已完成] 对齐版本号
+2. 跑 npm run verify
+3. 打 tag 并推送
+4. 补 docs/screenshots</code></pre>
+            <p class="ev-note">
+              <span class="zh">待办自己的 <code>steps[]</code> 原样变成派发提示词里的编号计划；成功和失败都记在记录上。</span>
+              <span class="en" lang="en">The todo's own <code>steps[]</code> arrive as the agent's numbered plan. Success and failure are both recorded on the record.</span>
+            </p>
+          </div>
+        </article>
+
+        <article class="claim">
+          <p class="claim-no">03</p>
+          <h3>
+            <span class="zh">Agent 说「做完了」是声明，不是事实</span>
+            <span class="en" lang="en">An agent's “done” is a claim until a person confirms</span>
+          </h3>
+          <p>
+            <span class="zh">以 agent 身份完成会落到 <code>review = pending</code>，行上显示「待确认」。人点确认，它才算完成；人点退回，它回到清单，那条完成记录一并清掉。</span>
+            <span class="en" lang="en">Finishing as an agent sets <code>review = pending</code> and the row shows 待确认. Confirm it and it stays finished; send it back and it returns to the list with its completion record cleared.</span>
+          </p>
+          <div class="ev">
+            <p class="chips">
+              <span class="chip chip--accent"><span class="zh">待确认</span><span class="en" lang="en">Needs review</span></span>
+              <span class="chip"><span class="zh">确认完成</span><span class="en" lang="en">Confirm</span></span>
+              <span class="chip"><span class="zh">退回清单</span><span class="en" lang="en">Send back</span></span>
+            </p>
+            <p class="ev-note">
+              <span class="zh">只有干净收尾的回合才自动完成：<code>error</code>、<code>aborted</code>、<code>interrupted</code>、<code>max-tokens</code> 一律留着未完成——标错一次，整份清单就不值得信了。</span>
+              <span class="en" lang="en">Only clean turns auto-complete: <code>error</code>, <code>aborted</code>, <code>interrupted</code> and <code>max-tokens</code> leave the todo open. One wrong “done” would make the whole list untrustworthy.</span>
+            </p>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="how" aria-labelledby="how-title">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">
+          <span class="zh">一条待办的路径</span>
+          <span class="en" lang="en">The path of one todo</span>
+        </p>
+        <h2 id="how-title">
+          <span class="zh">从一句话，到一个被确认的结果</span>
+          <span class="en" lang="en">From one sentence to a confirmed result</span>
+        </h2>
+        <p class="section-lede">
+          <span class="zh">五步。每一步下面都是面板真实渲染出来的截图，由 <code>npm run screenshots</code> 生成；点开看原尺寸。</span>
+          <span class="en" lang="en">Five steps. Every image below is a real panel state rendered by <code>npm run screenshots</code>; click one for full size.</span>
+        </p>
+      </div>
+
+      <ol class="steps">
+        <li class="step">
+          <p class="step-no">01</p>
+          <h3><span class="zh">抓取</span><span class="en" lang="en">Capture</span></h3>
+          <p>
+            <span class="zh">你在对话里说一句「记一下：等交换机到货后重测内网吞吐」，或让 Agent 用 <code>global_todo_capture</code> 一次抓几条。原话作为 <code>evidence</code> 逐字保留，不转述；外部写入的先停收件箱。</span>
+            <span class="en" lang="en">Say it once, or let the agent record it with <code>global_todo_capture</code>. The sentence it came from is kept verbatim as <code>evidence</code>; externally written items wait in the inbox.</span>
+          </p>
+          <a class="thumb" href="screenshots/panel-inbox.png" aria-label="打开大图：收件箱与待确认">
+            <img src="screenshots/panel-inbox.png" width="1280" height="720" decoding="async" alt="收件箱：外部写入与低置信度条目带「待确认」芯片，确认后才进入清单">
+          </a>
+        </li>
+
+        <li class="step">
+          <p class="step-no">02</p>
+          <h3><span class="zh">拆成步骤</span><span class="en" lang="en">Break into steps</span></h3>
+          <p>
+            <span class="zh">一条待办可以带 <code>steps[]</code>：行上显示「步骤 2/4」，派发时按顺序编号。五步的活不需要第二个对象。</span>
+            <span class="en" lang="en">A todo can carry <code>steps[]</code>: the row shows 步骤 2/4, and the hand-off prompt numbers them. Five-step work does not need a second object.</span>
+          </p>
+          <a class="thumb" href="screenshots/panel-detail.png" aria-label="打开大图：详情与步骤">
+            <img src="screenshots/panel-detail.png" width="1280" height="720" decoding="async" alt="详情：右侧卡片可就地编辑，行上显示步骤进度、附件与加入时间">
+          </a>
+        </li>
+
+        <li class="step">
+          <p class="step-no">03</p>
+          <h3><span class="zh">交接</span><span class="en" lang="en">Hand off</span></h3>
+          <p>
+            <span class="zh">选 <code>交给：[对话名]</code>，或多选后按「一键分配」。能复用已绑定的会话就复用；配不上的报回来并给选择器，不擅自送到别处。</span>
+            <span class="en" lang="en">Pick <code>交给：[conversation]</code>, or select rows and use 一键分配. A bound conversation is reused when possible; anything unmatched comes back with a picker instead of being sent somewhere else.</span>
+          </p>
+          <a class="thumb" href="screenshots/panel-select.png" aria-label="打开大图：批量选择与一键分配">
+            <img src="screenshots/panel-select.png" width="1280" height="720" decoding="async" alt="批量选择：选中行后出现「一键分配 / 完成 / 归档 / 加标签」">
+          </a>
+        </li>
+
+        <li class="step">
+          <p class="step-no">04</p>
+          <h3><span class="zh">读回那个对话</span><span class="en" lang="en">Read it back</span></h3>
+          <p>
+            <span class="zh">面板显示它「在跑」还是「已休眠」、最后说的几句（缓存 400 字），旁边有按钮跳过去。交接不再发出去就没下文。</span>
+            <span class="en" lang="en">The panel says whether it is running or dormant, shows its last words (400 cached characters), and links to it. No more fire-and-forget.</span>
+          </p>
+          <a class="thumb" href="screenshots/panel.png" aria-label="打开大图：清单与「会话在跑」状态">
+            <img src="screenshots/panel.png" width="1280" height="720" decoding="async" alt="清单：按对话分组，行上显示「会话在跑」、加入时间、优先级与附件">
+          </a>
+        </li>
+
+        <li class="step">
+          <p class="step-no">05</p>
+          <h3><span class="zh">确认</span><span class="en" lang="en">Confirm</span></h3>
+          <p>
+            <span class="zh">Agent 的完成先进「待确认」：人点「确认完成」，或「退回清单」。同一行还能看到完成说明和这轮改过的文件。</span>
+            <span class="en" lang="en">An agent completion waits in 待确认. Confirm it, or send it back; the row carries the closing summary and the files that turn changed.</span>
+          </p>
+          <a class="thumb" href="screenshots/panel-review.png" aria-label="打开大图：待确认状态">
+            <img src="screenshots/panel-review.png" width="1280" height="720" decoding="async" alt="待确认：Agent 完成的条目带「待确认」芯片，等待人确认或退回">
+          </a>
+        </li>
+      </ol>
+
+      <p class="shots-note">
+        <span class="zh">图里是同一份清单的连续状态。截图不写进设计稿，而是每次从真实客户端渲染出来，所以样式一改、图就跟着变。</span>
+        <span class="en" lang="en">The images are consecutive states of one real list, re-rendered from the real client on every change rather than hand-edited.</span>
+      </p>
+    </div>
+  </section>
+
+  <section id="compare" aria-labelledby="compare-title">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">
+          <span class="zh">老实说的话</span>
+          <span class="en" lang="en">Plainly</span>
+        </p>
+        <h2 id="compare-title">
+          <span class="zh">和自带 todo_write、看板式任务板比</span>
+          <span class="en" lang="en">Against built-in todo_write and a kanban board</span>
+        </h2>
+        <p class="section-lede">
+          <span class="zh">不是「谁更好」，是三件不同的东西。这一栏只写事实：没有的，就写没有。</span>
+          <span class="en" lang="en">Not “which is better” — three different things. This section states facts, and says “none” where that is the answer.</span>
+        </p>
+      </div>
+
+      <div class="table-wrap" role="region" aria-label="三者对比表 / Comparison table" tabindex="0">
+        <table>
+          <caption>
+            <span class="zh">据本仓库的 README 与 docs/ROADMAP.md（2026-10）。看板一列是社区里另一类插件的典型形态，只写通性。</span>
+            <span class="en" lang="en">From this repository's README and docs/ROADMAP.md (2026-10). The kanban column describes that category in general terms only.</span>
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col"><span class="zh">维度</span><span class="en" lang="en">Dimension</span></th>
+              <th scope="col"><span class="zh">自带 <code>todo_write</code></span><span class="en" lang="en">Built-in <code>todo_write</code></span></th>
+              <th scope="col" class="col-this"><span class="zh">本插件</span><span class="en" lang="en">This plugin</span></th>
+              <th scope="col"><span class="zh">看板式任务板</span><span class="en" lang="en">Kanban-style board</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row"><span class="zh">归属</span><span class="en" lang="en">Owner</span></th>
+              <td><span class="zh">一个 agent 会话</span><span class="en" lang="en">One agent session</span></td>
+              <td class="col-this"><span class="zh">你，跨会话、跨工作区</span><span class="en" lang="en">You, across sessions and workspaces</span></td>
+              <td><span class="zh">一个项目或一块板</span><span class="en" lang="en">A project or a board</span></td>
+            </tr>
+            <tr>
+              <th scope="row"><span class="zh">写入</span><span class="en" lang="en">Writing</span></th>
+              <td><span class="zh">整表替换</span><span class="en" lang="en">Whole-list replacement</span></td>
+              <td class="col-this"><span class="zh">逐字段，人和 Agent 都能写</span><span class="en" lang="en">Per field, by human and agent</span></td>
+              <td><span class="zh">卡片随拖拽换列</span><span class="en" lang="en">Cards move by dragging</span></td>
+            </tr>
+            <tr>
+              <th scope="row"><span class="zh">加入时间</span><span class="en" lang="en">Created time</span></th>
+              <td><span class="zh">不记录</span><span class="en" lang="en">Not tracked</span></td>
+              <td class="col-this"><span class="zh"><code>createdAt</code> 写一次、不改、处处显示</span><span class="en" lang="en"><code>createdAt</code>, written once and shown everywhere</span></td>
+              <td><span class="zh">视实现</span><span class="en" lang="en">Depends on the plugin</span></td>
+            </tr>
+            <tr>
+              <th scope="row"><span class="zh">上下文</span><span class="en" lang="en">Context</span></th>
+              <td><span class="zh">标题 + 状态</span><span class="en" lang="en">Title and state</span></td>
+              <td class="col-this"><span class="zh">描述 + 文档绝对路径 + 网址</span><span class="en" lang="en">Description, document paths, URLs</span></td>
+              <td><span class="zh">通常带评论与附件</span><span class="en" lang="en">Usually comments and attachments</span></td>
+            </tr>
+            <tr>
+              <th scope="row"><span class="zh">交给 Agent</span><span class="en" lang="en">Hand-off</span></th>
+              <td><span class="zh">无</span><span class="en" lang="en">None</span></td>
+              <td class="col-this"><span class="zh">一个按钮、四种模式，步骤变编号计划</span><span class="en" lang="en">One button, four modes, steps become a plan</span></td>
+              <td><span class="zh">常见绑定会话、自动续跑</span><span class="en" lang="en">Often bound sessions, auto-resume</span></td>
+            </tr>
+            <tr>
+              <th scope="row"><span class="zh">视图</span><span class="en" lang="en">Views</span></th>
+              <td><span class="zh">单表</span><span class="en" lang="en">One table</span></td>
+              <td class="col-this"><span class="zh">一份清单，按对话 / 时间 / 级别分组；<strong>没有看板</strong></span><span class="en" lang="en">One list grouped by conversation, time or level; <strong>no board</strong></span></td>
+              <td><span class="zh">看板列 + 拖拽</span><span class="en" lang="en">Columns and drag</span></td>
+            </tr>
+            <tr>
+              <th scope="row"><span class="zh">存储</span><span class="en" lang="en">Storage</span></th>
+              <td><span class="zh">会话事件日志</span><span class="en" lang="en">Session event log</span></td>
+              <td class="col-this"><span class="zh">一个 JSON 文件，能 cat、能手改、能备份</span><span class="en" lang="en">One JSON file you can cat, edit and back up</span></td>
+              <td><span class="zh">视实现</span><span class="en" lang="en">Depends on the plugin</span></td>
+            </tr>
+            <tr>
+              <th scope="row"><span class="zh">适合</span><span class="en" lang="en">Fits</span></th>
+              <td><span class="zh">一次任务里的计划</span><span class="en" lang="en">A plan inside one task</span></td>
+              <td class="col-this"><span class="zh">跨会话「回头要办的事」</span><span class="en" lang="en">Things to come back to across sessions</span></td>
+              <td><span class="zh">多张卡片并行的项目</span><span class="en" lang="en">A project with many cards in flight</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <ul class="nots">
+        <li>
+          <span class="zh"><strong>没有看板视图。</strong>清单是列表加分组的，没有列、没有拖拽、没有泳道。</span>
+          <span class="en" lang="en"><strong>No kanban view.</strong> The list is a list with groups: no columns, no drag, no swimlanes.</span>
+        </li>
+        <li>
+          <span class="zh"><strong>没有日历。</strong>只有到期时间和到点提醒，没有月视图、周视图。</span>
+          <span class="en" lang="en"><strong>No calendar.</strong> Due times and due reminders, no month or week view.</span>
+        </li>
+        <li>
+          <span class="zh"><strong>没有子任务工单。</strong><code>steps[]</code> 是待办内部的勾选项，不能单独派发，也不能各自挂附件。</span>
+          <span class="en" lang="en"><strong>No sub-task tickets.</strong> <code>steps[]</code> are ticks inside one todo; they cannot be dispatched on their own or carry their own attachments.</span>
+        </li>
+        <li>
+          <span class="zh"><strong>不会定时开工。</strong>ROADMAP 把「自动跑待办」写进「不计划」：那需要一个任务队列，而这是一份个人清单。</span>
+          <span class="en" lang="en"><strong>No scheduled execution.</strong> ROADMAP lists “auto-running todos” under not planned: that is a job queue, and this is a personal list.</span>
+        </li>
+      </ul>
+
+      <p class="finep">
+        <span class="zh">另外两条刻意的取舍：附件是引用不是上传（不复制字节，带用户名密码的网址一律拒绝）；可选服务缺失就降级——没有 <code>agents</code> 时按钮报 <code>agents-unavailable</code>，面板其余部分照常工作。</span>
+        <span class="en" lang="en">Two deliberate trade-offs behind this: attachments are references, not uploads (no bytes copied, and URLs with a user and password are refused), and a missing optional service degrades instead of breaking — without <code>agents</code> the button reports <code>agents-unavailable</code> while the rest of the panel keeps working.</span>
+      </p>
+    </div>
+  </section>
+
+  <section class="band" id="states" aria-labelledby="states-title">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">
+          <span class="zh">条件状态</span>
+          <span class="en" lang="en">Conditional states</span>
+        </p>
+        <h2 id="states-title">
+          <span class="zh">每一种状态都有基线图</span>
+          <span class="en" lang="en">Every state has a baseline image</span>
+        </h2>
+        <p class="section-lede">
+          <span class="zh">只在特定情况下出现的界面（空清单、无结果、收件箱、待确认、提醒、批量选择、设置、深色）各有一张固定基线图。改样式时直接对比，不用凭记忆。</span>
+          <span class="en" lang="en">Each state that only appears under a condition — empty, no results, inbox, review, reminders, selection, settings, dark — has a fixed baseline. Compare against it instead of remembering.</span>
+        </p>
+      </div>
+
+      <ul class="states">
+        <li class="state">
+          <figure>
+            <a href="screenshots/panel-empty.png" aria-label="打开大图：清单为空">
+              <img src="screenshots/panel-empty.png" width="1280" height="720" decoding="async" alt="空清单状态：没有任何待办行">
+            </a>
+            <figcaption>
+              <b><span class="zh">清单为空</span><span class="en" lang="en">Empty list</span></b>
+              <span class="zh">一条记录都没有时的面板。</span>
+              <span class="en" lang="en">The panel with no records at all.</span>
+            </figcaption>
+          </figure>
+        </li>
+        <li class="state">
+          <figure>
+            <a href="screenshots/panel-filtered.png" aria-label="打开大图：筛选无结果">
+              <img src="screenshots/panel-filtered.png" width="1280" height="720" decoding="async" alt="筛选无结果：搜索词没有命中任何待办">
+            </a>
+            <figcaption>
+              <b><span class="zh">筛选无结果</span><span class="en" lang="en">No results</span></b>
+              <span class="zh">和空清单是两种状态，提示也不同。</span>
+              <span class="en" lang="en">A different state from an empty list, with its own message.</span>
+            </figcaption>
+          </figure>
+        </li>
+        <li class="state">
+          <figure>
+            <a href="screenshots/panel-inbox.png" aria-label="打开大图：收件箱">
+              <img src="screenshots/panel-inbox.png" width="1280" height="720" decoding="async" alt="收件箱：外部提交的条目带「待确认」，确认后才进入清单">
+            </a>
+            <figcaption>
+              <b><span class="zh">收件箱</span><span class="en" lang="en">Inbox</span></b>
+              <span class="zh">外部写入与低置信度条目，确认后才进清单。</span>
+              <span class="en" lang="en">External and low-confidence items wait for confirmation.</span>
+            </figcaption>
+          </figure>
+        </li>
+        <li class="state">
+          <figure>
+            <a href="screenshots/panel-review.png" aria-label="打开大图：待确认">
+              <img src="screenshots/panel-review.png" width="1280" height="720" decoding="async" alt="待确认：Agent 完成的条目带黄色描边芯片，等待人确认">
+            </a>
+            <figcaption>
+              <b><span class="zh">待确认</span><span class="en" lang="en">Needs review</span></b>
+              <span class="zh">Agent 声明的完成，等人点头或退回。</span>
+              <span class="en" lang="en">An agent's completion, waiting for a person.</span>
+            </figcaption>
+          </figure>
+        </li>
+        <li class="state">
+          <figure>
+            <a href="screenshots/panel-reminders.png" aria-label="打开大图：到点提醒">
+              <img src="screenshots/panel-reminders.png" width="1280" height="720" decoding="async" alt="到点提醒状态的面板">
+            </a>
+            <figcaption>
+              <b><span class="zh">到点提醒</span><span class="en" lang="en">Due reminders</span></b>
+              <span class="zh">到期条目列在顶部，确认后不再出现。</span>
+              <span class="en" lang="en">Due items at the top; dismissing them removes them.</span>
+            </figcaption>
+          </figure>
+        </li>
+        <li class="state">
+          <figure>
+            <a href="screenshots/panel-select.png" aria-label="打开大图：批量选择">
+              <img src="screenshots/panel-select.png" width="1280" height="720" decoding="async" alt="批量选择：选中行后出现一键分配、完成、归档、加标签">
+            </a>
+            <figcaption>
+              <b><span class="zh">批量选择</span><span class="en" lang="en">Selection</span></b>
+              <span class="zh">多选后一键分配、完成、归档、加标签。</span>
+              <span class="en" lang="en">Assign, finish, archive or tag a whole selection.</span>
+            </figcaption>
+          </figure>
+        </li>
+        <li class="state">
+          <figure>
+            <a href="screenshots/panel-settings.png" aria-label="打开大图：设置">
+              <img src="screenshots/panel-settings.png" width="1280" height="720" decoding="async" alt="设置：字段分组、说明写在标签下方、底部一行保存">
+            </a>
+            <figcaption>
+              <b><span class="zh">设置</span><span class="en" lang="en">Settings</span></b>
+              <span class="zh">分组字段，说明写在标签下方，底部一行保存。</span>
+              <span class="en" lang="en">Grouped fields, notes under labels, one save row.</span>
+            </figcaption>
+          </figure>
+        </li>
+        <li class="state">
+          <figure>
+            <a href="screenshots/panel-dark.png" aria-label="打开大图：深色模式下的清单">
+              <img src="screenshots/panel-dark.png" width="1440" height="900" decoding="async" alt="深色模式下的清单，按对话分组">
+            </a>
+            <figcaption>
+              <b><span class="zh">深色 · 清单</span><span class="en" lang="en">Dark · list</span></b>
+              <span class="zh">跟随宿主主题，面板不另设一套配色。</span>
+              <span class="en" lang="en">Follows the host theme; no second palette.</span>
+            </figcaption>
+          </figure>
+        </li>
+        <li class="state">
+          <figure>
+            <a href="screenshots/detail-dark.png" aria-label="打开大图：深色模式下的详情">
+              <img src="screenshots/detail-dark.png" width="1440" height="900" decoding="async" alt="深色模式下的详情：编辑字段、进展记录、文档与地址、动态">
+            </a>
+            <figcaption>
+              <b><span class="zh">深色 · 详情</span><span class="en" lang="en">Dark · detail</span></b>
+              <span class="zh">宽窗口下详情立在右侧，窄窗口才在行内展开。</span>
+              <span class="en" lang="en">On wide windows the detail stands beside the list; narrow ones expand inline.</span>
+            </figcaption>
+          </figure>
+        </li>
+      </ul>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <p class="footer-brand"><span class="zh">全局待办 · dsh-global-todo</span><span class="en" lang="en">Global todos · dsh-global-todo</span></p>
+        <p class="footer-line">
+          <span class="zh">MIT © 2026 LUgABeEEE。社区插件，不是 DeepSeek 官方项目：包名里的 dsh 只表示它接入的生态。</span>
+          <span class="en" lang="en">MIT © 2026 LUgABeEEE. A community plugin, not an official DeepSeek project: “dsh” in the name only marks the ecosystem.</span>
+        </p>
+      </div>
+      <ul class="footer-links">
+        <li><a href="https://github.com/LUgABeEEE/dsh-global-todo" rel="noopener">GitHub</a></li>
+        <li><a href="https://www.npmjs.com/package/dsh-global-todo" rel="noopener">npm</a></li>
+        <li><a href="https://github.com/LUgABeEEE/dsh-global-todo/blob/main/docs/DESIGN.md" rel="noopener"><span class="zh">设计说明</span><span class="en" lang="en">Design notes</span></a></li>
+        <li><a href="https://github.com/LUgABeEEE/dsh-global-todo/blob/main/docs/ROADMAP.md" rel="noopener">Roadmap</a></li>
+        <li><a href="https://github.com/LUgABeEEE/dsh-global-todo/blob/main/LICENSE" rel="noopener"><span class="zh">许可</span><span class="en" lang="en">License</span></a></li>
+        <li><a href="https://github.com/topics/dsh-plugin" rel="noopener">GitHub topic · dsh-plugin</a></li>
+      </ul>
+    </div>
+    <p class="footer-small">
+      <span class="zh">清单在 <code>$DSH_HOME/global-todo/todos.json</code>——装卸插件都不会碰它。安装：<code>dsh plugin add dsh-global-todo</code>，重启宿主后刷新页面。</span>
+      <span class="en" lang="en">The list lives at <code>$DSH_HOME/global-todo/todos.json</code>, outside the plugin: installing or removing it never touches the file. Install with <code>dsh plugin add dsh-global-todo</code>, restart the host, reload the page.</span>
+    </p>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    var btn = document.getElementById('langToggle');
+    if (!btn) return;
+    var stored = null;
+    try { stored = window.localStorage.getItem('gt-lang'); } catch (e) { stored = null; }
+    if (stored === 'zh' || stored === 'en') root.setAttribute('data-lang', stored);
+    var sync = function () {
+      var zh = root.getAttribute('data-lang') !== 'en';
+      btn.setAttribute('title', zh ? 'Switch to English' : '切换到中文');
+    };
+    sync();
+    btn.addEventListener('click', function () {
+      var zh = root.getAttribute('data-lang') !== 'en';
+      var next = zh ? 'en' : 'zh';
+      root.setAttribute('data-lang', next);
+      root.setAttribute('lang', next === 'zh' ? 'zh-Hans' : 'en');
+      try { window.localStorage.setItem('gt-lang', next); } catch (e) { /* private mode */ }
+      sync();
+    });
+  }());
+</script>
+</body>
+</html>

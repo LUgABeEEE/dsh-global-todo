@@ -63,7 +63,9 @@ test('every published file is listed and present', async () => {
   for (const required of ['lib', 'locale', 'cordis.patch.yml', 'LICENSE', 'README.md', 'README.zh.md', 'CHANGELOG.md']) {
     assert.ok(manifest.files.includes(required), `${required} must be published`)
   }
-  for (const published of manifest.files) {
+  // A leading `!` is an exclusion, not a file: the landing page and the demo video are
+  // built for the web (GitHub Pages) and deliberately kept out of the npm tarball.
+  for (const published of manifest.files.filter((entry) => !entry.startsWith('!'))) {
     assert.equal(await exists(published), true, `${published} is listed but missing`)
   }
   assert.ok(!manifest.files.includes('test'), 'tests are not part of the published package')
