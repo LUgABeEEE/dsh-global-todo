@@ -140,6 +140,7 @@ test('the route surface is exactly the documented one', async () => {
         'reminders/ack',
         'remove',
         'restore',
+        'review',
         'settings',
         'status',
         'update',

@@ -1,3 +1,21 @@
+## [0.7.0] — 2026-10-20
+
+An agent's "done" becomes a claim a person confirms, instead of a fact.
+
+- **Completing as an agent now leaves a review mark.** `todo.review = { pending, at, by }` is set
+  by the model whenever the actor is `agent` (both `setStatus … done` and the completion path the
+  tools use); a person finishing something sets none, and anything that leaves `done` clears it.
+- **`POST /api/global-todo/review`** answers it: `confirm` keeps the todo finished and drops the
+  mark, `reject` puts it back on the list with the completion record removed — "not actually done"
+  is the only honest reading of a rejected claim. Answering twice is refused, not silently
+  accepted.
+- **The panel shows it**: a `待确认` chip on the row, a `待确认` filter that is the done list
+  narrowed to pending marks, and `确认完成` / `退回清单` in the row menu. `counts.review` drives the
+  chip and the filter.
+- **Agents see it too**: `presentTodo` carries `review`, so an agent can tell that its completion
+  is still waiting rather than assuming it landed.
+- Two new model tests cover the rule (agent vs person, confirm vs reject, no double answers).
+
 ## [0.6.8] — 2026-10-20
 
 Every conditional state now has a baseline image, and the harness refuses to render a blank

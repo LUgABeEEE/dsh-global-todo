@@ -20,6 +20,7 @@ import {
   pushActivity,
   recordDispatch,
   removeLink,
+  reviewTodo,
   setStatus,
 } from '../lib/model.js'
 
@@ -155,7 +156,7 @@ test('counts summarise a list', () => {
   ]
   setStatus(todos[1], 'done', { now: NOW })
   const summary = counts(todos, NOW)
-  assert.deepEqual(summary, { total: 2, open: 1, doing: 0, done: 1, cancelled: 0, archived: 0, overdue: 1, inbox: 0 })
+  assert.deepEqual(summary, { total: 2, open: 1, doing: 0, done: 1, cancelled: 0, archived: 0, overdue: 1, inbox: 0, review: 0 })
 })
 
 test('loading tolerates damage: bad rows and bad attachments are dropped, the rest survives', () => {
@@ -301,4 +302,43 @@ test('invalid input types are rejected with a code', () => {
     assert.ok(error instanceof TodoError)
     assert.equal(error.code, 'invalid-title')
   }
+})
+
+test('an agent finishing something asks for review; a person finishing it does not', () => {
+  const byAgent = createTodo({ title: '交给 Agent 的' }, { now: NOW })
+  setStatus(byAgent, 'done', { now: NOW, by: 'agent' })
+  assert.equal(byAgent.review?.pending, true, 'an agent completion is a claim, not a decision')
+  assert.equal(counts([byAgent], NOW).review, 1)
+
+  const byHuman = createTodo({ title: '自己勾掉的' }, { now: NOW })
+  setStatus(byHuman, 'done', { now: NOW, by: 'human' })
+  assert.equal(byHuman.review, null, 'a person marking it done needs no confirmation')
+
+  // The completion path the agent tools use carries the same rule.
+  const completed = createTodo({ title: '带完成说明的' }, { now: NOW })
+  completeTodo(completed, { summary: '做完了' }, { now: NOW, by: 'agent' })
+  assert.equal(completed.review?.pending, true)
+})
+
+test('reviewing answers the claim and leaves nothing half-decided', () => {
+  const confirmed = createTodo({ title: 'A' }, { now: NOW })
+  completeTodo(confirmed, { summary: '做完了' }, { now: NOW, by: 'agent' })
+  assert.equal(reviewTodo(confirmed, 'confirm', { now: NOW }), true)
+  assert.equal(confirmed.status, 'done', 'confirming keeps it finished')
+  assert.equal(confirmed.review, null)
+  assert.notEqual(confirmed.completion, null, 'the completion record survives the confirmation')
+
+  const rejected = createTodo({ title: 'B' }, { now: NOW })
+  setStatus(rejected, 'done', { now: NOW, by: 'agent' })
+  assert.equal(reviewTodo(rejected, 'reject', { now: NOW }), true)
+  assert.equal(rejected.status, 'open', 'a rejected claim goes back on the list')
+  assert.equal(rejected.review, null)
+  assert.equal(rejected.completion, null, 'a record claiming the work is done must not survive a rejection')
+
+  // Nothing to answer twice, and reopening a settled record drops the mark.
+  assert.equal(reviewTodo(rejected, 'confirm', { now: NOW }), false)
+  const reopened = createTodo({ title: 'C' }, { now: NOW })
+  setStatus(reopened, 'done', { now: NOW, by: 'agent' })
+  setStatus(reopened, 'open', { now: NOW, by: 'human' })
+  assert.equal(reopened.review, null)
 })
