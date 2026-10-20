@@ -1,3 +1,17 @@
+## [0.9.1] — 2026-10-20
+
+The list could not scroll. One missing declaration, and the panel never owned its own height.
+
+- **`.gt-inner` needed `min-height: 0`.** A flex item defaults to `min-height: auto`, so the
+  column refused to shrink below its content: with a long list it grew to 2236px inside a 680px
+  slot, `.gt-groups` never got a scroll range, and the host's own overflow clipped everything
+  below the fold — measured `scrollTop 0 → 0` after a wheel, i.e. nothing moved.
+- **`.gt-root` now clips its own overflow**, so the header and toolbar stay put and the list is the
+  only scroll area (measured after the fix: `.gt-groups` 480px viewport over a 2036px list, wheel
+  moves 0 → 800).
+- **`check:render` asserts the contract**: panel clips, column may shrink, list scrolls. This class
+  of bug is invisible to the server-rendered preview screenshot, which is why it shipped.
+
 ## [0.9.0] — 2026-10-20
 
 Competitive ground: the hand-off now has a return path, capture carries its source, and the

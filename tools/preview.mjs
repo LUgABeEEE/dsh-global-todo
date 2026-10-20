@@ -715,6 +715,12 @@ function checkRenderedPanel(html, detail, select) {
   for (const label of ['对话', '时间', '级别']) {
     expect(html.includes(`>${label}</button>`), `the ${label} grouping button is missing`)
   }
+  // The scroll contract: the panel clips and the list scrolls. A flex item defaults to
+  // min-height:auto, which silently made the column grow past the slot so nothing scrolled
+  // and the host hid the rest of the list. Assert the two declarations that prevent it.
+  expect(/\.gt-root\s*\{[^}]*overflow:\s*hidden/.test(css), 'the panel no longer clips its own overflow')
+  expect(/\.gt-inner\s*\{[^}]*min-height:\s*0/.test(css), 'the column can grow past the slot again (no min-height: 0)')
+  expect(/\.gt-groups\s*\{[^}]*overflow:\s*auto/.test(css), 'the list is no longer the scroll owner')
   // The plan is visible in two places on purpose: progress without opening the row, and the
   // ticks themselves in the detail.
   expect(html.includes('步骤 2/4'), 'the row does not show plan progress')
