@@ -57,6 +57,37 @@ $DSH_HOME/global-todo/todos.json     ← { version: 1, todos: [ … ] }
   version, and a future migration step would run before the first write, keeping the old
   file as a backup.
 
+## Reading the conversation back
+
+Handing work over used to be one-way: the panel knew a conversation was bound, and nothing about
+what came of it. The read-back closes that loop with the cheapest mechanism available.
+
+- **Where the text comes from.** The plugin already listens on `session/event`; every
+  `assistant/message` also updates a bounded cache (200 sessions, 400 characters each). Nothing is
+  read from disk per row and nothing is persisted — a stale tail is better than a slow panel, and
+  the panel says when it is dormant.
+- **Why not read the session log on demand.** Opening a row is the most common click in the panel.
+  A per-row disk read would make it wait on I/O, and a conversation that the Host had unloaded
+  answers nothing anyway.
+- **The route is separate** (`GET /session?id=`): `/list` is polled, a tail is not, and folding
+  them together would read every session on every poll. A missing tail is a normal answer, not an
+  error.
+- **What the person sees:** 会话在跑 / 会话已休眠, the last thing it said (three lines, full text in
+  the tooltip), and a button that opens that conversation.
+
+## The sentence an item came from
+
+A captured todo is somebody's summary of what a person said, which is exactly the step where
+meaning drifts. So capture now carries `evidence`: the sentence, quoted verbatim, at most 300
+characters, stored on the record and shown under 「原话」 in the detail (a quiet blockquote, not a
+badge — it is reference material, not a status).
+
+- The capture prompt asks for it in as many words: quote, do not paraphrase.
+- A todo the person typed themselves has no evidence, and that is not an error — the field is
+  empty rather than absent, so the panel never has to guess.
+- Too long is refused, like every other text field: evidence that is not the sentence is not
+  evidence.
+
 ## A plan inside the todo
 
 A todo is one line, but the work behind it is often five steps. Rather than grow a second object

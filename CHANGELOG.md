@@ -1,3 +1,19 @@
+## [0.9.0] — 2026-10-20
+
+Competitive ground: the hand-off now has a return path, capture carries its source, and the
+first screen says what the plugin is for.
+
+- **Session read-back.** Every `assistant/message` updates a bounded in-memory tail (200 sessions,
+  400 chars); `GET /session?id=` returns it with `alive` / `dir`, and the detail shows 「会话在跑 /
+  已休眠」, the last thing the conversation said, and a button to open it. No disk read per row, no
+  new persistence.
+- **Evidence on captured items.** `evidence` is the sentence an item came from, quoted verbatim
+  (≤300 chars), asked for by the capture prompt and shown under 「原话」 in the detail. A todo you
+  typed yourself simply has none.
+- **A landing page instead of a manual.** Both READMEs open with three sentences, a 20-second
+  state tour (`docs/screenshots/tour.gif`, built reproducibly by `npm run tour`), and the install
+  command — the reference material moved below the fold.
+
 ## [0.8.0] — 2026-10-20
 
 A todo can carry its plan, and the plan is what the agent receives.

@@ -372,3 +372,21 @@ test('steps can be replaced through a patch, and are capped', () => {
     (error) => error instanceof TodoError && error.code === 'invalid-steps',
   )
 })
+
+test('an item can carry the sentence it came from', () => {
+  const todo = createTodo({ title: '补给 NAS 加权限', evidence: '  「NAS 那个目录记得加上权限」  ' }, { now: NOW })
+  assert.equal(todo.evidence, '「NAS 那个目录记得加上权限」', 'trimmed, kept verbatim')
+
+  // A self-recorded item has no quote, and that is not an error.
+  assert.equal(createTodo({ title: '自己记的' }, { now: NOW }).evidence, '')
+
+  // Too long is refused rather than silently cut: an evidence that is not the sentence
+  // is not evidence.
+  assert.throws(
+    () => createTodo({ title: 'A', evidence: 'x'.repeat(LIMITS.evidence + 1) }, { now: NOW }),
+    (error) => error instanceof TodoError && error.code === 'invalid-evidence',
+  )
+
+  const reloaded = normalizeStored(JSON.parse(JSON.stringify(todo)))
+  assert.equal(reloaded.evidence, todo.evidence, 'and it survives the file')
+})

@@ -78,6 +78,7 @@ async function harness(options = {}) {
     ...(options.diagnostics === undefined ? {} : { diagnostics: options.diagnostics }),
     ...(options.logger === undefined ? {} : { logger: options.logger }),
     ...(options.settings === undefined ? {} : { settings: options.settings }),
+    ...(options.sessionTail === undefined ? {} : { sessionTail: options.sessionTail }),
   })
   const call = async (suffix, request) => {
     const route = routes.find((candidate) => candidate.path === `${ROUTE_BASE}${suffix}`)
@@ -141,6 +142,7 @@ test('the route surface is exactly the documented one', async () => {
         'remove',
         'restore',
         'review',
+        'session',
         'settings',
         'status',
         'update',
@@ -623,6 +625,32 @@ test('an agent completion waits for a person, and the review route answers it', 
 
     const missing = await env.call('/review', makeReq({ method: 'POST', url: `${ROUTE_BASE}/review`, body: JSON.stringify({ id: 't-nope', decision: 'confirm' }) }))
     assert.equal(missing.statusCode, 404)
+  } finally {
+    await env.cleanup()
+  }
+})
+
+test('the read-back route reports a tail when it has one, and nothing when it does not', async () => {
+  const env = await harness({
+    sessionTail: (id) => (id === 'session-live' ? { text: '第一步跑完了，正在收尾', at: 1_700_000_000_000, length: 12 } : null),
+  })
+  try {
+    const hit = await env.call('/session', makeReq({ url: `${ROUTE_BASE}/session?id=session-live` }))
+    assert.equal(hit.statusCode, 200)
+    const session = hit.json().data.session
+    assert.equal(session.alive, true, 'the fixture treats session-live as running')
+    assert.equal(session.tail.text, '第一步跑完了，正在收尾')
+
+    // A conversation this process has not seen speak: the honest answer is a null tail,
+    // not an error and not an empty string pretending to be a message.
+    const cold = await env.call('/session', makeReq({ url: `${ROUTE_BASE}/session?id=session-unknown` }))
+    assert.equal(cold.statusCode, 200)
+    assert.equal(cold.json().data.session.tail, null)
+    assert.equal(cold.json().data.session.alive, false)
+
+    // No id at all: nothing to look up.
+    const bare = await env.call('/session', makeReq({ url: `${ROUTE_BASE}/session` }))
+    assert.equal(bare.json().data.session, null)
   } finally {
     await env.cleanup()
   }

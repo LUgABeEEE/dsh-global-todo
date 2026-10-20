@@ -1,12 +1,24 @@
 # dsh-global-todo
 
-**One todo list for the whole DeepSeek Harness, owned by you and written by your agent too.**
+**A cross-session todo list for DeepSeek Harness: one file you own, written by you and your
+agent, and handed to a conversation in one click.**
 
-Every entry records when it was added, carries a description, can attach any number of
-documents and addresses, and can be handed to an agent session with one click — so
-"continue this" is a button, not a paragraph of context you retype.
+Three things it does that a session-local plan cannot:
 
-[中文说明](README.zh.md)
+1. **One JSON file is the whole list.** `cat`, diff, commit it, put it on a NAS, carry it to
+   another machine. Nothing lives inside a session log.
+2. **Hand-off is a button, not a paragraph.** Four modes, the working directory checked, and
+   the todo's own **steps** arrive as a numbered plan.
+3. **An agent saying "done" is a claim.** It lands in **待确认 / Needs review** until a person
+   confirms it — or sends it back to the list.
+
+![The panel in use: list, detail, steps, review, inbox, reminders, selection](docs/screenshots/tour.gif)
+
+```sh
+dsh plugin add dsh-global-todo
+```
+
+[中文说明](README.zh.md) · [Every state has a baseline image](#screenshots) · [Design notes](docs/DESIGN.md)
 
 ---
 

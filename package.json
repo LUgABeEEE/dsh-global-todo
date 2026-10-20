@@ -1,6 +1,6 @@
 {
   "name": "dsh-global-todo",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "icon": "./docs/icon.svg",
   "description": "Global, cross-session todos for DeepSeek Harness: one list owned by the human and the agent together, with creation time, attached documents and links, and one-click hand-off to an agent session. 全局待办：跨会话一份清单，记录加入时间，可挂文档与地址，可一键交给 Agent 继续干。",
   "type": "module",
@@ -58,6 +58,7 @@
     "verify": "npm run check && npm run check:render && npm test",
     "preview": "node tools/preview.mjs",
     "screenshots": "npm run preview && node tools/screenshot.mjs",
+    "tour": "node tools/tour.mjs",
     "prepack": "npm run verify",
     "check:render": "node tools/preview.mjs --check",
     "check:live": "node tools/live-check.mjs",
