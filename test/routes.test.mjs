@@ -140,6 +140,7 @@ test('the route surface is exactly the documented one', async () => {
         'note',
         'reminders/ack',
         'remove',
+        'report',
         'restore',
         'review',
         'session',
@@ -651,6 +652,47 @@ test('the read-back route reports a tail when it has one, and nothing when it do
     // No id at all: nothing to look up.
     const bare = await env.call('/session', makeReq({ url: `${ROUTE_BASE}/session` }))
     assert.equal(bare.json().data.session, null)
+  } finally {
+    await env.cleanup()
+  }
+})
+
+test('markdown goes out through export and comes back through import', async () => {
+  const env = await harness()
+  try {
+    await env.service.create({ title: '发版', priority: 'high', tags: ['发布'], dueAt: '2026-10-21' })
+    const md = await env.call('/export', makeReq({ url: `${ROUTE_BASE}/export?format=md` }))
+    assert.equal(md.statusCode, 200)
+    assert.match(md.json().data.markdown, /- \[ \] 发版/)
+
+    // A hand-written file (or a round trip) goes through the same validation as JSON.
+    const imported = await env.call('/import', makeReq({
+      method: 'POST',
+      url: `${ROUTE_BASE}/import`,
+      body: JSON.stringify({ markdown: '- [ ] 手写的\n      优先级: 紧急', mode: 'merge' }),
+    }))
+    assert.equal(imported.statusCode, 200)
+    assert.equal(imported.json().data.imported, 1)
+    const todos = await env.service.listAll()
+    const handwritten = todos.find((todo) => todo.title === '手写的')
+    assert.equal(handwritten.priority, 'urgent')
+  } finally {
+    await env.cleanup()
+  }
+})
+
+test('the report route summarises the window, and defaults to a week', async () => {
+  const env = await harness()
+  try {
+    const todo = await env.service.create({ title: '由 Agent 完成' })
+    await env.service.complete(todo.id, { summary: '做完了', artifacts: ['/repo/a.js'] }, { by: 'agent' })
+    const response = await env.call('/report', makeReq({ url: `${ROUTE_BASE}/report` }))
+    assert.equal(response.statusCode, 200)
+    const report = response.json().data.report
+    assert.equal(report.days, 7)
+    assert.equal(report.finished.length, 1)
+    assert.equal(report.files[0].path, '/repo/a.js')
+    assert.equal(report.pendingReview, 1, 'an agent completion is still a claim')
   } finally {
     await env.cleanup()
   }

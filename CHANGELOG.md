@@ -1,3 +1,19 @@
+## [0.10.0] — 2026-10-20
+
+The two remaining high-value items, plus the layout bug written down.
+
+- **Markdown in and out.** `GET /export?format=md` writes a task list (title, priority, due,
+  tags, evidence, description, steps, attachments as indented metadata); `POST /import` with
+  `{ markdown }` reads it back through `create` — new items, never an overwrite, because Markdown
+  has no ids. The parser is tolerant: unknown lines ignored, an unreadable date dropped, a blank
+  task line is not a todo.
+- **Weekly agent report.** `GET /report?days=7` derives, from completion records alone: what
+  finished (newest first, by whom), how many conversations were involved, which files were touched
+  and how often, and how many still wait for review. Shown from `⋯ → 本周报告`; nothing is stored.
+- **The scroll bug is documented** in `DESIGN.md` with the measurements (2236px column inside a
+  680px slot, `scrollTop 0 → 0`), so the next person who touches the layout knows which two
+  declarations hold the contract.
+
 ## [0.9.1] — 2026-10-20
 
 The list could not scroll. One missing declaration, and the panel never owned its own height.

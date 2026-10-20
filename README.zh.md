@@ -161,7 +161,7 @@ dsh plugin --profile web remove dsh-global-todo
 | GET | `/api/global-todo/list` | `status`、`query`、`tag`、`sort`、`limit`——被截断时响应带 `matched` 与 `truncated` |
 | GET | `/api/global-todo/dirs` | `path?`——列子目录，供面板内置的目录浏览器使用（宿主自己的选择器在时会优先） |
 | GET | `/api/global-todo/get` | `id` |
-| GET | `/api/global-todo/export` | ——（存储用的那份 JSON 文档，用于备份或迁移） |
+| GET | `/api/global-todo/export` | ——（存储用的那份 JSON 文档；`?format=md` 给 Markdown 任务列表） |
 | POST | `/api/global-todo/import` | `{ doc, mode?: replace\|merge, dryRun? }`——`replace` 是无损往返，`merge` 同 id 覆盖、新 id 追加（面板用的是这个）；`dryRun` 只返回 `wouldCreate` / `wouldUpdate`，不落盘 |
 | POST | `/api/global-todo/reminders/ack` | `{ ids }`——这些已到期的提醒不再列出来 |
 | POST | `/api/global-todo/note` | `{ id, text }`（追加进展记录） |
@@ -175,6 +175,8 @@ dsh plugin --profile web remove dsh-global-todo
 | POST | `/api/global-todo/remove` | `{ id }` |
 | POST | `/api/global-todo/restore` | `{ todo }` —— 原样还原被删除的记录（撤销） |
 | POST | `/api/global-todo/review` | `{ id, decision: confirm\|reject }` —— 回答 Agent 的完成声明 |
+| GET | `/api/global-todo/report?days=7` | 这段时间里 Agent 完成了什么、触及了哪些文件 |
+| GET | `/api/global-todo/session?id=` | 绑定的会话最后说了什么（`tail` / `alive` / `dir`） |
 | POST | `/api/global-todo/link` | `{ id, add?: [...], remove?: [值 或 下标] }` |
 | POST | `/api/global-todo/dispatch` | `{ id, mode?: auto\|bound\|new\|current, sessionId?, dir? }` |
 | POST | `/api/global-todo/assign` | `{ ids, items?, target?, dir? }`——一次把多条交给 Agent；配不上的 id 原样报回，不擅自送到别处 |

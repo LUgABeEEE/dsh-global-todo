@@ -269,7 +269,7 @@ fence when that service is present, and by a strict loopback check otherwise.
 | GET | `/api/global-todo/list` | `status`, `query`, `tag`, `sort`, `limit` — the reply carries `matched` and `truncated` when the page was cut |
 | GET | `/api/global-todo/dirs` | `path?` — list subdirectories for the panel's built-in folder picker (the shell's own picker is preferred when mounted) |
 | GET | `/api/global-todo/get` | `id` |
-| GET | `/api/global-todo/export` | — (the store's own JSON document, for backup or migration) |
+| GET | `/api/global-todo/export` | — (the store's own JSON document; `?format=md` gives a Markdown task list) |
 | POST | `/api/global-todo/import` | `{ doc, mode?: replace\|merge, dryRun? }` — `replace` is an exact round trip, `merge` updates by id and appends (what the panel sends); `dryRun` returns `wouldCreate` / `wouldUpdate` and writes nothing |
 | POST | `/api/global-todo/reminders/ack` | `{ ids }` — stop listing these passed deadlines as due |
 | POST | `/api/global-todo/capture` | `{ sessionId? }` — ask the current conversation to collect its follow-ups |
@@ -282,6 +282,8 @@ fence when that service is present, and by a strict loopback check otherwise.
 | POST | `/api/global-todo/remove` | `{ id }` |
 | POST | `/api/global-todo/restore` | `{ todo }` — put a removed record back verbatim (undo) |
 | POST | `/api/global-todo/review` | `{ id, decision: confirm\|reject }` — answer an agent's completion |
+| GET | `/api/global-todo/report?days=7` | what the agents finished in the window, and the files it touched |
+| GET | `/api/global-todo/session?id=` | what a bound conversation last said (`tail`, `alive`, `dir`) |
 | POST | `/api/global-todo/link` | `{ id, add?: [...], remove?: [value \| index] }` |
 | POST | `/api/global-todo/dispatch` | `{ id, mode?: auto\|bound\|new\|current, sessionId?, dir? }` |
 | POST | `/api/global-todo/assign` | `{ ids, items?, target?, dir? }` — hand several todos over in one call; an id that matches nothing comes back instead of being sent elsewhere |

@@ -174,25 +174,22 @@ assistant message plus a link to open it.
 - Why second: the panel currently cannot answer "did the thing I handed over get anywhere",
   which is the question people actually ask.
 
-### 3. Markdown / TaskPaper import and export
+### 3. ~~Markdown import and export~~ — landed in 0.10.0
 
-JSON round-trips byte for byte; the text formats are what let the list live in a repo and
-diff.
+`GET /export?format=md` writes a task list with indented metadata; `POST /import` with
+`{ markdown }` reads it back through `create` (new items, never an overwrite — Markdown has no
+ids, so a shared id must not be able to replace a record). Parser is tolerant: a bad date is
+dropped, unknown lines ignored, an empty task line is not a todo. Tests: `test/markdown.test.mjs`.
 
-- Today: only `GET /export` / `POST /import` over JSON.
-- Effort: medium — a serializer plus a tolerant parser, both with round-trip tests.
-- Why third: cheap portability, and it is the only way to compare this list with another
-  tool's.
+TaskPaper is still not implemented, and deliberately: the Markdown shape covers "diff it in a
+repo", and a second text format is a second parser to keep honest.
 
-### 4. The weekly agent report
+### 4. ~~The weekly agent report~~ — landed in 0.10.0
 
-Per-todo completion records already carry a summary and the changed files. A cross-todo
-view — "what did the sessions finish this week, and what did they touch" — turns that into
-something reviewable.
-
-- Today: the data exists (`completion.artifacts`), the aggregate does not.
-- Effort: small-medium; the honest version is a date-bounded list filtered on
-  `completion.by === 'agent'`, with `review` state beside each row.
+`GET /report?days=7` aggregates completion records into finished items (newest first), the number
+of conversations involved, files touched with counts, and how many wait for review — derived every
+time, never stored. The panel shows it from `⋯ → 本周报告`. Tests:
+`test/markdown.test.mjs` (pure aggregation) and `test/routes.test.mjs`.
 
 ### 5. Image attachments
 

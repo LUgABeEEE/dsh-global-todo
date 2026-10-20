@@ -57,6 +57,27 @@ $DSH_HOME/global-todo/todos.json     ← { version: 1, todos: [ … ] }
   version, and a future migration step would run before the first write, keeping the old
   file as a backup.
 
+## The panel owns its own scroll
+
+A list longer than the slot must scroll **inside** the panel: the header and toolbar stay put, and
+the rows move. That sounds obvious and was broken for two releases, because a flex column does not
+do it by default.
+
+- **The bug.** `.gt-inner` is a flex item (`flex: 1`) of `.gt-root`. A flex item's default
+  `min-height` is `auto`, so the column refused to shrink below its content: with a long list it
+  measured **2236px inside a 680px slot**, `.gt-groups` therefore never had a scroll range, and the
+  host's own overflow clipped everything below the fold. Measured proof: a wheel over the list left
+  `scrollTop` at **0**.
+- **The fix is two declarations**: `.gt-inner { min-height: 0 }` (let the column shrink) and
+  `.gt-root { overflow: hidden }` (the panel clips, so the list is the only scroll owner). After:
+  `.gt-groups` is 480px of viewport over a 2036px list, and a wheel moves it 0 → 800.
+- **Why it shipped.** Every screenshot in this repository is a server-rendered preview: no layout
+  engine, no wheel, no scrollbar. A static image cannot show that a list is stuck at the top. So the
+  render check now asserts the three declarations that make the contract
+  (`overflow: hidden` on the panel, `min-height: 0` on the column, `overflow: auto` on the list),
+  and anything about scrolling, focus or hover has to be measured with a real browser instead of
+  looked at.
+
 ## Reading the conversation back
 
 Handing work over used to be one-way: the panel knew a conversation was bound, and nothing about
