@@ -60,7 +60,7 @@ tarball. Stop there.
 conversation, so a SIGTERM drops whatever they were midway through — on 2026-10-20 a
 `sleep 20 && kill` shipped from this repository cut five unrelated sessions, one of them a
 release conversation. Report the new version and let the user pick the moment. If a restart is
-genuinely needed, run `/data/agent/tools/dsh-restart-guard/dsh-restart-guard.sh` first: exit 0
+genuinely needed, run `$DSH_HOME/tools/dsh-restart-guard/dsh-restart-guard.sh` first: exit 0
 means nothing is in flight, 10 means other conversations are open (ask), 20 means a subagent is
 running (do not restart — its work is lost).
 
