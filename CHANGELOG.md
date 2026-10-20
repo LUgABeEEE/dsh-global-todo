@@ -1,3 +1,19 @@
+## [0.6.1] — 2026-10-20
+
+The follow-up pass from the design spec: the breakpoint now follows the panel, not the window,
+and the form stops competing with itself.
+
+- **Panel-measured breakpoint.** A `ResizeObserver` on the column sets `data-wide`; the detail card
+  becomes a right-hand card only when the column itself is at least 960px. At 1100 the detail now
+  expands inline under its row instead of squeezing the list into a 416px strip.
+- **Inline detail stops repeating itself.** The card title is hidden in inline mode (the row title
+  is directly above it) and keeps only the close affordance.
+- **Add form.** The header action turns into an icon-only close while the form is open, so there is
+  one `+ Add` on screen; the form orders 更多字段 before 添加, matching the spec.
+- **Rows are 72px tall** at minimum, matching the spec's rhythm, and the detail/card radius is 10px.
+- Dark theme verified against the real host: layer-2 rows, overlay inspector and ghost-active
+  selected states all resolve correctly.
+
 ## [0.6.0] — 2026-10-20
 
 A design pass over the whole panel: one list, fewer competing controls, one type scale.
