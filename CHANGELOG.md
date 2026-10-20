@@ -1,3 +1,15 @@
+## [0.6.2] — 2026-10-20
+
+The narrow-width details the spec called for after the two-column work.
+
+- **Grouping becomes a dropdown when the column is narrow.** The three segmented buttons collapse
+  into one `select` (Conversation / Time / Level) below 960px, so the toolbar stops taking a row
+  for grouping at the width where rows are already tight.
+- **The inbox explains itself.** Opening the inbox view now leads with one line: items were written
+  by external sources or the agent and only join the list after confirmation.
+- **Toasts are anchored to the panel.** `position: absolute` on the panel root instead of `fixed`
+  against the viewport, so a notice appears above the list rather than at the bottom of the window.
+
 ## [0.6.1] — 2026-10-20
 
 The follow-up pass from the design spec: the breakpoint now follows the panel, not the window,
