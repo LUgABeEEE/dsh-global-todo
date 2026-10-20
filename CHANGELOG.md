@@ -1,3 +1,15 @@
+## [0.6.3] — 2026-10-20
+
+States that were still speaking to nobody.
+
+- **The selection bar has one primary action.** Count and 全选/清空 sit on the left, `Assign` is
+  the only filled button, `Complete`/`Archive`/tag stay quiet, and the ambiguous `Done` becomes an
+  icon-only exit (it read as a second `Complete`).
+- **The inbox explains itself**, and an empty filter now offers `Clear filter` instead of dead air.
+- **The reminder bar says which set it is.** Copy moves to `Dismiss all` and the bar carries a note
+  that these reached their reminder time, unlike Overdue.
+- **Selection bar is sticky and 36px tall**, so the batch actions stay reachable while scrolling.
+
 ## [0.6.2] — 2026-10-20
 
 The narrow-width details the spec called for after the two-column work.

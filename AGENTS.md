@@ -50,6 +50,20 @@ npm run verify   # static checks then the full test suite; run before every comm
   before — `docs/DESIGN.md` still said "the seven agent tools" — because only one of those files
   was updated at a time.
 
+## Releasing
+
+Publishing is automated: bump both versions, `npm run verify`, commit, tag `vX.Y.Z`, push, and
+let the `publish` workflow publish over OIDC. Then create the GitHub release from the registry
+tarball. Stop there.
+
+**Never restart `dsh` from a turn.** The host runs in-process sessions for every open
+conversation, so a SIGTERM drops whatever they were midway through — on 2026-10-20 a
+`sleep 20 && kill` shipped from this repository cut five unrelated sessions, one of them a
+release conversation. Report the new version and let the user pick the moment. If a restart is
+genuinely needed, run `/data/agent/tools/dsh-restart-guard/dsh-restart-guard.sh` first: exit 0
+means nothing is in flight, 10 means other conversations are open (ask), 20 means a subagent is
+running (do not restart — its work is lost).
+
 ## Style
 
 - Comments explain **why** a guard exists, not what the next line does.
