@@ -60,15 +60,51 @@ $DSH_HOME/global-todo/todos.json     ← { version: 1, todos: [ … ] }
 ## On a wide window, the detail stands beside the list
 
 Expanding a row inline is right on a narrow window and wrong on a wide one: the list jumps, the
-row you were reading slides away, and the rest of the screen sits empty. Above 1100px the open
-row's detail is lifted out of the flow into a card bracketed between the toolbar and the footer
-at the panel's right edge; only the list gives way (the toolbar keeps full width), and the list gets
-padding equal to that card. The card's offsets are measured from the panel's own column on mount
-and on resize — the slot does not always fill the window, so a viewport-derived offset put the card
-over the list inside the real GUI. This is a CSS-only override over unchanged markup
-(`.gt-root[data-wide-detail]` plus one media query) precisely so there is still exactly one
-detail implementation — a second render path for wide screens would drift from the inline one at
-the first field change.
+row you were reading slides away, and the rest of the screen sits empty. When the panel itself is
+at least 960px wide, the open row's detail is lifted out of the flow into a card at the panel's
+right edge; only the list gives way (the header and toolbar keep full width), and the list gets
+360px of right padding equal to the card. The breakpoint follows the **panel's** measured width,
+not the viewport: the slot is ~265px narrower than the window, so a viewport query opened the
+two-column layout while the panel still had no room for it. This is a CSS-only override over
+unchanged markup (`.gt-root[data-wide]` / `[data-wide-detail]`) precisely so there is still
+exactly one detail implementation — a second render path for wide screens would drift from the
+inline one at the first field change.
+
+### Why the card is `position: fixed` and not `sticky`
+
+Three ways to do this were tried; only one survives the host's layout.
+
+1. **`position: sticky`** — the card is a child of the row, so sticky is bounded by the row's
+   box: it never leaves the 72–94px tall item. Moving the card out of the row would mean a second
+   detail render path.
+2. **`position: absolute` inside a positioned wrapper around the list** — measured on
+   2026-10-20: at 1440 the card came out **348 × 3051px**, at 1280 **348 × 3203px**. The card
+   stretched to the full height of the list's *content* and scrolled away with the page. Reason:
+   **the scrolling ancestor of this panel is the host page, not `.gt-groups`** — the panel is a
+   column in someone else's scroller, so `.gt-groups` never scrolls and an absolutely positioned
+   box is bracketed by the whole content column instead of the visible area.
+3. **`container-type: inline-size` + container queries** — wanted, because the breakpoint would
+   then be CSS. But inline-size containment applies `contain: layout`, which makes the panel the
+   containing block for `position: fixed` descendants. The card (and the settings popover) would
+   silently switch from viewport-anchored to panel-anchored and land in the wrong place.
+
+So: **`position: fixed` plus one measurement of the panel and list boxes**, taken when a row
+opens and again on resize (and on a `ResizeObserver` of the column, because collapsing the host
+sidebar changes the panel's width without a window resize). The measured values land in
+`--gt-detail-top/right/bottom`; the CSS fallbacks assume the centred 1040px column, which is what
+the static previews render.
+
+### Changing this safely
+
+- Keep **one** detail implementation: if a change needs different markup for wide screens, it is
+  the wrong change.
+- Keep the breakpoint on the **panel** width (960px). A viewport media query was already shipped
+  once and put a 360px card over a 416px list at 1100.
+- Never let the card cover the list: it is `.gt-groups` padding that reserves the room, and the
+  two numbers (360 padding / 348 card + 12 gap) have to move together.
+- Verify in the real GUI, not the preview, at **1440 / 1280 / 1100**: the card must be ≈348px wide,
+  the list must end before it, and the open row must stay visible next to it. The preview cannot
+  catch this class of bug — it is server-rendered, so no measurement effect ever runs there.
 ## A shared file changes without asking
 
 The list is deliberately portable — a notes repo, a synced folder, a NAS — so another machine

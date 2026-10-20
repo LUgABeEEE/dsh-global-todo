@@ -268,6 +268,7 @@ fence when that service is present, and by a strict loopback check otherwise.
 | POST | `/api/global-todo/status` | `{ id, status, by?: human\|agent }` |
 | POST | `/api/global-todo/remove` | `{ id }` |
 | POST | `/api/global-todo/restore` | `{ todo }` — put a removed record back verbatim (undo) |
+| POST | `/api/global-todo/review` | `{ id, decision: confirm\|reject }` — answer an agent's completion |
 | POST | `/api/global-todo/link` | `{ id, add?: [...], remove?: [value \| index] }` |
 | POST | `/api/global-todo/dispatch` | `{ id, mode?: auto\|bound\|new\|current, sessionId?, dir? }` |
 | POST | `/api/global-todo/assign` | `{ ids, items?, target?, dir? }` — hand several todos over in one call; an id that matches nothing comes back instead of being sent elsewhere |

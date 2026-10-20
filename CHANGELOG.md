@@ -1,3 +1,14 @@
+## [0.7.1] — 2026-10-20
+
+Documentation for the one piece of layout that cannot be "cleaned up".
+
+- **`docs/DESIGN.md` now records why the wide-screen detail card is `position: fixed`**, with the
+  measurements from the failed attempts (an absolute card came out 348×3051 at 1440; container
+  queries make the panel the containing block for fixed descendants), the real cause (the panel
+  scrolls with the host page, not `.gt-groups`), and the rules for changing it safely.
+- `/api/global-todo/review` added to both README route tables (it shipped in 0.7.0 without its
+  row).
+
 ## [0.7.0] — 2026-10-20
 
 An agent's "done" becomes a claim a person confirms, instead of a fact.

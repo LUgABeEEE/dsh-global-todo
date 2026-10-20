@@ -164,6 +164,7 @@ dsh plugin --profile web remove dsh-global-todo
 | POST | `/api/global-todo/status` | `{ id, status, by?: human\|agent }` |
 | POST | `/api/global-todo/remove` | `{ id }` |
 | POST | `/api/global-todo/restore` | `{ todo }` —— 原样还原被删除的记录（撤销） |
+| POST | `/api/global-todo/review` | `{ id, decision: confirm\|reject }` —— 回答 Agent 的完成声明 |
 | POST | `/api/global-todo/link` | `{ id, add?: [...], remove?: [值 或 下标] }` |
 | POST | `/api/global-todo/dispatch` | `{ id, mode?: auto\|bound\|new\|current, sessionId?, dir? }` |
 | POST | `/api/global-todo/assign` | `{ ids, items?, target?, dir? }`——一次把多条交给 Agent；配不上的 id 原样报回，不擅自送到别处 |
