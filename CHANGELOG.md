@@ -1,3 +1,15 @@
+## [0.6.6] — 2026-10-20
+
+Both forms now look like forms.
+
+- **Add form** gets real labels and a hint under each field instead of placeholder-only inputs
+  (a placeholder vanishes the moment you type, so it can never carry a rule), and the expanded
+  area is separated from the title row by a hairline.
+- **Detail editor** gets the same treatment: labelled Title / Priority / Due / Description rows.
+- **The 340px detail card no longer fights its own grid.** Meta rows stack to one column inside
+  the card, attachments wrap to their own lines, and the raw path is dropped there because the
+  card cannot show it next to two buttons — the title still carries it as a tooltip.
+
 ## [0.6.5] — 2026-10-20
 
 The three loose ends the spec called out but the earlier passes left behind.
