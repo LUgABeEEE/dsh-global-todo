@@ -402,8 +402,35 @@ plugin.apply({
 })
 
 const requestedUrl = []
+
+// Scenarios let one harness photograph states the panel can only reach by clicking:
+// an empty list, a filter that matches nothing, the inbox, and a due reminder.
+const SCENARIOS = {
+  default: { todos: TODOS, counts: COUNTS },
+  empty: {
+    todos: [],
+    counts: { total: 0, open: 0, doing: 0, done: 0, cancelled: 0, archived: 0, overdue: 0, inbox: 0 },
+  },
+  filtered: { todos: [], counts: COUNTS },
+  inbox: {
+    todos: TODOS.slice(0, 2).map((todo) => ({ ...todo, tags: [...(todo.tags ?? []), 'inbox'] })),
+    counts: { ...COUNTS, total: 2, open: 2, doing: 0, done: 0, overdue: 0, inbox: 2 },
+  },
+  reminders: {
+    todos: TODOS,
+    counts: COUNTS,
+    reminders: {
+      due: [
+        { id: TODOS[0].id, seq: 1, dueAt: NOW - 5 * MINUTE, title: TODOS[0].title },
+      ],
+    },
+  },
+}
+let scenario = 'default'
+
 globalThis.fetch = async (url) => {
   requestedUrl.push(url)
+  const active = SCENARIOS[scenario] ?? SCENARIOS.default
   const payload = url.includes('/health')
     ? {
         ok: true,
@@ -421,9 +448,10 @@ globalThis.fetch = async (url) => {
             exemptWorkspaces: ['/home/me/projects/dorm-network'],
           },
           autoCollect: { enabled: true, asking: false, lastAsk: null, error: null },
+          ...(active.reminders === undefined ? {} : { reminders: active.reminders }),
         },
       }
-    : { ok: true, data: { todos: TODOS, counts: COUNTS } }
+    : { ok: true, data: { todos: active.todos, counts: active.counts } }
   return { status: 200, json: async () => payload }
 }
 
@@ -541,11 +569,33 @@ for (const effect of settingsFirst.effects) effect()
 await new Promise((resolve) => setTimeout(resolve, 20))
 const settingsTree = runtime.mount(registered.get('main'), { ...previewProps, initialSettingsOpen: true })
 const settingsHtml = render(settingsTree.tree)
+// The four states that used to have no baseline at all: an empty list, a filter that
+// matches nothing, the inbox, and a due reminder. Each mounts its own scenario and is
+// photographed by tools/screenshot.mjs, so a regression shows up as a changed image.
+const scenarioHtml = {}
+for (const [name, props] of [
+  ['empty', {}],
+  ['filtered', {}],
+  ['inbox', { initialFilter: 'inbox' }],
+  ['reminders', {}],
+]) {
+  scenario = name
+  runtime.reset()
+  const passOne = runtime.mount(registered.get('main'), { ...previewProps, ...props })
+  for (const effect of passOne.effects) effect()
+  await new Promise((resolve) => setTimeout(resolve, 20))
+  const passTwo = runtime.mount(registered.get('main'), { ...previewProps, ...props })
+  scenarioHtml[name] = render(passTwo.tree)
+}
+scenario = 'default'
 mkdirSync(OUT.replace(/\/[^/]+$/, ''), { recursive: true })
 writeFileSync(OUT, panelHtml)
 writeFileSync(OUT.replace(/\.html?$/, '') + '-detail.html', detailHtml)
 writeFileSync(OUT.replace(/\.html?$/, '') + '-select.html', selectHtml)
 writeFileSync(OUT.replace(/\.html?$/, '') + '-settings.html', settingsHtml)
+for (const [name, html] of Object.entries(scenarioHtml)) {
+  writeFileSync(OUT.replace(/\.html?$/, '') + '-' + name + '.html', html)
+}
 console.log('written', OUT, 'and the detail variant; fetch calls:', requestedUrl.join(', '))
 
 /**
@@ -649,6 +699,17 @@ function checkRenderedPanel(html, detail, select) {
 
 if (process.argv.includes('--check')) {
   const failures = checkRenderedPanel(panelHtml, detailHtml, selectHtml)
+  // The four archived states are photographs, so nothing else would notice if one of them
+  // quietly rendered a blank panel: assert the sentence that makes each state itself.
+  for (const [name, marker] of [
+    ['empty', '记第一条'],
+    ['filtered', '清除筛选'],
+    ['inbox', '确认后才进入清单'],
+    ['reminders', '到点提醒'],
+  ]) {
+    const html = scenarioHtml[name] ?? ''
+    if (!html.includes(marker)) failures.push(`${name} state lost its marker (${marker})`)
+  }
   if (failures.length > 0) {
     console.error('panel render check failed:')
     for (const failure of failures) console.error(' -', failure)

@@ -27,7 +27,18 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const VIEWPORT = { width: 1280, height: 720 }
 
 /** preview/<name>.html → <out>/<name>.png, in the order the READMEs mention them. */
-const SHOTS = ['panel', 'panel-detail', 'panel-select', 'panel-settings']
+const SHOTS = [
+  'panel',
+  'panel-detail',
+  'panel-select',
+  'panel-settings',
+  // One image per state that has no other baseline: empty list, filter with no match,
+  // inbox, due reminder. See the scenario table in tools/preview.mjs.
+  'panel-empty',
+  'panel-filtered',
+  'panel-inbox',
+  'panel-reminders',
+]
 
 function flagValue(name) {
   const index = process.argv.indexOf(name)

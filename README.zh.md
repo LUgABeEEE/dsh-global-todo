@@ -32,6 +32,16 @@ DSH 自带的 `todo_write` 属于**某一个 agent 会话**：整表替换、三
 
 ![设置：分组字段、说明写在标签下方、底部一行保存](docs/screenshots/panel-settings.png)
 
+每个「只在特定情况下出现」的面板状态都有一张固定基线图，由同一套预览渲染、同一支工具拍摄，改样式时可以直接对比：
+
+| 状态 | 图片 |
+|---|---|
+| 清单为空 | [`panel-empty.png`](docs/screenshots/panel-empty.png) |
+| 筛选无结果 | [`panel-filtered.png`](docs/screenshots/panel-filtered.png) |
+| 收件箱（待确认） | [`panel-inbox.png`](docs/screenshots/panel-inbox.png) |
+| 到点提醒 | [`panel-reminders.png`](docs/screenshots/panel-reminders.png) |
+| 批量选择 | [`panel-select.png`](docs/screenshots/panel-select.png) |
+
 图都由 `npm run screenshots`（内部串起 `npm run preview`）生成：先把真实的客户端半区渲染成静态
 HTML（不依赖宿主、零依赖），再以 1280×720 拍进 `docs/screenshots/`。Playwright 不是依赖——工具
 借的是 DSH profile 里已经装好的那份，或 `DSH_PLAYWRIGHT` 指向的那份。

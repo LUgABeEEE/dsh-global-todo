@@ -35,6 +35,17 @@ one record:
 
 ![Settings: grouped fields, hints under each label, one save row](docs/screenshots/panel-settings.png)
 
+Every state that only appears under a condition has a fixed baseline image, rendered by the same
+preview and photographed by the same tool:
+
+| State | Image |
+|---|---|
+| Empty list | [`panel-empty.png`](docs/screenshots/panel-empty.png) |
+| Filter with no match | [`panel-filtered.png`](docs/screenshots/panel-filtered.png) |
+| Inbox (awaiting confirmation) | [`panel-inbox.png`](docs/screenshots/panel-inbox.png) |
+| Due reminder | [`panel-reminders.png`](docs/screenshots/panel-reminders.png) |
+| Selection mode | [`panel-select.png`](docs/screenshots/panel-select.png) |
+
 These are produced by `npm run screenshots` (which chains `npm run preview`): the real client
 half is rendered to static HTML with no Host and no dependencies, then photographed at 1280×720
 into `docs/screenshots/`. Playwright is not a dependency — the tool borrows the copy a DSH

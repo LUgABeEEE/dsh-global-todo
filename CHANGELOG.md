@@ -1,3 +1,17 @@
+## [0.6.8] — 2026-10-20
+
+Every conditional state now has a baseline image, and the harness refuses to render a blank
+one.
+
+- **Four new preview scenarios**: empty list, filter with no match, inbox, and a due reminder.
+  `tools/preview.mjs` grew a `SCENARIOS` table the fake fetch reads, so a state that used to be
+  reachable only by clicking can be rendered and photographed like any other.
+- **`npm run screenshots` writes eight images** (list, detail, selection, settings + the four
+  above). Both READMEs index them in a state table instead of embedding all eight.
+- **`npm run check:render` asserts each state's marker** (`记第一条`, `清除筛选`, the inbox
+  explanation, the reminder title), so a regression shows up as a failing check rather than a
+  silently blank picture.
+
 ## [0.6.7] — 2026-10-20
 
 Copy safety, and the last orphan of the old footer.
