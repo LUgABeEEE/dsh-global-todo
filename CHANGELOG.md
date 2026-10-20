@@ -1,3 +1,19 @@
+## [0.8.0] — 2026-10-20
+
+A todo can carry its plan, and the plan is what the agent receives.
+
+- **`steps[]` on a todo**: `{ text, done }`, up to 20 steps of 200 characters. Strings are accepted
+  wherever steps are (create, agent tools), a blank line is not a step, and a longer plan is
+  refused rather than truncated — twenty steps means the todo should have been split.
+- **The dispatch prompt numbers them**, marking the ones already done. Handing over "1. 对齐版本号
+  2. 跑 verify 3. 打 tag" is worth more than handing over a paragraph.
+- **The panel shows progress without opening the row** (`步骤 2/4` in the metadata), renders the
+  ticks in the detail, and takes one step per line in the add form.
+- **Agent guidance says so too**: multi-round work should be recorded with 3–6 steps, and a
+  finished step is one `global_todo_update`.
+- Replacement semantics (like `links`): the array travels whole through `applyPatch`, so there is
+  still one validation and one write path.
+
 ## [0.7.2] — 2026-10-20
 
 The roadmap audited against the tree, and the review feature brought up to the same standard

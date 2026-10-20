@@ -57,6 +57,25 @@ $DSH_HOME/global-todo/todos.json     ← { version: 1, todos: [ … ] }
   version, and a future migration step would run before the first write, keeping the old
   file as a backup.
 
+## A plan inside the todo
+
+A todo is one line, but the work behind it is often five steps. Rather than grow a second object
+(a "project", a "plan file"), a todo may carry `steps[]` — text plus a tick, order is the plan.
+
+- **Why inside the todo:** the dispatch prompt is the product here. Handing an agent "ship the
+  plugin" is a paragraph; handing it "1. 对齐版本号 2. 跑 verify 3. 打 tag 4. 补截图" is a plan it
+  can execute and report against. The steps are also what a person reviews afterwards.
+- **Shape:** `{ text, done }`, capped at `LIMITS.steps` (20) and 200 characters per step. Strings
+  are accepted wherever an array of steps is (create, agent tools) so a caller never has to spell
+  out `{ done: false }`; a blank line is a typo, not a step, and a plan longer than the cap is
+  refused rather than truncated — twenty steps means the todo should have been split.
+- **Replacement, not patching:** `steps` travels as a whole array through `applyPatch`, the same
+  rule as `links`. Toggling one tick is a client-side rewrite of the array, which keeps one write
+  path and one validation.
+- **Where it shows:** the row's metadata gets `步骤 2/4` (progress without opening anything), the
+  detail renders the ticks, the panel's add form takes one step per line, and the dispatch prompt
+  numbers them with `[已完成]` on the ones already behind us.
+
 ## On a wide window, the detail stands beside the list
 
 Expanding a row inline is right on a narrow window and wrong on a wide one: the list jumps, the

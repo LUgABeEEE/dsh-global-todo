@@ -128,7 +128,7 @@ dsh plugin --profile web remove dsh-global-todo
 
 | 工具 | 用途 |
 |---|---|
-| `global_todo_add` | 登记一条：描述、附件、标签、优先级、截止时间；同时记下「在哪个工作目录、哪个会话里写的」 |
+| `global_todo_add` | 登记一条：描述、附件、步骤、标签、优先级、截止时间；同时记下「在哪个工作目录、哪个会话里写的」 |
 | `global_todo_note` | 追加一条**进展记录**（做到哪了、卡在哪、需要谁做什么）；不改写你的描述 |
 | `global_todo_capture` | **一次登记多条**（批量抓取）：用户说「抓一下待办」，或你一轮里发现好几件要跟进的；逐条校验，坏的那条只跳过它自己 |
 | `global_todo_list` | 按状态/标签/关键词查询，每条都带上加入时间 |
@@ -160,7 +160,7 @@ dsh plugin --profile web remove dsh-global-todo
 | POST | `/api/global-todo/bulk` | `{ ids, status?, addTags?, removeTags? }`——一次改一整批；失效的 id 进 `unmatched`，不会让整批失败 |
 | POST | `/api/global-todo/ingest` | `{ items: [{ title, source: { kind }, confidence }], dryRun? }`，带 `Authorization: Bearer <settings.ingestToken>`——外部条目；置信度低于 `ingestConfirmBelow` 的先进收件箱 |
 | GET | `/api/global-todo/health` | —（数据位置、统计、派发能力，以及**工具注册状态**与**自动收尾观察者是否挂上**——这两种失败是静默的，所以必须能查；还有 `metrics`：派发成功率、工具调用次数、清单增长；`autoCollect`：每个候选对话**为什么被问/没被问**、计次，以及设置文件是怎么加载进来的） |
-| POST | `/api/global-todo/create` | `{ title, description?, links?, tags?, priority?, dueAt? }` |
+| POST | `/api/global-todo/create` | `{ title, description?, links?, steps?, tags?, priority?, dueAt? }` |
 | POST | `/api/global-todo/update` | `{ id, ...字段, by?: human\|agent }` |
 | POST | `/api/global-todo/status` | `{ id, status, by?: human\|agent }` |
 | POST | `/api/global-todo/remove` | `{ id }` |

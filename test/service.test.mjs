@@ -380,3 +380,24 @@ test('the write lock also protects two concurrent service calls', async () => {
     await env.cleanup()
   }
 })
+
+test('the plan travels with the hand-off as a numbered list', async () => {
+  const env = await harness()
+  try {
+    const todo = await env.service.create({
+      title: '发版',
+      steps: ['跑 verify', { text: '打 tag', done: true }, '推公开仓库'],
+    })
+    const prompt = env.service.dispatchPrompt(await env.service.get(todo.id))
+    assert.match(prompt, /共 3 步/)
+    assert.match(prompt, /1\. 跑 verify/)
+    assert.match(prompt, /2\. \[已完成\] 打 tag/, 'a done step still shows, marked as behind us')
+    assert.match(prompt, /3\. 推公开仓库/)
+
+    // No steps, no empty list heading.
+    const bare = await env.service.create({ title: '没有计划的活' })
+    assert.doesNotMatch(env.service.dispatchPrompt(await env.service.get(bare.id)), /^步骤（共/m)
+  } finally {
+    await env.cleanup()
+  }
+})

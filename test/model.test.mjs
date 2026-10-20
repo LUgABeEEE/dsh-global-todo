@@ -342,3 +342,33 @@ test('reviewing answers the claim and leaves nothing half-decided', () => {
   setStatus(reopened, 'open', { now: NOW, by: 'human' })
   assert.equal(reopened.review, null)
 })
+
+test('steps are a plan: strings become steps, ticks survive a load', () => {
+  const todo = createTodo(
+    { title: '发版', steps: ['跑 verify', { text: '打 tag', done: true }, '  '] },
+    { now: NOW },
+  )
+  assert.deepEqual(todo.steps, [
+    { text: '跑 verify', done: false },
+    { text: '打 tag', done: true },
+    // The blank line is a typo in a textarea, not a step.
+  ])
+
+  const reloaded = normalizeStored(JSON.parse(JSON.stringify(todo)))
+  assert.deepEqual(reloaded.steps, todo.steps, 'a tick has to survive the file')
+})
+
+test('steps can be replaced through a patch, and are capped', () => {
+  const todo = createTodo({ title: 'A' }, { now: NOW })
+  applyPatch(todo, { steps: ['一', '二'] }, { now: NOW })
+  assert.deepEqual(todo.steps.map((step) => step.text), ['一', '二'])
+  applyPatch(todo, { steps: [{ text: '一', done: true }] }, { now: NOW })
+  assert.deepEqual(todo.steps, [{ text: '一', done: true }])
+
+  // A plan longer than the cap is refused rather than silently truncated: twenty steps in
+  // one todo means the todo should have been split.
+  assert.throws(
+    () => createTodo({ title: 'B', steps: new Array(LIMITS.steps + 1).fill('x') }, { now: NOW }),
+    (error) => error instanceof TodoError && error.code === 'invalid-steps',
+  )
+})

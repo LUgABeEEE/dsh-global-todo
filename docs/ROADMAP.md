@@ -152,17 +152,15 @@ reminder) photographed into `docs/screenshots/` by `npm run screenshots`, and
 Ordered by value against effort, and audited against the tree on 2026-10-20 — "today"
 means what the code actually does, not what the last plan hoped.
 
-### 1. Checklist inside a todo — the highest-value gap
+### 1. ~~Checklist inside a todo~~ — landed in 0.8.0
 
-Large items ("ship the plugin") are a list of steps wearing a title. Proposed: an optional
-`steps[]` (text + done) per todo, rendered as checkboxes in the row and the detail, and
-shipped to the agent as a numbered plan in the dispatch prompt.
+`steps[]` (text + tick) ships on the todo, renders as `步骤 2/4` in the row and as ticks in the
+detail, is editable from the panel's add form, and travels in the dispatch prompt as a numbered
+plan. `normalizeSteps()` in `lib/model.js`, `dispatchPrompt()` in `lib/service.js`; tests in
+`test/model.test.mjs` and `test/service.test.mjs`.
 
-- Today: nothing named `steps` exists in `lib/`; `grep -rn steps lib` is empty.
-- Effort: medium — model (create / `applyPatch` / `normalizeStored`), a tool field, the
-  panel, and the prompt builder that already assembles the dispatch text.
-- Why first: it improves the *quality of every hand-off*, not just one screen. A dispatch
-  that arrives as "step 2 of 5" is worth more than one that arrives as a paragraph.
+What is left of the original idea: making a step addressable on its own (a tool that ticks step 3
+without resending the array) — not worth a tenth tool today.
 
 ### 2. Session read-back — makes hand-off stop being fire-and-forget
 

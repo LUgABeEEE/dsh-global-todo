@@ -42,6 +42,13 @@ const TODOS = [
     priority: 'high',
     dueAt: new Date(NOW + 20 * HOUR).toISOString(),
     tags: ['发布', '文档'],
+    // A plan inside the todo: the row shows progress and the detail shows the ticks.
+    steps: [
+      { text: '对齐 package.json 与 VERSION', done: true },
+      { text: '跑一遍 npm run verify', done: true },
+      { text: '打 tag 并推送', done: false },
+      { text: '补 README 截图', done: false },
+    ],
     originSessionId: 'session-77aa31c0-1111-2222-3333-444455556666',
     notes: [
       { at: NOW - 2 * HOUR, by: 'agent', text: '版本号已对齐，verify 跑过了。' },
@@ -708,6 +715,10 @@ function checkRenderedPanel(html, detail, select) {
   for (const label of ['对话', '时间', '级别']) {
     expect(html.includes(`>${label}</button>`), `the ${label} grouping button is missing`)
   }
+  // The plan is visible in two places on purpose: progress without opening the row, and the
+  // ticks themselves in the detail.
+  expect(html.includes('步骤 2/4'), 'the row does not show plan progress')
+  expect(html.includes('gt-step'), 'the detail does not render the steps')
   // Grouping must not smuggle raw colours in: theme tokens only.
   expect(/rgb\(|#[0-9a-fA-F]{3,6}\b/.test(html.replace(/<style>[\s\S]*?<\/style>/, '')) === false, 'a literal colour leaked into the markup')
   return failures

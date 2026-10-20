@@ -203,7 +203,7 @@ Your list is not touched by install or uninstall: it lives outside the plugin, a
 
 | Tool | Purpose |
 |---|---|
-| `global_todo_add` | Record an item — description, attachments, tags, priority, due time |
+| `global_todo_add` | Record an item — description, attachments, steps, tags, priority, due time |
 | `global_todo_note` | Append a progress note — where you are, what blocks you, who must decide |
 | `global_todo_capture` | **Record a batch**: for 「抓一下待办」 or a turn that produced several follow-ups; each entry is validated on its own |
 | `global_todo_list` | Query by state, tag or text; every row carries its creation time |
@@ -264,7 +264,7 @@ fence when that service is present, and by a strict loopback check otherwise.
 | POST | `/api/global-todo/bulk` | `{ ids, status?, addTags?, removeTags? }` — one change across a selection; a stale id lands in `unmatched` instead of failing the batch |
 | POST | `/api/global-todo/ingest` | `{ items: [{ title, source: { kind }, confidence }], dryRun? }` with `Authorization: Bearer <settings.ingestToken>` — external items; below `ingestConfirmBelow` they wait in the inbox |
 | GET | `/api/global-todo/health` | — (store location, counts, dispatch capabilities, plus **tool registration** and **whether the completion watcher attached** — both fail quietly, so both are reported — and `metrics`: dispatch success rate, agent tool calls, list growth; `autoCollect`: why each waiting conversation was or was not asked, counters, and how the settings file loaded) |
-| POST | `/api/global-todo/create` | `{ title, description?, links?, tags?, priority?, dueAt? }` |
+| POST | `/api/global-todo/create` | `{ title, description?, links?, steps?, tags?, priority?, dueAt? }` |
 | POST | `/api/global-todo/update` | `{ id, ...fields, by?: human\|agent }` |
 | POST | `/api/global-todo/status` | `{ id, status, by?: human\|agent }` |
 | POST | `/api/global-todo/remove` | `{ id }` |
