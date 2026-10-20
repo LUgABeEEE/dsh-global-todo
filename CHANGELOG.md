@@ -1,3 +1,19 @@
+## [0.6.7] — 2026-10-20
+
+Copy safety, and the last orphan of the old footer.
+
+- **A test now guards the dictionaries.** `test/locale.test.mjs` reads them as source text
+  (a duplicate key is legal JavaScript and invisible at runtime) and fails on: a key defined
+  twice, a key present in one language and missing in the other, full-width punctuation inside
+  English copy, and a literal `t('…')` key that does not exist. It immediately found a real
+  duplicate — `select.clear` — the same class of bug that shipped "more fields" on the overflow
+  menu.
+- **The duplicate is fixed properly**: the selection bar clears with its own key (`清空`/`Clear`)
+  while the pick toggle and the two ask-bars share `清除`/`取消`.
+- **Keyboard shortcuts get a home.** The hints left the footer in 0.6.0 and only survived in the
+  empty state; they now open from `⋯ → Keyboard shortcuts` as a small card with `kbd` chips, and
+  Escape closes it before anything else.
+
 ## [0.6.6] — 2026-10-20
 
 Both forms now look like forms.
