@@ -1,3 +1,14 @@
+## [0.11.2] — 2026-10-21
+
+One test, because a review suggested lowering the Node floor.
+
+- **`test/manifest.test.mjs` now pins the runtime floors in both directions.** It asserts that
+  `engines.node` stays `>=22.19.x` (the Web profile's own requirement — 18 and 20 are EOL, and a
+  lower floor only moves the failure from install time to startup), and that both READMEs quote
+  exactly the same Node version and DSH range. Verified by temporarily setting `>=18.0.0`: the
+  test fails with the reason instead of the package shipping a promise it cannot keep.
+- No runtime change: the engines, the code and the docs were already correct.
+
 ## [0.11.1] — 2026-10-20
 
 Two small things the release exposed.

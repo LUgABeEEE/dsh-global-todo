@@ -77,9 +77,23 @@ test('the plugin ships with no runtime dependencies', () => {
   assert.equal(manifest.type, 'module')
 })
 
-test('the engines match what the code uses', () => {
-  assert.match(manifest.engines.node, /22\.19/)
-  assert.match(manifest.engines.dsh, /0\.2\./)
+test('the floors npm enforces are the ones the docs promise', async () => {
+  // A review once suggested lowering engines.node to >=18 to "avoid runtime failures on legacy
+  // LTS". That is backwards: the Host's Web profile itself needs Node >= 22.19.0, so a lower
+  // floor only moves the failure from install time to startup. This test pins the decision in
+  // both directions — the floor stays high enough to be true, and both READMEs quote the same
+  // numbers, so a well-meant "quick patch" cannot quietly lower it or leave the docs behind.
+  const floor = manifest.engines.node
+  const version = floor.replace(/^[^0-9]*/, '')
+  const major = Number.parseInt(version, 10)
+  assert.ok(Number.isInteger(major) && major >= 22, `engines.node is ${floor}; the Web profile needs 22.19 or newer, and 18/20 are EOL`)
+  assert.match(version, /^22\.19\./, 'the floor is the profile requirement, not a rounder number')
+
+  for (const doc of ['README.md', 'README.zh.md']) {
+    const text = await read(doc)
+    assert.ok(text.includes(version), `${doc} does not state the Node floor ${version}`)
+    assert.ok(text.includes(manifest.engines.dsh), `${doc} does not quote the DSH range ${manifest.engines.dsh}`)
+  }
   assert.equal(manifest.license, 'MIT')
 })
 
