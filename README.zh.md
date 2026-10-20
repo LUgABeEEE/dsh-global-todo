@@ -39,6 +39,7 @@ DSH 自带的 `todo_write` 属于**某一个 agent 会话**：整表替换、三
 | 清单为空 | [`panel-empty.png`](docs/screenshots/panel-empty.png) |
 | 筛选无结果 | [`panel-filtered.png`](docs/screenshots/panel-filtered.png) |
 | 收件箱（待确认） | [`panel-inbox.png`](docs/screenshots/panel-inbox.png) |
+| 待确认（Agent 完成） | [`panel-review.png`](docs/screenshots/panel-review.png) |
 | 到点提醒 | [`panel-reminders.png`](docs/screenshots/panel-reminders.png) |
 | 批量选择 | [`panel-select.png`](docs/screenshots/panel-select.png) |
 

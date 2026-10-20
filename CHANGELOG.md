@@ -1,3 +1,19 @@
+## [0.7.2] — 2026-10-20
+
+The roadmap audited against the tree, and the review feature brought up to the same standard
+as the rest of the panel.
+
+- **`docs/ROADMAP.md` no longer lies.** Six entries claimed things that already exist (due
+  reminders, batch completion/tagging, archive, cross-machine notices, external ingest) — they
+  moved to *Landed* with the function that proves each one, and *Next* is now ordered by value
+  against effort with a "today" line per item.
+- **`/review` has route tests**: a rejected claim reopens and drops its completion record,
+  answering twice is a 400 rather than a silent success, an unknown id is a 404.
+- **The review state is photographed** — a fifth scenario (`panel-review.png`) in the same
+  harness as the others, asserted by `check:render` and indexed in both READMEs.
+- **Bulk confirm in the review view**: selecting several finished-by-agent rows and confirming
+  them in one go, since assigning is not what that view is for.
+
 ## [0.7.1] — 2026-10-20
 
 Documentation for the one piece of layout that cannot be "cleaned up".

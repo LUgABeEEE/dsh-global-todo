@@ -110,95 +110,131 @@ in `skipped[]`, and archived/cancelled rows deliberately do not block a new one.
 counts a disagreement once (`externalChanges`, `lastExternalAt` in `lib/store.js`; surfaced by
 `/health.store`). The panel shows a one-line notice instead of letting a synced folder change the
 list silently.
-**Side detail on wide windows** — above 1100px the open row's detail becomes a card at the
-panel's right edge instead of pushing the list down (CSS-only over the same markup; one detail
-implementation), while narrow windows keep the inline expansion.
+**Side detail on wide windows** — when the panel itself is at least 960px wide, the open row's
+detail becomes a card at the panel's right edge instead of pushing the list down (CSS-only over
+the same markup; one detail implementation), while narrow windows keep the inline expansion. The
+breakpoint follows the panel's measured width, and the card is `position: fixed` with a measured
+anchor — `DESIGN.md` records the two alternatives that were measured and rejected, so this is not
+re-litigated every time someone tries to "clean it up".
 **External ingest with an inbox** — `POST /ingest` takes source-tagged, confidence-scored items
 behind a Bearer token; low-confidence records wait in an `inbox` tag view with 确认 / 丢弃 and a
 seven-day sweep, so an external source cannot silently fill the list.
+**An agent's "done" is a claim** — finishing as an agent sets `review = { pending }`; a person
+confirms or sends it back through `POST /review` (`reviewTodo()` in `lib/model.js`, `review()` in
+`lib/service.js`). Confirming keeps the record finished; rejecting reopens it and drops the
+completion record, because "not actually done" is the only honest reading. The panel shows a
+待确认 chip, a 待确认 filter and 确认完成 / 退回清单; bulk confirm exists in that view.
+`counts.review` drives the chip. Tests: `test/model.test.mjs`, `test/routes.test.mjs`.
+**A design system with guards** — five type sizes (20/14/13/12/11), four control heights, one
+settings inspector, and no JavaScript layout measurement left in the panel. Three guards keep it
+that way: `test/locale.test.mjs` (duplicate keys, zh/en parity, full-width punctuation in English,
+missing `t()` keys), the scenario table in `tools/preview.mjs` (empty, filtered, inbox, review,
+reminder) photographed into `docs/screenshots/` by `npm run screenshots`, and
+`npm run check:render` asserting each state's marker.
 ### Partly landed
 
-- **Batch and multi-select** — the selection mode, its per-row markers and the batch
-  一键分配 are in (`lib/client.js`, `POST /assign` at
-  `lib/routes.js`, `assignMany()` at `lib/dispatch.js`; tests
-  `test/dispatch.test.mjs`). Batch 完成 / 打标签 across a selection do not exist.
-- **Session read-back** — `sessionAlive` is on every listed todo
-  (`lib/routes.js`, `lib/dispatch.js`). Reading what that session last said,
-  and linking to it, is not: `lib/completion.js` reads `assistant/message` only to
-  close a todo this plugin dispatched, and stores one summary in its completion record.
-- **What the agents produced** — the per-todo record with a summary and the changed
-  files landed (`completeTodo()` at `lib/model.js`, 「完成记录」 at
-  `lib/client.js`, the 已完成 filter and group at `lib/client.js`). The
-  cross-todo "what did the sessions finish this week, and what did they touch" view did
-  not.
+- **Session read-back** — `sessionAlive` is on every listed todo (`sessionAlive` in
+  `lib/dispatch.js`, surfaced by `GET /list`). Reading what that session last said, and
+  linking to it, is not: `lib/completion.js` reads `assistant/message` only to close a todo
+  this plugin dispatched, and stores one summary in its completion record.
+- **What the agents produced** — the per-todo record with a summary and the changed files landed
+  (`completeTodo()` in `lib/model.js`, 「完成记录」 in `lib/client.js`, the 已完成 filter and
+  group). The cross-todo "what did the sessions finish this week, and what did they touch" view
+  did not.
+- **Attachment health** — a dead file link is flagged on read, but there is no 「重新挂载」 next
+  to it (`relink` does not exist anywhere in `lib/`), and `annotateLinks()` has no unit test:
+  today the render assertion in `tools/preview.mjs` is the only coverage.
+- **Batch** — selection, 一键分配, 完成 / 归档 / 打标签 and 批量确认（待确认视图）are all in.
+  Nothing here is missing; it is listed because the panel is where the batch surface lives.
 
 ## Next
 
-### 1. Checklist inside a todo
+Ordered by value against effort, and audited against the tree on 2026-10-20 — "today"
+means what the code actually does, not what the last plan hoped.
 
-Large items ("ship the plugin") are really a list of steps. Proposed: an optional
-`steps[]` on a todo, rendered as checkboxes, and shipped to the agent as a numbered
-plan in the dispatch prompt.
+### 1. Checklist inside a todo — the highest-value gap
 
-- Effort: medium (model + tools + panel + prompt builder).
-- Today: nothing named `steps` exists anywhere in `lib/`, so this is untouched.
-- Why it matters: it removes the need for a separate "plan" plugin, and the dispatch
-  prompt gets materially better.
+Large items ("ship the plugin") are a list of steps wearing a title. Proposed: an optional
+`steps[]` (text + done) per todo, rendered as checkboxes in the row and the detail, and
+shipped to the agent as a numbered plan in the dispatch prompt.
 
-### 2. Session read-back
+- Today: nothing named `steps` exists in `lib/`; `grep -rn steps lib` is empty.
+- Effort: medium — model (create / `applyPatch` / `normalizeStored`), a tool field, the
+  panel, and the prompt builder that already assembles the dispatch text.
+- Why first: it improves the *quality of every hand-off*, not just one screen. A dispatch
+  that arrives as "step 2 of 5" is worth more than one that arrives as a paragraph.
 
-The panel shows whether the bound session is alive (`sessionAlive`). Next: show what
-that session last said — one line of its latest assistant message, and a link to open it
-— so a dispatched todo reports back where the work is.
+### 2. Session read-back — makes hand-off stop being fire-and-forget
 
-- Effort: medium. Needs a host-side read of the bound session (the `sessions` service
-  exists, but this must stay cheap and failure-tolerant).
-- Why it matters: hand-off stops being fire-and-forget.
+`sessionAlive` says a bound conversation still exists. Next: one line of its latest
+assistant message plus a link to open it.
 
-### 3. Due reminders
+- Today: `lib/completion.js` reads `assistant/message` only to close a todo this plugin
+  dispatched; nothing exposes it to the panel.
+- Effort: medium, and it must stay cheap and failure-tolerant: a missing or huge message is
+  a normal case, not an error.
+- Why second: the panel currently cannot answer "did the thing I handed over get anywhere",
+  which is the question people actually ask.
 
-A reminder when a due time passes, in the GUI and optionally to the IM channel this
-deployment already has.
+### 3. Markdown / TaskPaper import and export
 
-- Effort: medium. The plugin has no scheduler today (nothing in `lib/` matches
-  `remind`); the Host's timer service plus a config flag is the smallest version.
-- Careful: **remind only, never auto-dispatch.** The list belongs to the human; starting
-  work stays an explicit act. (Auto-dispatch was rejected in `DESIGN.md` for this
-  reason.)
+JSON round-trips byte for byte; the text formats are what let the list live in a repo and
+diff.
 
-### 4. Batch completion and tagging
+- Today: only `GET /export` / `POST /import` over JSON.
+- Effort: medium — a serializer plus a tolerant parser, both with round-trip tests.
+- Why third: cheap portability, and it is the only way to compare this list with another
+  tool's.
 
-Shift-click to select, then 完成 / 打标签 across the selection — the half of
-multi-select that did not land with batch assignment.
+### 4. The weekly agent report
 
-- Effort: small (one bulk route beside `/assign`, one button beside 一键分配).
+Per-todo completion records already carry a summary and the changed files. A cross-todo
+view — "what did the sessions finish this week, and what did they touch" — turns that into
+something reviewable.
 
-### 5. Import and export beyond JSON
+- Today: the data exists (`completion.artifacts`), the aggregate does not.
+- Effort: small-medium; the honest version is a date-bounded list filtered on
+  `completion.by === 'agent'`, with `review` state beside each row.
 
-Markdown / TaskPaper in and out, so the list can be migrated from (and to) any other
-tool and diffed in a repo.
+### 5. Image attachments
 
-- Effort: medium. JSON is done; the text formats are the remaining work.
+`kind: 'image'` beside `url` / `file`, so a screenshot can be attached instead of a path
+to one.
 
-### 6. What the agents produced
+- Today: `LINK_KINDS = ['url', 'file']` (`lib/links.js`); the link shape is already prepared.
+- Effort: medium — the store must not inline bytes, so this is a path with a preview and a
+  clear "the file is gone" state, which #3-adjacent work already models.
 
-Completions already record a summary and the changed files per todo. A cross-todo view —
-"what did the sessions finish this week, and what did they touch" — would turn that into
-something you can review, and would be the honest way to show that a hand-off did work.
+### 6. Source adapters for the ingest door
+
+`POST /ingest` exists and is fenced by a token; nothing pushes to it.
+
+- Today: the door, the inbox, the confidence threshold and the seven-day sweep are done.
+  There is no mail/notification reader anywhere in the repo.
+- Effort: large, and the mode of the work is different: every adapter is an external
+  dependency with its own failure modes. Do it when a real source exists, not before.
+
+### 7. Small, well-understood items
+
+- `before:` / `after:` date bounds in the search syntax (the parser already walks tokens).
+- 「重新挂载」 next to a dead attachment, plus the `annotateLinks()` unit test it owes.
+- A screen-reader pass over the panel and the group headers; the keyboard path is close.
+
+### Landed after this list was written
+
+Due reminders (0.5.2), batch completion and tagging (`/bulk`), archive instead of
+delete, cross-machine change notices, external ingest with an inbox — all four used to be
+items here. See `Landed since 0.1` above; the entries were removed rather than left to
+mislead.
 
 ## Later
 
 | Idea | Note |
 |---|---|
-| Image attachments | `kind: 'image'` next to `url` / `file`. The shape is already prepared for it, but `LINK_KINDS` is still `['url', 'file']` (`lib/links.js`). |
 | Official `storageDomain` backend | A second store backend behind the same interface; the file stays the default because it is the feature. Today there is one backend and it says so (`kind: 'json'`, `lib/store.js`). |
 | Virtualised list | Only needed past a few hundred rows; measure first. Nothing in `lib/client.js` virtualises today. |
 | Drag to reorder | Manual order is meaningful to some people; it also needs a stable `position` field and a decision about how it interacts with due-date grouping. |
 | Multi-list / projects | A `list` field with one default list; deferred because "global single list" is the current identity. |
-| Archive instead of delete | Keeps history without cluttering. `POST /remove` deletes for real (`lib/routes.js`); only the panel's short undo brings a record back. |
-| Cross-machine conflict notice | The file is portable (NAS, sync folder). Detect "changed underneath me" and offer a reload instead of a silent overwrite — `store.read` still trusts the file whenever it parses. |
-| Capture from outside the chat | Notifications, mail, announcements — the sources `dsh-todo-list` reads. Needs an ingest path and a policy for deduplication; `POST /capture` only asks a conversation to collect (`lib/routes.js`). |
-| Accessible-only sweep | Full keyboard path is close; a screen-reader pass over the panel and the group headers is still owed. |
 
 ## Explicitly not planned
 

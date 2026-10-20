@@ -37,6 +37,7 @@ const SHOTS = [
   'panel-empty',
   'panel-filtered',
   'panel-inbox',
+  'panel-review',
   'panel-reminders',
 ]
 

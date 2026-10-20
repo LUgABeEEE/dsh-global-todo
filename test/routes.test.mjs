@@ -597,3 +597,33 @@ test('health reports the idle threshold, so the rule in force is observable', as
     await env.cleanup()
   }
 })
+
+test('an agent completion waits for a person, and the review route answers it', async () => {
+  const env = await harness()
+  try {
+    const created = await env.call('/create', makeReq({ method: 'POST', url: `${ROUTE_BASE}/create`, body: JSON.stringify({ title: '交给 Agent' }) }))
+    const id = created.json().data.todo.id
+
+    // A script finishing on the agent's behalf leaves the claim open.
+    await env.call('/status', makeReq({ method: 'POST', url: `${ROUTE_BASE}/status`, body: JSON.stringify({ id, status: 'done', by: 'agent' }) }))
+    let record = await env.service.get(id)
+    assert.equal(record.review.pending, true)
+    assert.equal((await env.service.stats()).review, 1)
+
+    // Answering twice is refused rather than silently accepted.
+    const first = await env.call('/review', makeReq({ method: 'POST', url: `${ROUTE_BASE}/review`, body: JSON.stringify({ id, decision: 'reject' }) }))
+    assert.equal(first.statusCode, 200)
+    record = await env.service.get(id)
+    assert.equal(record.status, 'open', 'a rejected claim goes back on the list')
+    assert.equal(record.review, null)
+
+    const again = await env.call('/review', makeReq({ method: 'POST', url: `${ROUTE_BASE}/review`, body: JSON.stringify({ id, decision: 'confirm' }) }))
+    assert.equal(again.statusCode, 400, 'there is nothing left to answer')
+    assert.equal(again.json().reason, 'invalid-status')
+
+    const missing = await env.call('/review', makeReq({ method: 'POST', url: `${ROUTE_BASE}/review`, body: JSON.stringify({ id: 't-nope', decision: 'confirm' }) }))
+    assert.equal(missing.statusCode, 404)
+  } finally {
+    await env.cleanup()
+  }
+})

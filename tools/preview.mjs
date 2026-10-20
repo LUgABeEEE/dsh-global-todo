@@ -416,6 +416,21 @@ const SCENARIOS = {
     todos: TODOS.slice(0, 2).map((todo) => ({ ...todo, tags: [...(todo.tags ?? []), 'inbox'] })),
     counts: { ...COUNTS, total: 2, open: 2, doing: 0, done: 0, overdue: 0, inbox: 2 },
   },
+  // An agent finished something and the owner has not answered: the row carries the badge
+  // and the filter chip is the only thing that surfaces it.
+  review: {
+    todos: [
+      {
+        ...TODOS[0],
+        status: 'done',
+        doneAt: NOW - 20 * MINUTE,
+        review: { pending: true, at: NOW - 20 * MINUTE, by: 'agent' },
+        completion: { at: NOW - 20 * MINUTE, by: 'agent', summary: '按计划做完了', sessionId: '', artifacts: [] },
+      },
+      { ...TODOS[1], status: 'done', doneAt: NOW - HOUR },
+    ],
+    counts: { ...COUNTS, total: 2, open: 0, doing: 0, done: 2, overdue: 0, review: 1 },
+  },
   reminders: {
     todos: TODOS,
     counts: COUNTS,
@@ -577,6 +592,7 @@ for (const [name, props] of [
   ['empty', {}],
   ['filtered', {}],
   ['inbox', { initialFilter: 'inbox' }],
+  ['review', { initialFilter: 'review' }],
   ['reminders', {}],
 ]) {
   scenario = name
@@ -705,6 +721,7 @@ if (process.argv.includes('--check')) {
     ['empty', '记第一条'],
     ['filtered', '清除筛选'],
     ['inbox', '确认后才进入清单'],
+    ['review', '待确认'],
     ['reminders', '到点提醒'],
   ]) {
     const html = scenarioHtml[name] ?? ''

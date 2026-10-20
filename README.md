@@ -43,6 +43,7 @@ preview and photographed by the same tool:
 | Empty list | [`panel-empty.png`](docs/screenshots/panel-empty.png) |
 | Filter with no match | [`panel-filtered.png`](docs/screenshots/panel-filtered.png) |
 | Inbox (awaiting confirmation) | [`panel-inbox.png`](docs/screenshots/panel-inbox.png) |
+| Awaiting review (agent finished) | [`panel-review.png`](docs/screenshots/panel-review.png) |
 | Due reminder | [`panel-reminders.png`](docs/screenshots/panel-reminders.png) |
 | Selection mode | [`panel-select.png`](docs/screenshots/panel-select.png) |
 
