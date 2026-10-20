@@ -616,12 +616,12 @@ function checkRenderedPanel(html, detail, select) {
   expect(/data-on="1"[^>]*>\s*自动获取/.test(html), 'the automatic collect switch is not shown as on')
   // The capture action belongs to a conversation, so it sits on that conversation's
   // group; the toolbar only keeps a fallback for a conversation that has no group.
-  expect(html.includes('gt-group-action'), 'no capture action on the conversation groups')
+  expect(html.includes('分组操作'), 'no group action menu on the conversation groups')
   // The exemption is a per-workspace setting reached from a conversation's group, so it has to
   // render there — and it is keyed on the directory the todos were *written* in, not on the
   // bound session, because the conversation may have been unloaded since and a live lookup
   // answers nothing for it. The fixture exempts the one group whose directory is known.
-  expect(html.includes('已豁免'), 'no exemption state on a group whose directory is known')
+  expect(html.includes('gt-group-flag'), 'no exemption mark on a group whose directory is known')
   expect(!html.includes('从本对话抓取'), 'the toolbar still duplicates the per-conversation capture action')
   // Two facts the user asked for, asserted rather than trusted: archived conversations
   // are not offered, and the list is ordered by last use.

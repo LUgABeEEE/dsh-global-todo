@@ -1,3 +1,15 @@
+## [0.6.5] — 2026-10-20
+
+The three loose ends the spec called out but the earlier passes left behind.
+
+- **Five type sizes, for real.** 12.5/11.5/10.5 collapse into 12 and 11, so the panel now uses
+  exactly 20 / 14 / 13 / 12 / 11 — one ladder instead of eight near-identical steps.
+- **Group actions move behind one kebab.** `Collect` and `Exempt` stop competing with the group
+  title; an exemption keeps a small always-visible mute mark (it is a state, not an action) and
+  the menu states both intents in words (`Collect from this conversation`, `Mute this workspace`).
+- **Escape closes the innermost layer.** Settings, then the add form, then the open row — and a
+  click outside the settings card dismisses it, matching every other popover. The gear toggles.
+
 ## [0.6.4] — 2026-10-20
 
 The settings panel, rebuilt as an inspector instead of a stack of labelled rows.
