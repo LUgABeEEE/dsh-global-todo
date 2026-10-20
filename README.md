@@ -33,6 +33,8 @@ one record:
 
 ![One row opened: inline editing, attachments with 打开 / 复制路径, activity](docs/screenshots/panel-detail.png)
 
+![Settings: grouped fields, hints under each label, one save row](docs/screenshots/panel-settings.png)
+
 These are produced by `npm run screenshots` (which chains `npm run preview`): the real client
 half is rendered to static HTML with no Host and no dependencies, then photographed at 1280×720
 into `docs/screenshots/`. Playwright is not a dependency — the tool borrows the copy a DSH
@@ -339,7 +341,7 @@ npm run preview       # render the panel to preview/panel.html (+ detail and sel
 npm run screenshots   # re-photograph those previews into docs/screenshots/, 1280×720
 ```
 
-The three PNGs under `docs/screenshots/` ship with the package and are embedded in both
+The PNGs under `docs/screenshots/` ship with the package and are embedded in both
 READMEs, so re-run `npm run screenshots` whenever the panel UI changes.
 
 ```text

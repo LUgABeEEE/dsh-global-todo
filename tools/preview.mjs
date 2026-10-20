@@ -533,10 +533,19 @@ for (const effect of selectFirst.effects) effect()
 await new Promise((resolve) => setTimeout(resolve, 20))
 const selectTree = runtime.mount(registered.get('main'), { ...previewProps, initialSelectMode: true })
 const selectHtml = render(selectTree.tree)
+// The settings inspector, rendered the same way: the harness cannot click, so the panel
+// is asked to start with it open.
+runtime.reset()
+const settingsFirst = runtime.mount(registered.get('main'), { ...previewProps, initialSettingsOpen: true })
+for (const effect of settingsFirst.effects) effect()
+await new Promise((resolve) => setTimeout(resolve, 20))
+const settingsTree = runtime.mount(registered.get('main'), { ...previewProps, initialSettingsOpen: true })
+const settingsHtml = render(settingsTree.tree)
 mkdirSync(OUT.replace(/\/[^/]+$/, ''), { recursive: true })
 writeFileSync(OUT, panelHtml)
 writeFileSync(OUT.replace(/\.html?$/, '') + '-detail.html', detailHtml)
 writeFileSync(OUT.replace(/\.html?$/, '') + '-select.html', selectHtml)
+writeFileSync(OUT.replace(/\.html?$/, '') + '-settings.html', settingsHtml)
 console.log('written', OUT, 'and the detail variant; fetch calls:', requestedUrl.join(', '))
 
 /**

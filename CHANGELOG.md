@@ -1,3 +1,20 @@
+## [0.6.4] — 2026-10-20
+
+The settings panel, rebuilt as an inspector instead of a stack of labelled rows.
+
+- **Header and footer, finally.** A title row with a close button, three labelled groups divided
+  by hairlines, and a save row pinned at the bottom — the token field no longer pushes the save
+  buttons into the middle of the form with a field stranded beneath them.
+- **Every field says what it does.** Help text sits under each label (`settings.*Hint`) rather than
+  being implied by the label; the label-and-control grid keeps number inputs aligned at a fixed
+  76px right-aligned box.
+- **Ingest fields dim when ingest is off**, and `New token` becomes a quiet text link on the token
+  label row (`Rotate token`) instead of a third equal-weight button.
+- **About section** shows the data file and version on labelled rows; the card sizes to its content
+  and scrolls internally when the window is short.
+- `npm run screenshots` now also photographs a settings variant, so the README image is
+  reproducible instead of hand-made.
+
 ## [0.6.3] — 2026-10-20
 
 States that were still speaking to nobody.

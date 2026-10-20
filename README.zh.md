@@ -30,6 +30,8 @@ DSH 自带的 `todo_write` 属于**某一个 agent 会话**：整表替换、三
 
 ![展开一条：就地编辑、附件带「打开 / 复制路径」、动态轨迹](docs/screenshots/panel-detail.png)
 
+![设置：分组字段、说明写在标签下方、底部一行保存](docs/screenshots/panel-settings.png)
+
 图都由 `npm run screenshots`（内部串起 `npm run preview`）生成：先把真实的客户端半区渲染成静态
 HTML（不依赖宿主、零依赖），再以 1280×720 拍进 `docs/screenshots/`。Playwright 不是依赖——工具
 借的是 DSH profile 里已经装好的那份，或 `DSH_PLAYWRIGHT` 指向的那份。
@@ -230,7 +232,7 @@ npm run preview       # 把面板渲染成 preview/panel.html（另附详情态�
 npm run screenshots   # 把这些预览重新拍成 docs/screenshots/，1280×720
 ```
 
-`docs/screenshots/` 下那三张 PNG 会随包发布、并嵌在两份 README 里，所以面板 UI 一改就要重跑
+`docs/screenshots/` 下那几张 PNG 会随包发布、并嵌在两份 README 里，所以面板 UI 一改就要重跑
 `npm run screenshots`。
 
 ```text

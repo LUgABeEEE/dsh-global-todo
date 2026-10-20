@@ -27,7 +27,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const VIEWPORT = { width: 1280, height: 720 }
 
 /** preview/<name>.html → <out>/<name>.png, in the order the READMEs mention them. */
-const SHOTS = ['panel', 'panel-detail', 'panel-select']
+const SHOTS = ['panel', 'panel-detail', 'panel-select', 'panel-settings']
 
 function flagValue(name) {
   const index = process.argv.indexOf(name)
