@@ -1,3 +1,21 @@
+## [0.12.8] — 2026-10-21
+
+The Windows runner kept finding things after 0.12.7. Four more, all real.
+
+- **`mkdir` over a file is `EEXIST` on Windows**, not `ENOTDIR`. The store translated only the
+  POSIX code, so an unwritable location could surface as a raw error; both now become
+  `store-unwritable`.
+- **The diagnostics trim could lose its rename** while a reader held the log. The atomic write is
+  now shared (`lib/atomic.js`) by the store, settings and diagnostics, with a longer retry budget
+  for a file that is read constantly.
+- **`tools/preview.mjs` created a directory named `panel.html`** on Windows: it stripped the file
+  name with a SQL-style regex on `/`, which matched nothing there. `path.dirname` instead — this is
+  what made `npm pack --dry-run` fail on the Windows runner.
+- **Two test assertions were POSIX literals** (a default store path and a `path.resolve` result).
+  They now compare resolved paths, which is what the contract actually says.
+- **CI is green on `windows-latest`** — tests, static checks, package shape and
+  `node tools/windows-check.mjs` all run there.
+
 ## [0.12.7] — 2026-10-21
 
 Windows, tested instead of assumed.

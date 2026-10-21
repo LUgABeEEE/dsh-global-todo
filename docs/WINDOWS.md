@@ -21,6 +21,11 @@ Windows machine should run.
 CI runs the suite on **ubuntu-latest and windows-latest** (node 22.19 on both, node 24 on Linux).
 Windows runs `node tools/windows-check.mjs` as an extra step.
 
+That matrix earned its keep on its first day: it found four things Linux could not see — a `mkdir`
+over a file reporting `EEXIST` instead of `ENOTDIR`, the diagnostics trim losing a rename to a busy
+reader, `tools/preview.mjs` creating a directory named `panel.html` (a POSIX-only regex), and two
+test assertions that pinned POSIX literals. All fixed in 0.12.8.
+
 ## The real-filesystem check
 
 ```powershell
