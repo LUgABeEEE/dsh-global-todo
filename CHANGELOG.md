@@ -1,3 +1,16 @@
+## [0.12.2] — 2026-10-21
+
+The description reached the last two places it was still thin.
+
+- **The panel's own subtitle** (under the title, always visible) now names what the list does
+  rather than just what it is: `跨会话一份清单：你和 Agent 都能加，也能带着步骤交给对话继续干`.
+- **The landing page copy** matches the plugin page and the store: hero lede, the meta
+  description, `og:description` and `twitter:description` all say the same three things — one
+  shared file, steps travel with the hand-off, and done needs your confirmation.
+- **`docs/og.png` re-rendered** with the new sentence, so a shared link and the page agree.
+- Screenshots and `tour.gif` regenerated: the old frames still carried the previous subtitle.
+  The captioned demo video was not rebuilt — that needs the capture harness against a live panel.
+
 ## [0.12.1] — 2026-10-21
 
 The plugin now says what it does — in the two places people read before installing.
