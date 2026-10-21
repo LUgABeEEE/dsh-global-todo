@@ -611,7 +611,9 @@ for (const [name, props] of [
   scenarioHtml[name] = render(passTwo.tree)
 }
 scenario = 'default'
-mkdirSync(OUT.replace(/\/[^/]+$/, ''), { recursive: true })
+// path.dirname, not a regex on '/': on Windows the regex matched nothing, so this created
+// a directory literally named panel.html and the write below failed with EISDIR.
+mkdirSync(path.dirname(OUT), { recursive: true })
 writeFileSync(OUT, panelHtml)
 writeFileSync(OUT.replace(/\.html?$/, '') + '-detail.html', detailHtml)
 writeFileSync(OUT.replace(/\.html?$/, '') + '-select.html', selectHtml)
