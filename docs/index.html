@@ -24,6 +24,7 @@
     <nav class="nav" aria-label="页面导航">
       <a class="nav-section" href="#claims"><span class="zh">三件事</span><span class="en" lang="en">Claims</span></a>
       <a class="nav-section" href="#how"><span class="zh">怎么走</span><span class="en" lang="en">How it works</span></a>
+      <a class="nav-section" href="#where"><span class="zh">收录</span><span class="en" lang="en">Listings</span></a>
       <a class="nav-section" href="#compare"><span class="zh">对比</span><span class="en" lang="en">Compare</span></a>
       <a class="nav-section" href="#states"><span class="zh">状态图</span><span class="en" lang="en">States</span></a>
       <a class="nav-ext" href="https://github.com/LUgABeEEE/dsh-global-todo" rel="noopener">GitHub</a>
@@ -267,6 +268,87 @@
       <p class="shots-note">
         <span class="zh">图里是同一份清单的连续状态。截图不写进设计稿，而是每次从真实客户端渲染出来，所以样式一改、图就跟着变。</span>
         <span class="en" lang="en">The images are consecutive states of one real list, re-rendered from the real client on every change rather than hand-edited.</span>
+      </p>
+    </div>
+  </section>
+
+  <section class="band reveal-group" id="where" aria-labelledby="where-title">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">
+          <span class="zh">收录情况</span>
+          <span class="en" lang="en">Where it is listed</span>
+        </p>
+        <h2 id="where-title">
+          <span class="zh">六个目录已上线，五个在审</span>
+          <span class="en" lang="en">Six live listings, five in review</span>
+        </h2>
+        <p class="section-lede">
+          <span class="zh">商店只决定「找不找得到」，装到的东西永远来自 npm：<code>dsh plugin add dsh-global-todo</code>。显示旧版本是正常的 —— 各家的爬虫有自己的节奏。这张表最后一次核对是 2026-10-21，复核用 <code>node tools/listings.mjs</code>。</span>
+          <span class="en" lang="en">A registry decides whether you find it; what you install always comes from npm: <code>dsh plugin add dsh-global-todo</code>. An older version on a listing is normal — every crawler runs on its own schedule. Verified 2026-10-21; re-check with <code>node tools/listings.mjs</code>.</span>
+        </p>
+      </div>
+
+      <div class="where-grid">
+        <article class="where-card">
+          <p class="where-status where-status--live"><span class="zh">已收录</span><span class="en" lang="en">Live</span></p>
+          <h3>npm</h3>
+          <p><code>dsh-global-todo@0.11.2</code></p>
+          <p class="where-note"><span class="zh">唯一的安装源，其余都只是入口。</span><span class="en" lang="en">The only install source; the rest are entry points.</span></p>
+        </article>
+        <article class="where-card">
+          <p class="where-status where-status--live"><span class="zh">已收录</span><span class="en" lang="en">Live</span></p>
+          <h3>1024 Store</h3>
+          <p><a href="https://deepseek1024.com" rel="noopener">deepseek1024.com</a> · <a href="https://github.com/imsai-sh/awesome-deepseek-harness-plugins/pull/654" rel="noopener">PR #654</a></p>
+          <p class="where-note"><span class="zh">条目在、可搜索；它的安装行还解析成 GitHub 源，等它自己的 npm 富化。</span><span class="en" lang="en">Listed and searchable; its install line still resolves to the GitHub source until their npm enrichment runs.</span></p>
+        </article>
+        <article class="where-card">
+          <p class="where-status where-status--live"><span class="zh">已收录</span><span class="en" lang="en">Live</span></p>
+          <h3>dsh.pub</h3>
+          <p><a href="https://dsh.pub/en/plugins/dsh-global-todo/" rel="noopener">dsh.pub/en/plugins/dsh-global-todo</a></p>
+          <p class="where-note"><code>npx dshpub add LUgABeEEE/dsh-global-todo</code></p>
+        </article>
+        <article class="where-card">
+          <p class="where-status where-status--live"><span class="zh">已收录</span><span class="en" lang="en">Live</span></p>
+          <h3>DSH-Plugins-Marketplace</h3>
+          <p><a href="https://github.com/bradeGithub/DSH-Plugins-Marketplace" rel="noopener">bradeGithub/DSH-Plugins-Marketplace</a></p>
+          <p class="where-note"><span class="zh">在 DSH 界面里一键装；索引到 <code>v0.11.2</code>，风险分级 <code>safe</code>。</span><span class="en" lang="en">Install from inside DSH; indexed at <code>v0.11.2</code>, risk tier <code>safe</code>.</span></p>
+        </article>
+        <article class="where-card">
+          <p class="where-status where-status--live"><span class="zh">已收录</span><span class="en" lang="en">Live</span></p>
+          <h3>awesome-dsh-plugin</h3>
+          <p><a href="https://github.com/awesome-dsh-plugin/awesome-dsh-plugin" rel="noopener">19.7k ★ 目录</a> · <a href="https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/7498" rel="noopener">PR #7498</a></p>
+          <p class="where-note"><span class="zh">最大的插件目录，已合并进 main。</span><span class="en" lang="en">The largest directory; merged into main.</span></p>
+        </article>
+        <article class="where-card">
+          <p class="where-status where-status--live"><span class="zh">已收录</span><span class="en" lang="en">Live</span></p>
+          <h3>walkinglabs</h3>
+          <p><a href="https://github.com/walkinglabs/awesome-deepseek-harness-plugins/pull/114" rel="noopener">PR #114</a></p>
+          <p class="where-note"><span class="zh">带来源核验的列表，已有审核合并。</span><span class="en" lang="en">Source-verified list; merged after review.</span></p>
+        </article>
+        <article class="where-card where-card--pending">
+          <p class="where-status where-status--pending"><span class="zh">在审</span><span class="en" lang="en">In review</span></p>
+          <h3>5 个 PR</h3>
+          <p><span class="zh">Zhiyuan-Fan · kejixiaoliang · beancookie · dshworks · losebird</span><span class="en" lang="en">Zhiyuan-Fan · kejixiaoliang · beancookie · dshworks · losebird</span></p>
+          <p class="where-note"><span class="zh">各自仓库的 PR 都已开、格式对齐；有的按月度批次合并。</span><span class="en" lang="en">One pull request each, in their own format; some merge in monthly batches.</span></p>
+        </article>
+        <article class="where-card where-card--pending">
+          <p class="where-status where-status--pending"><span class="zh">已承诺</span><span class="en" lang="en">Promised</span></p>
+          <h3>dshopen.org</h3>
+          <p><a href="https://github.com/polang233/dsh-plugin-index/issues/16" rel="noopener">polang233/dsh-plugin-index #16</a></p>
+          <p class="where-note"><span class="zh">该仓库没有 PR 通道，维护者回复「下个提交后收录」。</span><span class="en" lang="en">No PR channel there; the maintainer replied it lands in the next commit.</span></p>
+        </article>
+        <article class="where-card where-card--auto">
+          <p class="where-status where-status--auto"><span class="zh">自动采集</span><span class="en" lang="en">Auto-collected</span></p>
+          <h3>topic 扫描</h3>
+          <p><code>0xsline · vvlife · ZASENJC · YELEBAI · dsh-find-plugin</code></p>
+          <p class="where-note"><span class="zh">按 GitHub <code>dsh-plugin</code> topic 抓取，不需要 PR；出现时间取决于它们的扫描周期。</span><span class="en" lang="en">Collected from the GitHub <code>dsh-plugin</code> topic, no PR needed; appearance depends on their scan cycle.</span></p>
+        </article>
+      </div>
+
+      <p class="finep">
+        <span class="zh">完整清单、每个条目的确切状态和复核命令见 <a href="DISTRIBUTION.md">docs/DISTRIBUTION.md</a>。</span>
+        <span class="en" lang="en">The full list, exact state per entry and the re-check command live in <a href="DISTRIBUTION.md">docs/DISTRIBUTION.md</a>.</span>
       </p>
     </div>
   </section>

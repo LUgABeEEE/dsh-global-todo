@@ -390,6 +390,24 @@ Errors are typed: `400` for a rejected value, `404` for an unknown id, `413` for
 oversized body, `403` for a request that fails the fence, `502` when a hand-off cannot
 reach the agents service. The body is always `{ ok, ... }` with a machine `reason`.
 
+## Where it is listed
+
+npm is the only install source; every registry below is a discovery surface. Verified 2026-10-21 —
+re-check with `node tools/listings.mjs` rather than trusting this list.
+
+| Registry | Form | State |
+|---|---|---|
+| [npm](https://www.npmjs.com/package/dsh-global-todo) | the package | `0.11.2` |
+| [1024 Store](https://deepseek1024.com) | catalog entry ([PR #654](https://github.com/imsai-sh/awesome-deepseek-harness-plugins/pull/654), merged) | listed; its install line still resolves to the GitHub source |
+| [dsh.pub](https://dsh.pub/en/plugins/dsh-global-todo/) | published page + `dshpub` CLI | live, pinned to a commit |
+| [DSH-Plugins-Marketplace](https://github.com/bradeGithub/DSH-Plugins-Marketplace) | `registry.json`, collected from the `dsh-plugin` topic | `v0.11.2`, risk tier `safe` |
+| [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) (19.7k★) | one YAML per plugin | merged ([PR #7498](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/7498)) |
+| [walkinglabs](https://github.com/walkinglabs/awesome-deepseek-harness-plugins) | source-verified README | merged ([PR #114](https://github.com/walkinglabs/awesome-deepseek-harness-plugins/pull/114)) |
+
+Five more are in review (Zhiyuan-Fan, kejixiaoliang, beancookie, dshworks, losebird) and one
+maintainer promised to include it (dshopen.org). The full table, including the auto-collected
+topic feeds we have not verified, is [docs/DISTRIBUTION.md](docs/DISTRIBUTION.md).
+
 ## Where the data lives
 
 `$DSH_HOME/global-todo/todos.json`, or any absolute path you set:

@@ -456,3 +456,26 @@ html { scroll-behavior: smooth; overflow-x: clip; }
   .site-header::after { animation: none; }
   .install::after { transition: none; transform: none; opacity: 0; }
 }
+
+/* Where it is listed: a quiet grid of cards, status carried by a dot and a word, never by colour alone. */
+.where-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 26px; }
+.where-card {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 16px 18px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+}
+.where-card h3 { margin: 0; font-size: 15px; font-weight: 650; letter-spacing: -0.01em; color: var(--ink); }
+.where-card p { margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--ink-2); overflow-wrap: anywhere; }
+.where-card :not(pre) > code { white-space: normal; overflow-wrap: anywhere; }
+.where-card .where-note { font-size: 12.5px; color: var(--ink-3); }
+.where-status {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin: 0; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.09em; text-transform: uppercase;
+}
+.where-status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.where-status--live { color: var(--accent); }
+.where-status--pending { color: var(--ink-3); }
+.where-status--auto { color: var(--ink-3); }
+.where-card--pending { border-style: dashed; }
+@media (max-width: 900px) { .where-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 620px) { .where-grid { grid-template-columns: minmax(0, 1fr); } }

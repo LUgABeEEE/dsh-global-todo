@@ -310,6 +310,24 @@ dsh plugin --profile web remove dsh-global-todo
 文件坏了会明确报 `store-corrupt` 而不是被静默清空；单条记录坏了只跳过那一条。
 备份就是复制这个文件。
 
+## 收录情况
+
+npm 是唯一安装源，下面每个地方都只是「能不能被找到」。核对日期 2026-10-21；复核用
+`node tools/listings.mjs`，不要只信这张表。
+
+| 渠道 | 形式 | 状态 |
+|---|---|---|
+| [npm](https://www.npmjs.com/package/dsh-global-todo) | 包本体 | `0.11.2` |
+| [1024 Store](https://deepseek1024.com) | 目录条目（[PR #654](https://github.com/imsai-sh/awesome-deepseek-harness-plugins/pull/654) 已合并） | 已收录；安装行仍解析成 GitHub 源 |
+| [dsh.pub](https://dsh.pub/zh/plugins/dsh-global-todo/) | 目录页 + `dshpub` CLI | 已上线，pin 到某个 commit |
+| [DSH-Plugins-Marketplace](https://github.com/bradeGithub/DSH-Plugins-Marketplace) | `registry.json`，按 `dsh-plugin` topic 采集 | `v0.11.2`，风险分级 `safe` |
+| [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin)（19.7k★） | 每个插件一个 YAML | 已合并（[PR #7498](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/7498)） |
+| [walkinglabs](https://github.com/walkinglabs/awesome-deepseek-harness-plugins) | 带来源核验的 README | 已合并（[PR #114](https://github.com/walkinglabs/awesome-deepseek-harness-plugins/pull/114)） |
+
+另有五个在审（Zhiyuan-Fan、kejixiaoliang、beancookie、dshworks、losebird），一个维护者已承诺
+下次提交收录（dshopen.org）。完整表格、以及我们尚未逐条核实的 topic 自动采集渠道，见
+[docs/DISTRIBUTION.md](docs/DISTRIBUTION.md)。
+
 ## 设计取舍
 
 **附件是引用，不是上传。** 文档就是一个原地不动的绝对路径，地址就是一个 URL。
