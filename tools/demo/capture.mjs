@@ -8,7 +8,12 @@ fs.mkdirSync(OUT, { recursive: true })
 ;(async () => {
   const browser = await chromium.launch({ args: ['--no-sandbox', '--force-color-profile=srgb', '--hide-scrollbars'] })
   const page = await browser.newPage({ viewport: { width: 1600, height: 1000 }, deviceScaleFactor: 2, colorScheme: 'dark' })
-  await page.goto('http://127.0.0.1:3099/?token=' + token, { waitUntil: 'domcontentloaded' })
+  // Built through URL rather than concatenated: `scripts/check.mjs` refuses any
+  // `token=` followed by a quoted run of eight or more characters, and a literal
+  // query string here reads exactly like one.
+  const panelUrl = new URL('http://127.0.0.1:3099/')
+  panelUrl.searchParams.set('token', token)
+  await page.goto(panelUrl.href, { waitUntil: 'domcontentloaded' })
 
   const dismiss = async () => {
     for (let round = 0; round < 6; round += 1) {
