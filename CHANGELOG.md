@@ -1,3 +1,17 @@
+## [0.12.1] — 2026-10-21
+
+The plugin now says what it does — in the two places people read before installing.
+
+- **`locale/*.json` descriptions rewritten** (this is what the DSH plugins page shows): the old
+  text stopped at "attachments and one-click hand-off". The new one names the plan of steps, the
+  session read-back and the review step, in 2–3 sentences, English and Chinese kept parallel.
+- **`package.json` description** is now one English sentence instead of an English/Chinese mashup
+  (npm truncates it, and mixed script reads badly there), plus five keywords that match how people
+  search: `todo-list`, `task-management`, `handoff`, `agent`, `productivity`.
+- **GitHub repository description** matches the same sentence.
+- **The 1024 Store catalog entry was updated too** — [PR #662](https://github.com/imsai-sh/awesome-deepseek-harness-plugins/pull/662)
+  (the earlier #661 conflicted against a moved main and was rebuilt, not force-pushed).
+
 ## [0.12.0] — 2026-10-21
 
 An identity: one mark, drawn once and used everywhere.

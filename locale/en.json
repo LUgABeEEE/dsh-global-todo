@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Global Todos",
-    "description": "One todo list across sessions: it records when each item was added, attaches documents and links, and hands an item to an agent session in one click. The human and the agent write the same list."
+    "description": "Cross-session todos for DeepSeek Harness. One JSON file you own; a person and an agent write the same records. Every item keeps when it was added, a description, attached documents and links, an optional plan of steps, and the sentence it came from. Hand it to a conversation in one click - the steps travel as a numbered plan - then read back what that conversation last said. An agent's \"done\" stays a claim until you confirm it."
   }
 }
