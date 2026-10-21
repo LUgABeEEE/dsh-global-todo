@@ -829,3 +829,15 @@ test('/health names the finished todos that wait for a person', async () => {
     await env.cleanup()
   }
 })
+
+test('a fractional minute setting is refused instead of falling back to the default', async () => {
+  const state = { autoCollect: false, idleMinutes: 30, cooldownMinutes: 30, exemptWorkspaces: [], ingest: {} }
+  const env = await harness({ settings: { get: () => state, update: async (patch) => ({ ...state, ...patch }) } })
+  try {
+    const response = await env.call('/settings', makeReq({ method: 'POST', url: `${ROUTE_BASE}/settings`, body: JSON.stringify({ idleMinutes: 30.5 }) }))
+    assert.equal(response.statusCode, 400)
+    assert.match(response.json().error, /整数/)
+  } finally {
+    await env.cleanup()
+  }
+})

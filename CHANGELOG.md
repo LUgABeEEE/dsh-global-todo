@@ -1,3 +1,12 @@
+## [0.12.11] — 2026-10-21
+
+One more silent fallback, found while re-reading the settings path.
+
+- **`{idleMinutes: 30.5}` was accepted and then ignored.** `normalizeSettings` only keeps
+  integers for the minute fields and otherwise falls back to the default, so the request looked
+  like it worked while the value never changed. The settings route now rejects a fractional
+  minute with `400 invalid-body`, like every other out-of-range value.
+
 ## [0.12.10] — 2026-10-21
 
 Two follow-ups from #3, plus the notification channel this repository actually has.
