@@ -14,8 +14,10 @@ async function workspace() {
 }
 
 test('the default location is $DSH_HOME/global-todo/todos.json', () => {
+  // path.join, not a literal: the separator differs on Windows and the assertion is about
+  // the shape of the location, not about which slash the platform uses.
   assert.equal(resolveHomeDir({ DSH_HOME: '/home/me/.dsh' }), '/home/me/.dsh')
-  assert.equal(resolveStorePath({}, { DSH_HOME: '/home/me/.dsh' }), '/home/me/.dsh/global-todo/todos.json')
+  assert.equal(resolveStorePath({}, { DSH_HOME: '/home/me/.dsh' }), path.join('/home/me/.dsh', 'global-todo', 'todos.json'))
   assert.equal(resolveStorePath({ storePath: '/notes/todos.json' }, { DSH_HOME: '/x' }), '/notes/todos.json')
   assert.match(resolveHomeDir({}), /\.dsh$/)
 })
