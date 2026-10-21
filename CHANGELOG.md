@@ -1,3 +1,19 @@
+## [0.12.6] — 2026-10-21
+
+Saving on Windows never worked. Fixed, with the root cause written down (#2).
+
+- **`open(temp, 'r')` → opened for writing.** The atomic write reopened its temp file read-only
+  and called `handle.sync()`. On Windows that is `FlushFileBuffers`, which requires a writable
+  handle, so **every** save threw `EPERM` — and because the sync sat before `rename()`, the
+  target file was never replaced: the list looked empty while `*.tmp` debris accumulated. POSIX
+  allows `fsync` on a read-only descriptor, which is why Linux and macOS never showed it.
+- **The sync is best effort now.** A platform that refuses to flush the temp file gets a warning,
+  and the rename still happens: losing a save is worse than a save that only reached the page
+  cache. The temp file is unlinked when a write fails, so a failure leaves no debris.
+- **The write path is a function with tests.** `atomicWrite()` takes an injectable fs surface; four
+  tests pin the invariant that failed: the handle must be opened for writing, a refused sync must
+  not lose the save, a failed write must clean up, and the payload must reach the file first.
+
 ## [0.12.5] — 2026-10-21
 
 A check for the one install mistake that is invisible until the desktop complains.
