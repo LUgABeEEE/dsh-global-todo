@@ -19,7 +19,7 @@
  * @module dsh-global-todo/scripts/check
  */
 
-import { execFile } from 'node:child_process'
+import { execFile, execFileSync } from 'node:child_process'
 import { auditClientCalls } from '../tools/scan-client-calls.mjs'
 import { existsSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
@@ -94,16 +94,28 @@ for (const file of sources) {
 // published. `/home/me` is the single documented placeholder, so it is the only
 // home this allows; everything else looks like somebody's machine.
 const MACHINE_PATH = /\/(?:home|Users)\/(?!me\/)[a-zA-Z0-9._-]+\//
+// The same class of leak, in the two shapes the home rule above cannot see:
+// a Windows profile path, and *this* checkout's own location. The first is a
+// pattern; the second is computed, because a repository cannot know every
+// machine's layout but it does know the one running the check. Both bit this
+// repository for real — a demo seed and a restart instruction each shipped an
+// absolute path while the shipped halves stayed clean.
+const WINDOWS_MACHINE_PATH = /[A-Za-z]:\\Users\\(?!me\\)[A-Za-z0-9._-]+\\/
+const LOCAL_ROOTS = [process.env.HOME, process.env.USERPROFILE, root]
+  .filter((value) => typeof value === 'string' && value.length > 6)
+  .map((value) => value.replace(/\/+$/, ''))
 
-// Everything a first commit would carry, with the same exclusions `.gitignore`
-// applies. The credential rule below used to run only on shipped files, which
-// left tests, tools and docs — all of them published to GitHub — unchecked.
-const IGNORED_FROM_COMMIT = [
-  // The repository metadata is not committable content, and scanning git's own
-  // objects would invite false positives from compressed bytes.
+// Everything a commit would carry — asked of git rather than re-implemented.
+// The hand-kept list this replaces drifted from .gitignore: local audit reports
+// and AgentTeams state were ignored by git but still scanned, so a clean tree
+// reported failures nobody could act on. git is the single source of truth; the
+// walker below stays as a fallback for a checkout without it.
+const FALLBACK_IGNORES = [
   /^\.git\//,
   /^node_modules\//,
   /^preview\//,
+  /^\.agent-teams\//,
+  /^reports\//,
   /\.bak-/,
   /\.tmp$/,
   /\.tgz$/,
@@ -115,15 +127,32 @@ const IGNORED_FROM_COMMIT = [
 ]
 
 /** @returns {Promise<string[]>} every file a commit would include */
-async function committable(relative = '.') {
+async function committable() {
+  try {
+    const listed = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '-z'], {
+      cwd: root,
+      maxBuffer: 64 * 1024 * 1024,
+    })
+      .toString('utf8')
+      .split('\0')
+      .filter((file) => file !== '' && !file.endsWith('/'))
+    if (listed.length > 0) return listed.sort()
+  } catch {
+    // No git here: fall through to the walker.
+  }
+  return walkIgnore('.')
+}
+
+/** The dependency-free fallback: the same rules, applied by hand. */
+async function walkIgnore(relative) {
   const out = []
   for (const entry of await readdir(path.join(root, relative), { withFileTypes: true })) {
     const child = relative === '.' ? entry.name : path.posix.join(relative, entry.name)
-    if (IGNORED_FROM_COMMIT.some((pattern) => pattern.test(entry.isDirectory() ? `${child}/` : child))) continue
-    if (entry.isDirectory()) out.push(...(await committable(child)))
+    if (FALLBACK_IGNORES.some((pattern) => pattern.test(entry.isDirectory() ? `${child}/` : child))) continue
+    if (entry.isDirectory()) out.push(...(await walkIgnore(child)))
     else out.push(child)
   }
-  return out
+  return out.sort()
 }
 
 // The rule a person would run by hand before committing. A leaked credential — or
@@ -139,7 +168,11 @@ const committableFiles = await committable()
 for (const file of committableFiles) {
   if (/\.(png|jpe?g|gif|ico|woff2?|zstd)$/i.test(file)) continue
   const text = await readFile(path.join(root, file), 'utf8')
-  if (MACHINE_PATH.test(text)) fail(`${file}: names a machine-local home path (use /home/me/… as the placeholder)`)
+  if (MACHINE_PATH.test(text) || WINDOWS_MACHINE_PATH.test(text)) {
+    fail(`${file}: names a machine-local home path (use /home/me/… as the placeholder)`)
+  }
+  const local = LOCAL_ROOTS.find((prefix) => text.includes(prefix))
+  if (local !== undefined) fail(`${file}: names a real filesystem location on this machine (${local})`)
   if (COMMIT_PRIVATE_KEY.test(text)) fail(`${file}: contains a private key block`)
   else if (COMMIT_CREDENTIAL.test(text)) fail(`${file}: contains what looks like a credential`)
 }

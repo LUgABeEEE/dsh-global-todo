@@ -1,5 +1,7 @@
 const fs = require('node:fs')
-const { chromium } = require('/data/agent/.dsh/profiles/web/node_modules/playwright')
+// Playwright belongs to whichever profile runs the capture, not to this repository.
+// Resolve it from the environment so the script stays publishable.
+const { chromium } = require(process.env.PLAYWRIGHT_MODULE ?? 'playwright')
 const token = fs.readFileSync('/tmp/dsh-demo.log', 'utf8').match(/token=([^\s]+)/)[1]
 const OUT = '/tmp/film'
 fs.rmSync(OUT, { recursive: true, force: true })

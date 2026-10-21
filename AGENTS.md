@@ -71,7 +71,7 @@ them a release conversation) and `needrestart` restarting the unit after unatten
 3. If a restart is genuinely required, **run the guard first and print its output** into the turn:
 
    ```sh
-   /data/agent/tools/dsh-restart-guard/dsh-restart-guard.sh
+   "$DSH_HOME/tools/dsh-restart-guard/dsh-restart-guard.sh"
    ```
 
    | exit | meaning | what to do |

@@ -1,3 +1,22 @@
+## [0.12.4] — 2026-10-21
+
+The repository leaked its own location. Three real paths, and a guard that could not see them.
+
+- **Removed the absolute paths**: `AGENTS.md` named the guard by full path (now `$DSH_HOME/…`),
+  `tools/demo/seed.mjs` hard-coded the checkout (now resolved from `import.meta.url`),
+  `tools/demo/capture.mjs` hard-coded Playwright's location in one profile (now
+  `PLAYWRIGHT_MODULE` or the normal resolution), and `tools/demo/scenes.sh` hard-coded a font in
+  one home (now `DEMO_FONT`, else fontconfig).
+- **The rule can now see them.** It only knew `/home/<user>/` and `/Users/<user>/`. It also
+  rejects Windows profile paths and any path containing this checkout's own home or directory —
+  computed at run time, so the repository cannot know every layout but it does know the one
+  running the check. Both shapes were verified by planting a file and watching the check fail.
+- **The file list comes from git.** The hand-kept ignore list had drifted from `.gitignore`:
+  `reports/` and `.agent-teams/` were ignored by git yet still scanned, so a clean tree reported
+  four failures nobody could act on. `git ls-files --cached --others --exclude-standard` is now
+  the single source of truth, with the walker kept as a fallback. `reports/` also joined
+  `.gitignore`, where it belonged.
+
 ## [0.12.3] — 2026-10-21
 
 A desktop report explained, and the packaging contract behind it guarded.

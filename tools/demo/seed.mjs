@@ -1,5 +1,10 @@
-import { createStore } from '/data/agent/workspace/全局待办插件/lib/store.js'
-import { createService } from '/data/agent/workspace/全局待办插件/lib/service.js'
+import { fileURLToPath } from 'node:url'
+import { createStore } from '../../lib/store.js'
+import { createService } from '../../lib/service.js'
+
+// The demo data is built for whichever checkout runs it; absolute paths in the
+// fixtures are resolved here, never written down, so this file is publishable.
+const root = fileURLToPath(new URL('../..', import.meta.url))
 
 const file = '/tmp/demo-home/global-todo/todos.json'
 const store = createStore({ file })
@@ -24,7 +29,7 @@ const release = await service.create(
     tags: ['发布', '文档'],
     priority: 'high',
     dueAt: new Date(now + 20 * HOUR).toISOString(),
-    links: ['https://github.com/LUgABeEEE/dsh-global-todo', '/data/agent/workspace/全局待办插件/docs/QUICKSTART.md'],
+    links: ['https://github.com/LUgABeEEE/dsh-global-todo', root + 'docs/QUICKSTART.md'],
   },
   { by: 'human' },
 )
@@ -54,7 +59,7 @@ await service.complete(
   reviewed.id,
   {
     summary: '已确认两处是同一把 key，源文件已改为从环境变量读取',
-    artifacts: ['/data/agent/workspace/全局待办插件/lib/index.js'],
+    artifacts: [root + 'lib/index.js'],
     sessionId: 'demo-session-1',
   },
   { by: 'agent' },

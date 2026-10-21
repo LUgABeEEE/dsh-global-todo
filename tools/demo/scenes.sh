@@ -1,6 +1,7 @@
 #!/bin/sh
 set -e
-FONT=/data/agent/.fonts/NotoSansSC-Medium.otf
+FONT="${DEMO_FONT:-$(fc-match -f '%{file}' 'Noto Sans SC' 2>/dev/null || true)}"
+[ -n "$FONT" ] || { echo "scenes.sh: set DEMO_FONT to a CJK font file" >&2; exit 2; }
 IN=/tmp/film
 OUT=/tmp/film/build
 rm -rf "$OUT"; mkdir -p "$OUT"

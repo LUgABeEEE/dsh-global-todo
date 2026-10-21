@@ -16,6 +16,9 @@ Thumbs.db
 # Generated panel previews
 preview/
 
+# Local audit reports: written for the author, full of this machine's paths
+reports/
+
 # Local data: the list itself never belongs in the repository
 todos.json
 todos.json.*
