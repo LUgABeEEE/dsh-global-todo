@@ -841,3 +841,33 @@ test('a fractional minute setting is refused instead of falling back to the defa
     await env.cleanup()
   }
 })
+
+test('settings refuse the wrong shape instead of coercing it', async () => {
+  const state = { autoCollect: false, idleMinutes: 30, cooldownMinutes: 30, exemptWorkspaces: [], ingest: {} }
+  const env = await harness({ settings: { get: () => state, update: async (patch) => ({ ...state, ...patch }) } })
+  const post = (body) => env.call('/settings', makeReq({ method: 'POST', url: `${ROUTE_BASE}/settings`, body: JSON.stringify(body) }))
+  try {
+    const stringBool = await post({ autoCollect: 'true' })
+    assert.equal(stringBool.statusCode, 400, 'a string "true" used to become false silently')
+    assert.match(stringBool.json().error, /autoCollect/)
+
+    const typo = await post({ autoCollectt: true })
+    assert.equal(typo.statusCode, 400)
+    assert.match(typo.json().error, /未知的设置项/)
+
+    const badSources = await post({ ingestSources: ['mail', 'smoke-signal'] })
+    assert.equal(badSources.statusCode, 400)
+    assert.match(badSources.json().error, /ingestSources/)
+
+    const badExempt = await post({ exemptWorkspaces: '/home/me' })
+    assert.equal(badExempt.statusCode, 400)
+
+    const badToken = await post({ ingestToken: 123 })
+    assert.equal(badToken.statusCode, 400)
+
+    const ok = await post({ autoCollect: true, ingestSources: ['mail'] })
+    assert.equal(ok.statusCode, 200)
+  } finally {
+    await env.cleanup()
+  }
+})

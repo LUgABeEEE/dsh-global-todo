@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { atomicWrite } from '../lib/store.js'
-import { normalizeSettings } from '../lib/settings.js'
+import { isExemptWorkspace, normalizeSettings } from '../lib/settings.js'
 import { fromMarkdown } from '../lib/markdown.js'
 import { isAbsolutePath } from '../lib/links.js'
 
@@ -82,4 +82,15 @@ test('markdown written on Windows (CRLF) parses exactly like LF', () => {
   assert.deepEqual(todo.tags, ['周报', '写作'])
   assert.match(todo.description, /第一段[\s\S]*第二段/)
   assert.deepEqual(todo.steps, [{ text: '对齐字段', done: true }])
+})
+
+test('an exemption covers a subdirectory, on either separator', () => {
+  // The old test compared `\${root}/`, so a Windows exemption only matched its exact path:
+  // a half-working exemption looks configured and silently asks conversations it should skip.
+  assert.equal(isExemptWorkspace('C:\\\\dev\\\\sub\\\\x', ['C:\\\\dev']), true)
+  assert.equal(isExemptWorkspace('C:\\\\dev', ['C:\\\\dev']), true)
+  assert.equal(isExemptWorkspace('C:\\\\dev2', ['C:\\\\dev']), false, 'a prefix is not a subdirectory')
+  assert.equal(isExemptWorkspace('/home/me/ws/sub', ['/home/me/ws']), true)
+  assert.equal(isExemptWorkspace('/home/me/ws2', ['/home/me/ws']), false)
+  assert.equal(isExemptWorkspace('/home/me/ws/sub', ['C:\\\\dev']), false)
 })

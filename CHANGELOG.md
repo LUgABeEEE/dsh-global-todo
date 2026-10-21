@@ -1,3 +1,18 @@
+## [0.12.12] — 2026-10-21
+
+Three more silent coercions, found by reading the settings path instead of the tests.
+
+- **A Windows workspace exemption only covered its exact path.** `isExemptWorkspace` tested
+  `${root}/`, so `C:\dev` matched itself but not `C:\dev\sub` — an exemption that looks
+  configured and silently asks conversations it should skip. Separators are now normalized and
+  the check is case-insensitive on Windows only.
+- **`POST /settings` no longer coerces the wrong type.** The settings store is written for a
+  hand-edited file, where `autoCollect: "true"` becoming `false` and an unknown field being
+  ignored are reasonable; over HTTP they are typos that look successful. Booleans, arrays, the
+  token and the ingest sources are now type-checked, and an unknown key is `400` naming it.
+- **A fractional minute is refused** (`{idleMinutes: 30.5}` used to fall back to the default with
+  a 200). Same rule as every other out-of-range value.
+
 ## [0.12.11] — 2026-10-21
 
 One more silent fallback, found while re-reading the settings path.
