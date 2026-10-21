@@ -173,7 +173,9 @@ export async function deliver(input) {
     )
     return { status: 'queued', detail: (queued.stdout ?? '').trim() }
   }
-  const sent = await exec('bash', ['-c', `. "${1}"; notify_wechat "$2"`, '--', library, input.text])
+  // Single quotes, not a template literal: `\${1}` inside backticks is a JS substitution
+  // (the expression `1`), which shipped "1: No such file or directory" once.
+  const sent = await exec('bash', ['-c', '. "$1"; notify_wechat "$2"', '--', library, input.text])
   const out = (sent.stdout ?? '').trim()
   if (out !== 'ok') {
     // delivery.sh returns err:<reason>; surface it rather than pretending.

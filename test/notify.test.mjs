@@ -81,3 +81,17 @@ test('without the host delivery library the tool says so instead of pretending',
   const result = await deliver({ text: 'hi', age: 60, exec: async () => ({ stdout: 'ok' }), library: '/nonexistent/delivery.sh' })
   assert.equal(result.status, 'absent')
 })
+
+test('the send snippet passes the library and the text as arguments, not as JS interpolation', async () => {
+  const calls = []
+  const exec = async (file, args) => {
+    calls.push({ file, args })
+    return { stdout: 'ok\n' }
+  }
+  const result = await deliver({ text: '你好 $HOME', exec, age: 60, library: LIBRARY })
+  assert.equal(result.status, 'sent')
+  const snippet = calls[0].args[1]
+  assert.match(snippet, /\$1/, 'the script must reference $1 literally')
+  assert.match(snippet, /\$2/, 'and $2')
+  assert.equal(calls[0].args.at(-1), '你好 $HOME', 'the text travels as one argv entry, never through the shell')
+})
