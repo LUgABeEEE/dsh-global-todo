@@ -63,6 +63,13 @@ test('every published file is listed and present', async () => {
   for (const required of ['lib', 'locale', 'cordis.patch.yml', 'LICENSE', 'README.md', 'README.zh.md', 'CHANGELOG.md']) {
     assert.ok(manifest.files.includes(required), `${required} must be published`)
   }
+  // The desktop Host resolves `<pkg>/locale/en.json` through `exports` and then scans that
+  // directory. A package that advertises the export but omits the folder makes the Host
+  // report "Plugin metadata … ENOENT … locale" — a real report from a hand-copied
+  // plugins-local install. Keep both halves of that contract asserted.
+  assert.equal(manifest.exports['./locale/*.json'], './locale/*.json', 'the locale export feeds the plugins page')
+  assert.ok(manifest.files.includes('locale'), 'locale/ must ship or the export points at nothing')
+
   // A leading `!` is an exclusion, not a file: the landing page and the demo video are
   // built for the web (GitHub Pages) and deliberately kept out of the npm tarball.
   for (const published of manifest.files.filter((entry) => !entry.startsWith('!'))) {

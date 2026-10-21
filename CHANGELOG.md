@@ -1,3 +1,17 @@
+## [0.12.3] — 2026-10-21
+
+A desktop report explained, and the packaging contract behind it guarded.
+
+- **`docs/FAQ.md` §15** answers `Plugin metadata … ENOENT … \locale`: the Host resolves
+  `<pkg>/locale/en.json` through the `exports` wildcard (which Node resolves **without** checking
+  the file), then scans that directory. A hand-copied `plugins-local` folder that kept `lib/`,
+  `package.json` and the patch but dropped `locale/` therefore reports this — while the plugin
+  itself still loads. The entry gives both fixes (install from npm, or copy `locale/` and
+  `docs/icon.svg` into the local folder) and says the metadata is read once at startup.
+- **`test/manifest.test.mjs` now asserts the contract**: the `./locale/*.json` export exists and
+  `locale` is in `files`. Drop either and the plugins page silently loses its title, description
+  and icon — the exact failure that shipped as a user-visible error.
+
 ## [0.12.2] — 2026-10-21
 
 The description reached the last two places it was still thin.

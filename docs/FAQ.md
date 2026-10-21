@@ -157,3 +157,34 @@ rm -r "$DSH_HOME/global-todo"
 失败一定带原因，也记在详情的「最近派发」里；不会静默什么都不做。
 
 
+## 15. 桌面端报 `Plugin metadata … ENOENT … \locale` 是什么？
+
+**插件本身已经加载了，这是「显示文字」取不到**，不影响面板和工具。宿主读插件页标题/描述的顺序是：
+先解析 `<包>/locale/en.json`（走 `exports` 里的 `./locale/*.json`），解析成功后**扫这个目录**，
+把 `zh.json`/`en.json` 逐个读进来。目录不存在，扫描就抛 ENOENT，于是元信息报错。
+
+也就是说：**你那份本地插件目录缺 `locale/` 文件夹**。常见于把仓库文件夹手动复制到
+`%USERPROFILE%\.dsh\plugins-local\` 时只拷了 `lib`、`package.json`、`cordis.patch.yml`。
+
+修法二选一：
+
+1. **推荐**：别用本地目录，直接装 npm 包（包里有 `locale/en.json`、`locale/zh.json`）：
+
+   ```powershell
+   dsh plugin add dsh-global-todo
+   ```
+
+2. 保留本地目录，把缺的补齐（`$src` 换成仓库或 npm 包里那份）：
+
+   ```powershell
+   $dst = "$env:USERPROFILE\.dsh\plugins-local\全局待办插件"
+   $src = "C:\path\to\dsh-global-todo"
+   New-Item -ItemType Directory -Force "$dst\locale" | Out-Null
+   Copy-Item "$src\locale\*.json" "$dst\locale\" -Force
+   Copy-Item "$src\docs\icon.svg" "$dst\docs\" -Force   # 图标同理会报错
+   ```
+
+   然后重启宿主（插件元信息在启动时读一次）。
+
+为什么会这么脆：`exports` 的 `./locale/*.json` 是**通配映射**，Node 解析它时不检查文件是否存在，
+所以宿主以为文件在、去扫目录，才发现没有。完整安装不会触发；只有手工拷半份才会。
