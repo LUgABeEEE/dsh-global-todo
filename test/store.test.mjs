@@ -18,7 +18,9 @@ test('the default location is $DSH_HOME/global-todo/todos.json', () => {
   // the shape of the location, not about which slash the platform uses.
   assert.equal(resolveHomeDir({ DSH_HOME: '/home/me/.dsh' }), '/home/me/.dsh')
   assert.equal(resolveStorePath({}, { DSH_HOME: '/home/me/.dsh' }), path.join('/home/me/.dsh', 'global-todo', 'todos.json'))
-  assert.equal(resolveStorePath({ storePath: '/notes/todos.json' }, { DSH_HOME: '/x' }), '/notes/todos.json')
+  // path.resolve, because a Windows resolve of a POSIX-looking path prefixes the drive:
+  // the contract is "an explicit storePath wins and is made absolute", not a literal string.
+  assert.equal(resolveStorePath({ storePath: '/notes/todos.json' }, { DSH_HOME: '/x' }), path.resolve('/notes/todos.json'))
   assert.match(resolveHomeDir({}), /\.dsh$/)
 })
 
