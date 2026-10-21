@@ -95,3 +95,32 @@ test('the send snippet passes the library and the text as arguments, not as JS i
   assert.match(snippet, /\$2/, 'and $2')
   assert.equal(calls[0].args.at(-1), '你好 $HOME', 'the text travels as one argv entry, never through the shell')
 })
+
+
+
+test('a failed send is written to the outbox, and lost is reported as lost', async () => {
+  const calls = []
+  const exec = async (file, args) => {
+    calls.push(args.join(' '))
+    if (calls.length === 1) {
+      const error = new Error('Command failed')
+      error.stdout = 'err:http502\n'
+      throw error
+    }
+    return { stdout: '/tmp/outbox/9.txt\n' }
+  }
+  const result = await deliver({ text: 'hi', exec, age: 60, library: LIBRARY })
+  assert.equal(result.status, 'queued')
+  assert.match(result.detail, /http502/)
+  assert.match(calls[1], /outbox_save/, 'a queued status must actually queue')
+
+  const lost = await deliver({
+    text: 'hi',
+    age: 60,
+    library: LIBRARY,
+    exec: async () => {
+      throw new Error('no bash')
+    },
+  })
+  assert.equal(lost.status, 'lost', 'neither sent nor queued is not a success')
+})

@@ -14,7 +14,7 @@
  *   node tools/notify.mjs new-issue 3 "Windows 0.12.6 test sweep"
  *   node tools/notify.mjs --dry-run release 0.12.9   # compose and report the window, send nothing
  *
- * Exit codes: 0 sent, 3 queued in the outbox (window closed), 2 no channel on this host.
+ * Exit codes: 0 sent, 3 queued in the outbox, 4 lost (send and queue both failed), 2 no channel.
  *
  * @module dsh-global-todo/notify
  */
@@ -164,24 +164,50 @@ export async function deliver(input) {
         '-c',
         // WORKDIR is derived in the shell from the library's own location, so the snippet
         // carries no machine-specific path.
-        'WORKDIR=$(dirname "$(dirname "$1")"); log(){ :; }; . "$1"; outbox_save "$2" "window-stale"',
+        // The library lives at $WORKDIR/night/lib, and delivery.sh appends /night/outbox
+        // to it, so WORKDIR is three levels up: the directory that contains night/.
+        'WORKDIR=$(dirname "$(dirname "$(dirname "$1")")"); log(){ :; }; . "$1"; outbox_save "$2" "window-stale"',
         '--',
         library,
         input.text,
       ],
-      { env: { ...process.env, DSH_NOTIFY_WORKDIR: WORKDIR } },
     )
-    return { status: 'queued', detail: (queued.stdout ?? '').trim() }
+    return { status: 'queued', detail: (queued.stdout ?? '').trim() || 'window closed' }
   }
   // Single quotes, not a template literal: `\${1}` inside backticks is a JS substitution
   // (the expression `1`), which shipped "1: No such file or directory" once.
-  const sent = await exec('bash', ['-c', '. "$1"; notify_wechat "$2"', '--', library, input.text])
-  const out = (sent.stdout ?? '').trim()
-  if (out !== 'ok') {
-    // delivery.sh returns err:<reason>; surface it rather than pretending.
-    return { status: 'queued', detail: out === '' ? 'empty reply' : out }
+  // execFile rejects on a non-zero exit, and delivery.sh exits non-zero on failure, so the
+  // rejection is the normal "not sent" path, not an exception to leak to the caller.
+  let detail = ''
+  try {
+    const sent = await exec('bash', ['-c', '. "$1"; notify_wechat "$2"', '--', library, input.text])
+    const out = (sent.stdout ?? '').trim()
+    if (out === 'ok') return { status: 'sent', detail: 'ok' }
+    detail = out === '' ? 'empty reply' : out
+  } catch (error) {
+    const raw = String(error?.stdout ?? error?.stderr ?? error?.message ?? error).trim()
+    detail = raw === '' ? 'delivery failed' : raw
   }
-  return { status: 'sent', detail: 'ok' }
+  // "Queued" has to mean queued: a failed send is written to the outbox so the retry the
+  // window logic promises actually happens instead of staying a claim in this function.
+  try {
+    const queued = await exec(
+      'bash',
+      [
+        '-c',
+        'WORKDIR=$(dirname "$(dirname "$(dirname "$1")")"); log(){ :; }; . "$1"; outbox_save "$2" "delivery-failed"',
+        '--',
+        library,
+        input.text,
+      ],
+    )
+    const saved = (queued.stdout ?? '').trim()
+    return { status: 'queued', detail: saved === '' ? detail : `${detail} → ${saved}` }
+  } catch (error) {
+    // Neither sent nor queued: say so, because a silent lose is the one outcome that must not
+    // be reported as success.
+    return { status: 'lost', detail: `${detail} (outbox failed: ${error?.message ?? error})` }
+  }
 }
 
 const isMain = process.argv[1] !== undefined && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
@@ -198,7 +224,8 @@ if (isMain) {
     }
     const result = await deliver({ text, age })
     process.stdout.write(`${result.status} (${describeAge(age)} old window, ${result.detail})\n`)
-    process.exit(result.status === 'sent' ? 0 : result.status === 'queued' ? 3 : 2)
+    // 0 sent, 3 queued (retried later), 4 lost (neither), 2 no channel on this host.
+    process.exit(result.status === 'sent' ? 0 : result.status === 'queued' ? 3 : result.status === 'lost' ? 4 : 2)
   } catch (error) {
     process.stderr.write(`${error?.message ?? error}\n`)
     process.exit(1)
