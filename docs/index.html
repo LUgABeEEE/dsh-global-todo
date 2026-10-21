@@ -620,6 +620,20 @@
   </div>
 </footer>
 
+<!-- Image preview: opens from any screenshot, closes on a backdrop click or Escape. -->
+<div class="lightbox" id="lightbox" hidden role="dialog" aria-modal="true" aria-label="图片预览 / Image preview">
+  <figure class="lightbox-figure">
+    <img id="lightboxImage" alt="" width="1280" height="720" decoding="async">
+    <figcaption class="lightbox-caption">
+      <span id="lightboxText"></span>
+      <span class="lightbox-hint"><span class="zh">点空白处或按 Esc 返回</span><span class="en" lang="en">Click the backdrop or press Esc to dismiss</span></span>
+    </figcaption>
+  </figure>
+  <button class="lightbox-close" id="lightboxClose" type="button" aria-label="关闭预览 / Close preview">
+    <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+  </button>
+</div>
+
 <script src="assets/site.js" defer></script>
 </body>
 </html>
