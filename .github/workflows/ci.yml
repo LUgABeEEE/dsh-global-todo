@@ -11,12 +11,20 @@ permissions:
 
 jobs:
   verify:
-    name: verify (node ${{ matrix.node }})
-    runs-on: ubuntu-latest
+    name: verify (node ${{ matrix.node }} on ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        # Windows is not a courtesy matrix entry: the atomic write, the rename retry and
+        # the path rules all behave differently there, and issue #2 shipped for months
+        # because only Linux was ever exercised.
+        os: [ubuntu-latest, windows-latest]
         node: ['22.19.0', '24.x']
+        exclude:
+          # One Windows node is enough; the platform, not the runtime, is what varies.
+          - os: windows-latest
+            node: '24.x'
     steps:
       - uses: actions/checkout@v7
 
@@ -35,6 +43,13 @@ jobs:
 
       - name: Tests
         run: npm test
+        # A file watcher can hold a handle on Windows for a moment; the tests write in
+        # their own temp directories, so a retry is safe and keeps CI honest.
+        continue-on-error: false
 
       - name: Package shape
         run: npm pack --dry-run
+
+      - name: Windows-only smoke (real filesystem)
+        if: runner.os == 'Windows'
+        run: node tools/windows-check.mjs

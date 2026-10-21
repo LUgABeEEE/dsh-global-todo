@@ -1,3 +1,24 @@
+## [0.12.7] — 2026-10-21
+
+Windows, tested instead of assumed.
+
+- **CI runs on windows-latest.** Issue #2 shipped for months because only Linux was ever
+  exercised; the suite now runs on both, plus `node tools/windows-check.mjs` on Windows.
+- **`npm run check:windows`** — a real-filesystem smoke test (no faked `fs`): create a store,
+  update/complete/review then reload, assert no `.tmp` debris, write and read 500 todos, import a
+  CRLF Markdown file, use a path with spaces and non-ASCII characters, and rename over an existing
+  file. `docs/WINDOWS.md` says what to report when one of them fails.
+- **Windows paths are exempt-able.** Settings compared exemptions with `startsWith('/')`, so every
+  workspace a Windows user configured was silently dropped. Now `isAbsolutePath` (drive and UNC),
+  with case-insensitive comparison on Windows and trailing separators of either kind removed.
+- **CRLF Markdown imports.** `fromMarkdown` split on `\n` and left `\r` on every line; a document
+  saved on Windows now parses exactly like the same document saved on Linux.
+- **Transient locks are retried.** Antivirus and the indexer can hold a just-written file for a few
+  milliseconds; `EPERM`/`EBUSY`/`EACCES` during the final rename are retried (bounded), other
+  errors still fail at once, and a real failure cleans up its temp file.
+- **Settings writes are atomic too.** A half-written `settings.json` would silently reset every
+  switch; it now goes through the same temp-file-and-rename path as the todo list.
+
 ## [0.12.6] — 2026-10-21
 
 Saving on Windows never worked. Fixed, with the root cause written down (#2).

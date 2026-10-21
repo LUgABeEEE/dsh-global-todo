@@ -1,6 +1,6 @@
 {
   "name": "dsh-global-todo",
-  "version": "0.12.6",
+  "version": "0.12.7",
   "icon": "./docs/icon.svg",
   "description": "Cross-session todo list for DeepSeek Harness: one JSON file a person and an agent both write to, with step plans that ship as a numbered hand-off, session read-back, and a human confirmation before an agent's \"done\" counts.",
   "type": "module",
@@ -50,6 +50,7 @@
     "docs/ROADMAP.md",
     "docs/QUICKSTART.md",
     "docs/FAQ.md",
+    "docs/WINDOWS.md",
     "docs/icon.svg",
     "docs/screenshots",
     "tools/doctor.mjs",
@@ -71,6 +72,7 @@
   "scripts": {
     "check": "node scripts/check.mjs",
     "doctor": "node tools/doctor.mjs",
+    "check:windows": "node tools/windows-check.mjs",
     "test": "node --test \"test/**/*.test.mjs\"",
     "verify": "npm run check && npm run check:render && npm test",
     "preview": "node tools/preview.mjs",
