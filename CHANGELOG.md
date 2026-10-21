@@ -1,3 +1,18 @@
+## [0.12.10] — 2026-10-21
+
+Two follow-ups from #3, plus the notification channel this repository actually has.
+
+- **`/health` names what waits for review.** `review.count` said something was waiting;
+  `review.items` says which (id, seq, title, doneAt, newest first) — checking the state no longer
+  means opening the panel and clicking through the list.
+- **The panel says when the running version is older than the installed one.** `stale` was added to
+  `/health` in 0.12.9; the panel now shows a one-time notice naming both versions and saying to
+  restart `dsh web`. This is the trap where the client is new, the module graph is old, and the
+  panel calls routes that 404.
+- **`tools/notify.mjs`** — pushes release / CI-failed / new-issue messages to WeChat through the
+  host's delivery library, which owns the freshness window and the outbox. `--dry-run` composes and
+  reports the window without sending; a closed window queues instead of failing.
+
 ## [0.12.9] — 2026-10-21
 
 Everything a Windows tester found in a 41-case sweep, answered (#3).

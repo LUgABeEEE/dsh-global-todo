@@ -811,3 +811,21 @@ test('one oversized ingest row is skipped, the rest of the batch lands', async (
     await env.cleanup()
   }
 })
+
+test('/health names the finished todos that wait for a person', async () => {
+  const env = await harness()
+  try {
+    const todo = await env.service.create({ title: 'agent 说做完了' }, { by: 'human' })
+    await env.service.complete(todo.id, { summary: '做完了' }, { by: 'agent' })
+
+    const health = await env.call('/health', makeReq({ method: 'GET', url: `${ROUTE_BASE}/health` }))
+    assert.equal(health.statusCode, 200)
+    const data = health.json().data
+    assert.equal(data.review.count, 1)
+    assert.equal(data.review.items.length, 1)
+    assert.equal(data.review.items[0].id, todo.id)
+    assert.equal(typeof data.review.items[0].title, 'string')
+  } finally {
+    await env.cleanup()
+  }
+})

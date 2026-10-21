@@ -401,3 +401,25 @@ test('the plan travels with the hand-off as a numbered list', async () => {
     await env.cleanup()
   }
 })
+
+test('awaitingReview names the finished todos a person still has to confirm', async () => {
+  const env = await harness()
+  try {
+    const open = await env.service.create({ title: '还没做' }, { by: 'human' })
+    const claimed = await env.service.create({ title: 'agent 说做完了' }, { by: 'human' })
+    await env.service.complete(claimed.id, { summary: 'agent 的结论' }, { by: 'agent' })
+
+    const list = await env.service.awaitingReview()
+    assert.equal(list.length, 1, 'only the agent-claimed one counts')
+    assert.equal(list[0].id, claimed.id)
+    assert.equal(list[0].title, 'agent 说做完了')
+    assert.equal(list[0].seq, claimed.seq)
+    assert.ok(Number.isFinite(list[0].doneAt) && list[0].doneAt > 0)
+    assert.equal(list.some((item) => item.id === open.id), false)
+
+    await env.service.review(claimed.id, 'confirm', { by: 'human' })
+    assert.deepEqual(await env.service.awaitingReview(), [], 'confirming removes it from the queue')
+  } finally {
+    await env.cleanup()
+  }
+})
