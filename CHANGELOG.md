@@ -1,3 +1,17 @@
+## [0.12.13] — 2026-10-21
+
+The dedupe promise now holds for short titles (#4).
+
+- **An appended addendum counts as the same errand, at any title length.** `similar-recently-done`
+  relied on symmetric Dice, which mathematically cannot reach 0.8 once 「（再办一次）」 is appended
+  to a short title: 「X」 scored 0.00 and 「T3 逾期项」 0.67, both accepted, while the padded test
+  title passed. Titles are now compared with their trailing brackets stripped, and rejected when
+  the rest is identical and one raw title is a prefix of the other.
+- **A *replaced* parenthetical is still a different errand.** 「修 A（后端）」 vs 「修 A（前端）」 strips
+  to the same text but replaces a word instead of appending one, so the prefix test refuses it.
+- **The tests use the examples the comments and release notes promised** — `X`, `T3 逾期项`,
+  `写周报`, `配置小米 NAS 证书`, `A` — instead of only a padded title that happened to pass.
+
 ## [0.12.12] — 2026-10-21
 
 Three more silent coercions, found by reading the settings path instead of the tests.

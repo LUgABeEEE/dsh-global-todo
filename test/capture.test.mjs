@@ -84,3 +84,26 @@ test('a paraphrase of something finished minutes ago is still the same errand', 
   const later = findDuplicate({ title: '【插件测试】T3 逾期项 P0（再办一次）', existing, now: NOW + 8 * DAY })
   assert.equal(later.duplicate, false, 'after the cooldown the errand may be written again')
 })
+
+test('a trailing addendum is the same errand, whatever the title length', () => {
+  // The table in issue #4: symmetric Dice only caught the long ones, so short titles — the
+  // common case in Chinese — went straight through.
+  const cases = ['X', 'T3 逾期项', '写周报', '配置小米 NAS 证书', 'A']
+  for (const title of cases) {
+    const existing = [{ id: 't1', title, status: 'done', createdAt: NOW - DAY, updatedAt: NOW - 60000, doneAt: NOW - 60000 }]
+    const result = findDuplicate({ title: `${title}（再办一次）`, existing, now: NOW })
+    assert.equal(result.duplicate, true, `${title} + addendum should be the same errand`)
+    assert.equal(result.reason, 'similar-recently-done')
+  }
+})
+
+test('a replaced parenthetical is not an appended one', () => {
+  const existing = [{ id: 't1', title: '修 A（后端）', status: 'done', createdAt: NOW - DAY, updatedAt: NOW - 60000, doneAt: NOW - 60000 }]
+  assert.equal(findDuplicate({ title: '修 A（前端）', existing, now: NOW }).duplicate, false, 'different work in the brackets')
+  assert.equal(findDuplicate({ title: '修 A（后端）', existing, now: NOW }).duplicate, true, 'the exact same errand')
+})
+
+test('the addendum rule still stops at the cooldown', () => {
+  const existing = [{ id: 't1', title: 'X', status: 'done', createdAt: NOW - 30 * DAY, updatedAt: NOW - 8 * DAY, doneAt: NOW - 8 * DAY }]
+  assert.equal(findDuplicate({ title: 'X（再办一次）', existing, now: NOW }).duplicate, false)
+})
