@@ -1,47 +1,46 @@
-# The demo video
+# The demo film
 
-`docs/screenshots/demo.mp4` is a 38-second narrated recording of the real panel, not stitched
-screenshots. It is produced locally, in four steps, without touching the list you actually use.
+`docs/screenshots/demo.mp4` is a 22-second typographic film: five claims, one per screen, with the
+product's own interface as evidence. It follows the style Linear, Raycast and Vercel use for
+release films, which is worth naming because it is the opposite of a narrated tour:
 
-## Why it is recorded this way
+- **No voiceover.** Type is the narrator. A spoken track would slow it down, and the audience reads
+  a UI faster than it hears a sentence.
+- **One idea per scene.** Five scenes, five sentences, nothing explaining what the viewer can
+  already see.
+- **Few motion behaviours, repeated.** A slow push-in on the product card, a rule that draws itself,
+  text that rises 16px and fades. Repetition reads as direction; variety reads as a template.
+- **The product's own palette, dark.** `#0b0e13`, the same background as the landing page, so the
+  film and the page are recognisably the same object.
+- **Sound marks events, it does not fill time.** A filtered noise tick on each cut, a low thud under
+  the two statement scenes, and a quiet 55/82.5 Hz pad underneath.
 
-- **A throwaway host.** The recording runs `dsh web` with `DSH_HOME=/tmp/demo-home` on port 3099,
-  so it mounts this repository as a plugin against a scratch store. The production host and the
-  production `todos.json` are never involved, and nothing is restarted.
-- **Real interaction.** Playwright drives the panel: open it, expand a todo, tick a step, answer an
-  agent's completion, open settings. A drawn cursor and click ripple are injected so the video has
-  a pointer (a headless recording otherwise has none).
-- **Narration drives the timing.** Six zh-CN lines are synthesised first, measured, and the scene
-  waits in the recorder are derived from those durations. Captions are burned in, so the video still
-  works muted.
-- **The About row is illustrative.** The demo store lives in a scratch home, so the displayed path
-  would read `/tmp/demo-home/...`. That one string is replaced with `~/.dsh/global-todo/todos.json`
-  for the scene, and the page says the path is illustrative.
+## Where the pictures come from
 
-## Regenerating it
+Real renders, not mockups. A throwaway host is started with `DSH_HOME=/tmp/demo-home` on port 3099,
+so this repository is mounted as a plugin against a scratch store — the list you actually use is
+never touched. Playwright then drives the real panel in dark mode and captures at 2× (device scale),
+which is why the type in the stills is sharp on a 1920×1080 frame.
 
 ```sh
-# 1. a scratch home with the plugin mounted, seeded with demo data
 mkdir -p /tmp/demo-home
 DSH_HOME=/tmp/demo-home dsh plugin --profile web add "$PWD"
 node tools/demo/seed.mjs
 DSH_HOME=/tmp/demo-home dsh web --no-open --port 3099 --trusted-host 127.0.0.1:3099 &
 
-# 2. narrate (a public TTS endpoint; if it is down, the captions still carry the video)
-sh tools/demo/tts.sh /tmp/voice
-
-# 3. record (needs playwright; the repo does not depend on it)
-node tools/demo/record.mjs /tmp/demo-rec
-
-# 4. assemble: captions, music bed, end card
-sh tools/demo/render.sh /tmp/demo-rec /tmp/voice docs/screenshots/demo.mp4
+node tools/demo/capture.mjs            # 5 stills into /tmp/film
+sh  tools/demo/scenes.sh               # 6 scenes + sound, muxed by render.sh
 ```
 
-The recorder prints scene offsets in seconds; the render script uses them to place the narration.
-When a scene changes length, update the offsets in `render.sh` to match — the numbers are not magic,
-they are just where each scene starts.
+`tools/demo/render.sh` holds the timing constants (scene lengths, cut positions). Change a sentence
+and the numbers next to it; nothing else needs touching.
 
-## What is *not* in the video
+## Honest notes
 
-Nothing is faked except that one path string: the todos, the steps, the review badge and the files
-are the ones `tools/demo/seed.mjs` writes through the real service.
+- The About row in the last product scene shows `~/.dsh/global-todo/todos.json`; the scratch store
+  really lives under `/tmp/demo-home`, and that one string is rewritten before the capture. The page
+  says the path is illustrative.
+- The stills are static captures of real states, not a screen recording. That is a deliberate trade:
+  a 2× still is sharper than a 30 fps screencast, and this format does not need to show a cursor.
+- `docs/screenshots/tour.gif` remains for places that cannot play video; it is generated separately
+  by `npm run tour`.

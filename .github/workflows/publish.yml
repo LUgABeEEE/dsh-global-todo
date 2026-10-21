@@ -20,6 +20,13 @@ permissions:
 
 jobs:
   publish:
+    # This file is mirrored into the private backup repository, and a fork carries
+    # it too. Publishing is only ever legitimate from the canonical public one: npm
+    # registers that repository as the trusted publisher, and any other checkout has
+    # no OIDC identity to present — it would spend a minute building the package and
+    # then die with `E404`, which is exactly what nine tag pushes to the backup did
+    # before this guard. Skipped, not failed, so a mirror never shows a red X.
+    if: github.repository == 'LUgABeEEE/dsh-global-todo'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
