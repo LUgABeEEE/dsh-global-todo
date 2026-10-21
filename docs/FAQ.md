@@ -166,6 +166,16 @@ rm -r "$DSH_HOME/global-todo"
 也就是说：**你那份本地插件目录缺 `locale/` 文件夹**。常见于把仓库文件夹手动复制到
 `%USERPROFILE%\.dsh\plugins-local\` 时只拷了 `lib`、`package.json`、`cordis.patch.yml`。
 
+先确认到底缺什么，别靠猜：
+
+```sh
+npx dsh-global-todo-doctor "$HOME/.dsh/plugins-local/全局待办插件"
+# Windows: npx dsh-global-todo-doctor "$env:USERPROFILE\.dsh\plugins-local\全局待办插件"
+```
+
+它逐项检查 `package.json`、patch 文件、两个入口、`locale/`、图标与 `lib/`，缺哪样直接点出来，
+缺必需项时退出码为 1（可以放进安装脚本里当门禁）。
+
 修法二选一：
 
 1. **推荐**：别用本地目录，直接装 npm 包（包里有 `locale/en.json`、`locale/zh.json`）：

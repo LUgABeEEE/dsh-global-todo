@@ -1,3 +1,19 @@
+## [0.12.5] — 2026-10-21
+
+A check for the one install mistake that is invisible until the desktop complains.
+
+- **`dsh-global-todo-doctor`** (`npx dsh-global-todo-doctor <dir>`, also `npm run doctor`): inspects
+  a directory that is supposed to contain the plugin — manifest, `dsh.bundle.patch`, host and
+  client entries, `locale/`, `docs/icon.svg`, `lib/` — and exits non-zero when something required
+  is missing. The case it exists for: a hand-copied `plugins-local` directory without `locale/`
+  still loads, while the desktop app prints `Plugin metadata … ENOENT … \locale`, which points at
+  the symptom and not the cause.
+- **Six tests** drive the checker against real temporary directories: complete copy, missing
+  `locale/`, missing client entry, missing patch file, missing icon (warning only), and a directory
+  that is not the plugin at all.
+- FAQ §15 now starts with the command instead of guessing, and both READMEs document it where a
+  hand-copied install would go wrong.
+
 ## [0.12.4] — 2026-10-21
 
 The repository leaked its own location. Three real paths, and a guard that could not see them.

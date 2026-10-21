@@ -162,6 +162,17 @@ dsh plugin --profile web add /绝对路径/dsh-global-todo
 插件是宿主组合里的**一行 Loader**，不是热加载脚本：**装完要重启宿主**（`dsh web`），
 再刷新页面。侧栏会出现「待办」入口。
 
+**如果你是手动拷贝目录（而不是从 npm 装）**，先自检一遍，别靠猜：
+
+```sh
+npx dsh-global-todo-doctor "$HOME/.dsh/plugins-local/全局待办插件"
+# Windows: npx dsh-global-todo-doctor "$env:USERPROFILE\.dsh\plugins-local\全局待办插件"
+```
+
+它逐项检查 manifest、patch 文件、两个入口、`locale/`、图标和 `lib/`；缺必需项时退出码为 1。
+最容易漏的是 `locale/`——少了它插件照样加载，但桌面端会报
+`Plugin metadata … ENOENT … \locale`。
+
 npm 上的包才是事实来源。社区目录可能落后于 npm、或指向某个旧 release；需要确定版本时
 直接钉版本（`dsh plugin --profile web add dsh-global-todo@0.10.0`）。
 

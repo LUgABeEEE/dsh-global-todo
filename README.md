@@ -182,8 +182,18 @@ The plugin is a Loader row, not a hot-loaded script: **restart the host** (`dsh 
 after installing, then refresh the page. A "待办 / Todos" entry appears in the sidebar.
 
 The npm package is the source of truth. A community catalog can lag behind it or point at an
-older release; pin the version you want (`dsh plugin --profile web add dsh-global-todo@0.10.0`)
+older release; pin the version you want (`dsh plugin --profile web add dsh-global-todo@0.12.4`)
 when it matters.
+
+**Hand-copied a directory instead?** Check it before wondering why the plugins page looks wrong:
+
+```sh
+npx dsh-global-todo-doctor "$HOME/.dsh/plugins-local/全局待办插件"
+```
+
+It verifies the manifest, the patch file, both entries, `locale/`, the icon and `lib/`, and exits
+non-zero when something required is missing — the `locale/` case is the field failure that makes
+the desktop app print `Plugin metadata … ENOENT … \locale` while the plugin still loads.
 
 To roll back:
 
