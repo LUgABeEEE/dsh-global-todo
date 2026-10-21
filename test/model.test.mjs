@@ -390,3 +390,23 @@ test('an item can carry the sentence it came from', () => {
   const reloaded = normalizeStored(JSON.parse(JSON.stringify(todo)))
   assert.equal(reloaded.evidence, todo.evidence, 'and it survives the file')
 })
+
+test('the P0–P3 labels the panel prints are accepted on the way in', () => {
+  assert.equal(createTodo({ title: 'a', priority: 'P0' }).priority, 'urgent')
+  assert.equal(createTodo({ title: 'b', priority: ' p3 ' }).priority, 'low')
+  const todo = createTodo({ title: 'c' })
+  applyPatch(todo, { priority: 'P1' }, { by: 'human' })
+  assert.equal(todo.priority, 'high')
+  assert.throws(() => createTodo({ title: 'd', priority: 'P9' }), (error) => error instanceof TodoError && error.code === 'invalid-priority')
+})
+
+test('an over-long step is refused, like an over-long list', () => {
+  const tooLong = 'x'.repeat(LIMITS.step + 1)
+  assert.throws(() => createTodo({ title: 'steps', steps: [tooLong] }), (error) => error instanceof TodoError && error.code === 'invalid-steps')
+  assert.throws(
+    () => createTodo({ title: 'steps', steps: [{ text: tooLong }] }),
+    (error) => error instanceof TodoError && error.code === 'invalid-steps',
+  )
+  const atLimit = createTodo({ title: 'steps', steps: ['x'.repeat(LIMITS.step)] })
+  assert.equal(atLimit.steps[0].text.length, LIMITS.step)
+})

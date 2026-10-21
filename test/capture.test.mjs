@@ -68,3 +68,19 @@ test('every gate reason has a sentence', () => {
     assert.ok(CAPTURE_REASONS[reason].length > 0)
   }
 })
+
+test('a paraphrase of something finished minutes ago is still the same errand', () => {
+  const existing = [
+    { id: 't-done', title: '【插件测试】T3 逾期项 P0', status: 'done', createdAt: NOW - DAY, updatedAt: NOW - 60000, doneAt: NOW - 60000 },
+  ]
+  const exact = findDuplicate({ title: '【插件测试】T3 逾期项 P0', existing, now: NOW })
+  assert.equal(exact.reason, 'recently-done')
+
+  const paraphrase = findDuplicate({ title: '【插件测试】T3 逾期项 P0（再办一次）', existing, now: NOW })
+  assert.equal(paraphrase.duplicate, true, 'the same errand with different wording')
+  assert.equal(paraphrase.reason, 'similar-recently-done')
+  assert.ok(CAPTURE_REASONS['similar-recently-done'].length > 0)
+
+  const later = findDuplicate({ title: '【插件测试】T3 逾期项 P0（再办一次）', existing, now: NOW + 8 * DAY })
+  assert.equal(later.duplicate, false, 'after the cooldown the errand may be written again')
+})

@@ -697,3 +697,117 @@ test('the report route summarises the window, and defaults to a week', async () 
     await env.cleanup()
   }
 })
+
+test('a note without text is a bad body, not an empty note', async () => {
+  const env = await harness()
+  try {
+    const created = await env.call('/create', makeReq({ method: 'POST', url: `${ROUTE_BASE}/create`, body: JSON.stringify({ title: '要有备注' }) }))
+    const id = created.json().data.todo.id
+    const blank = await env.call('/note', makeReq({ method: 'POST', url: `${ROUTE_BASE}/note`, body: JSON.stringify({ id }) }))
+    assert.equal(blank.statusCode, 400)
+    assert.equal(blank.json().reason, 'invalid-body')
+
+    const spaced = await env.call('/note', makeReq({ method: 'POST', url: `${ROUTE_BASE}/note`, body: JSON.stringify({ id, text: '   ' }) }))
+    assert.equal(spaced.statusCode, 400)
+
+    const ok = await env.call('/note', makeReq({ method: 'POST', url: `${ROUTE_BASE}/note`, body: JSON.stringify({ id, text: '一句备注' }) }))
+    assert.equal(ok.statusCode, 200)
+  } finally {
+    await env.cleanup()
+  }
+})
+
+test('diagnostics needs a scope, because it is the grouping key in /health', async () => {
+  const recorded = []
+  const env = await harness({ diagnostics: { record: (body) => { recorded.push(body); return { scope: body.scope } }, recent: () => [] } })
+  try {
+    const missing = await env.call('/diagnostics', makeReq({ method: 'POST', url: `${ROUTE_BASE}/diagnostics`, body: JSON.stringify({ message: 'boom' }) }))
+    assert.equal(missing.statusCode, 400)
+    assert.equal(missing.json().reason, 'invalid-body')
+    assert.equal(recorded.length, 0, 'nothing recorded for a rejected body')
+
+    const ok = await env.call('/diagnostics', makeReq({ method: 'POST', url: `${ROUTE_BASE}/diagnostics`, body: JSON.stringify({ scope: 'list', message: 'boom' }) }))
+    assert.equal(ok.statusCode, 200)
+    assert.equal(ok.json().data.recorded, true)
+  } finally {
+    await env.cleanup()
+  }
+})
+
+test('a dispatch without an id is a malformed request (400), not a missing record (404)', async () => {
+  const env = await harness()
+  try {
+    const response = await env.call('/dispatch', makeReq({ method: 'POST', url: `${ROUTE_BASE}/dispatch`, body: JSON.stringify({ mode: 'auto' }) }))
+    assert.equal(response.statusCode, 400)
+    assert.equal(response.json().reason, 'invalid-body')
+    assert.equal(env.dispatched.length, 0)
+  } finally {
+    await env.cleanup()
+  }
+})
+
+test('out-of-range settings are reported instead of silently clamped', async () => {
+  const state = { autoCollect: false, idleMinutes: 30, cooldownMinutes: 30, exemptWorkspaces: [], ingest: {} }
+  const settings = {
+    get: () => state,
+    update: async (patch) => {
+      Object.assign(state, patch)
+      return state
+    },
+  }
+  const env = await harness({ settings })
+  try {
+    const low = await env.call('/settings', makeReq({ method: 'POST', url: `${ROUTE_BASE}/settings`, body: JSON.stringify({ idleMinutes: -5 }) }))
+    assert.equal(low.statusCode, 400)
+    assert.match(low.json().error, /idleMinutes/)
+
+    const high = await env.call('/settings', makeReq({ method: 'POST', url: `${ROUTE_BASE}/settings`, body: JSON.stringify({ cooldownMinutes: 99999 }) }))
+    assert.equal(high.statusCode, 400)
+
+    const type = await env.call('/settings', makeReq({ method: 'POST', url: `${ROUTE_BASE}/settings`, body: JSON.stringify({ idleMinutes: '30' }) }))
+    assert.equal(type.statusCode, 400)
+
+    const ok = await env.call('/settings', makeReq({ method: 'POST', url: `${ROUTE_BASE}/settings`, body: JSON.stringify({ idleMinutes: 45 }) }))
+    assert.equal(ok.statusCode, 200)
+  } finally {
+    await env.cleanup()
+  }
+})
+
+test('restore refuses a partial record instead of inventing defaults', async () => {
+  const env = await harness()
+  try {
+    const partial = await env.call('/restore', makeReq({ method: 'POST', url: `${ROUTE_BASE}/restore`, body: JSON.stringify({ todo: { id: 't-1', title: '只有标题' } }) }))
+    assert.equal(partial.statusCode, 400)
+    assert.equal(partial.json().reason, 'invalid-body')
+    assert.match(partial.json().error, /createdAt/)
+
+    const notObject = await env.call('/restore', makeReq({ method: 'POST', url: `${ROUTE_BASE}/restore`, body: JSON.stringify({ todo: 'nope' }) }))
+    assert.equal(notObject.statusCode, 400)
+  } finally {
+    await env.cleanup()
+  }
+})
+
+test('one oversized ingest row is skipped, the rest of the batch lands', async () => {
+  const state = { ingestEnabled: true, ingestToken: 'secret-token-1234567890', ingestSources: ['mail'], ingestConfirmBelow: 0.8 }
+  const env = await harness({ settings: { get: () => state } })
+  try {
+    const items = [
+      { title: '正常的一条', source: { kind: 'mail' }, confidence: 0.9 },
+      { title: 'x'.repeat(260), source: { kind: 'mail' }, confidence: 0.9 },
+    ]
+    const response = await env.call('/ingest', makeReq({
+      method: 'POST',
+      url: `${ROUTE_BASE}/ingest`,
+      headers: { host: '127.0.0.1:3080', authorization: 'Bearer secret-token-1234567890' },
+      body: JSON.stringify({ items }),
+    }))
+    assert.equal(response.statusCode, 200)
+    assert.equal(response.json().data.accepted, 1)
+    assert.equal(response.json().data.skipped.length, 1)
+    assert.match(response.json().data.skipped[0].error, /200/)
+  } finally {
+    await env.cleanup()
+  }
+})

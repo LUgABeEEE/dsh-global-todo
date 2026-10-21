@@ -94,7 +94,9 @@ description, steps, attachments and progress notes stay.
 
 ### Markdown in and out
 
-The JSON export is the round-trip format. Markdown is the one you read, diff and edit by hand:
+The JSON export is the round-trip format. Markdown is the one you read, diff and edit by hand
+(note that `doing` and `cancelled` come back as `open`: a hand-edited list has no work-in-progress
+state, and the JSON remains the format that round-trips exactly):
 
 ```text
 - [ ] 标题
@@ -288,7 +290,8 @@ Your list is not touched by install or uninstall: it lives outside the plugin, a
   wall of rows. A conversation with one item shows that row directly; items with no source
   conversation (added in the panel) sit under 手动添加. `time` is the original
   overdue / today / soon / later / no-due buckets, `level` groups by priority.
-- **Levels P0–P3** — `P0 urgent / P1 high / P2 normal (default) / P3 low`, with a badge on the
+- **Levels P0–P3** — `P0 urgent / P1 high / P2 normal (default) / P3 low`; the API accepts
+  either the canonical names or the labels (`priority: "P0"` works), with a badge on the
   row. Records written before levels existed keep their `high/normal/low`, so nothing needed a
   migration. A conversation group shows the highest level it holds, and a green dot marks a
   group with a conversation still running.
@@ -378,7 +381,7 @@ fence when that service is present, and by a strict loopback check otherwise.
 | POST | `/api/global-todo/capture` | `{ sessionId? }` — ask the current conversation to collect its follow-ups |
 | POST | `/api/global-todo/bulk` | `{ ids, status?, addTags?, removeTags? }` — one change across a selection; a stale id lands in `unmatched` instead of failing the batch |
 | POST | `/api/global-todo/ingest` | `{ items: [{ title, source: { kind }, confidence }], dryRun? }` with `Authorization: Bearer <settings.ingestToken>` — external items; below `ingestConfirmBelow` they wait in the inbox |
-| GET | `/api/global-todo/health` | — (store location, counts, dispatch capabilities, plus **tool registration** and **whether the completion watcher attached** — both fail quietly, so both are reported — and `metrics`: dispatch success rate, agent tool calls, list growth; `autoCollect`: why each waiting conversation was or was not asked, counters, and how the settings file loaded) |
+| GET | `/api/global-todo/health` | — (store location, counts, dispatch capabilities, plus **tool registration** and **whether the completion watcher attached** — both fail quietly, so both are reported — and `metrics`: dispatch success rate, agent tool calls, list growth; `autoCollect`: why each waiting conversation was or was not asked, counters, and how the settings file loaded; `version` is the running module and `packageVersion`/`stale` say whether the installed package is newer than the running one) |
 | POST | `/api/global-todo/create` | `{ title, description?, links?, steps?, tags?, priority?, dueAt? }` |
 | POST | `/api/global-todo/update` | `{ id, ...fields, by?: human\|agent }` |
 | POST | `/api/global-todo/status` | `{ id, status, by?: human\|agent }` |

@@ -1,3 +1,33 @@
+## [0.12.9] — 2026-10-21
+
+Everything a Windows tester found in a 41-case sweep, answered (#3).
+
+- **`P0`–`P3` are accepted as input.** The panel printed the labels and the API rejected them.
+  `priority: "P0"` now means `urgent` (likewise `P1`–`P3`), in create and in patch.
+- **A paraphrase of something finished minutes ago is the same errand.** The 7-day cooldown only
+  compared exact titles, so 「T3 逾期项（再办一次）」 slipped past a row completed a minute earlier.
+  Similar wording now counts, with its own reason (`similar-recently-done`).
+- **`POST /note` needs text.** An empty note appended a nameless entry to the activity trail; it is
+  now `400 invalid-body`.
+- **`POST /diagnostics` needs a scope.** Without it every report collapsed into one nameless bucket
+  in `/health`.
+- **A missing `id` is a bad body, not a missing record.** `POST /dispatch {}` answered 404; it is 400
+  now, matching the documented error contract.
+- **One bad ingest row no longer aborts the batch.** Each item is isolated (like capture), and the
+  ingest title cap is the model's own 200 rather than a second opinion at 500.
+- **Out-of-range settings are reported.** `{idleMinutes: -5}` answered 200 with 5; a provided value
+  outside its range is `400 invalid-body` instead of a silent clamp.
+- **`POST /restore` refuses partial records.** `{id, title}` used to restore with an invented
+  `createdAt`, empty tags and a reassigned `seq`; a lossy success is worse than a refusal.
+- **`/health` says when the installed package is newer than the running module**
+  (`packageVersion`, `stale`), which is the silent trap behind "I upgraded and the panel calls a
+  route that 404s".
+- **Smaller ones**: `invalid-evidence` / `invalid-steps` / `invalid-decision` are now listed in
+  `ERROR_CODES`; an over-long step is rejected like an over-long list (both used to differ); the
+  Markdown section notes that `doing`/`cancelled` come back as `open`.
+- **Reviewed, not changed**: an agent completion already sets `review.pending` in every path
+  (`model.js:545/641/685`), so the auto-complete case the report describes is covered since 0.7.
+
 ## [0.12.8] — 2026-10-21
 
 The Windows runner kept finding things after 0.12.7. Four more, all real.
