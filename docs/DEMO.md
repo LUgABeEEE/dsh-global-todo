@@ -5,15 +5,18 @@ product's own interface as evidence. It follows the style Linear, Raycast and Ve
 release films, which is worth naming because it is the opposite of a narrated tour:
 
 - **No voiceover.** Type is the narrator. A spoken track would slow it down, and the audience reads
-  a UI faster than it hears a sentence.
+  a UI faster than it hears a sentence. The only TTS endpoints reachable from this host produce a
+  synthetic voice, so a narration would have lowered the film rather than raised it.
 - **One idea per scene.** Five scenes, five sentences, nothing explaining what the viewer can
   already see.
 - **Few motion behaviours, repeated.** A slow push-in on the product card, a rule that draws itself,
   text that rises 16px and fades. Repetition reads as direction; variety reads as a template.
 - **The product's own palette, dark.** `#0b0e13`, the same background as the landing page, so the
   film and the page are recognisably the same object.
-- **Sound marks events, it does not fill time.** A filtered noise tick on each cut, a low thud under
-  the two statement scenes, and a quiet 55/82.5 Hz pad underneath.
+- **Music instead of silence.** A short instrumental written for this cut: four chords, a sub, a
+  bell and air, with the harmony changing exactly on the cuts (0, 4.2, 7.2, 11.4, 14.4, 18.8), so
+  the soundtrack edits with the picture. It is synthesised by `tools/demo/music.mjs` — no licence,
+  no attribution, and it can be retimed when a scene changes length.
 
 ## Where the pictures come from
 
@@ -29,11 +32,13 @@ node tools/demo/seed.mjs
 DSH_HOME=/tmp/demo-home dsh web --no-open --port 3099 --trusted-host 127.0.0.1:3099 &
 
 node tools/demo/capture.mjs            # 5 stills into /tmp/film
-sh  tools/demo/scenes.sh               # 6 scenes + sound, muxed by render.sh
+sh  tools/demo/scenes.sh               # 6 scenes, type burned in
+sh  tools/demo/sound.sh /tmp/music     # the instrumental, timed to the cuts
+sh  tools/demo/render.sh /tmp/film/build /tmp/music/mix.wav
 ```
 
-`tools/demo/render.sh` holds the timing constants (scene lengths, cut positions). Change a sentence
-and the numbers next to it; nothing else needs touching.
+`tools/demo/scenes.sh` and `tools/demo/music.mjs` both hold the cut positions; move a cut and the
+harmony moves with it.
 
 ## Honest notes
 
