@@ -82,4 +82,18 @@
   }, { rootMargin: '0px 0px -12% 0px', threshold: 0.08 });
 
   for (var index = 0; index < groups.length; index += 1) observer.observe(groups[index]);
+  // A jump — an anchor click, a deep link, a fast wheel — can carry the viewport past a
+  // group before the observer sees it intersect, and that content would stay hidden. So a
+  // scroll also sweeps whatever is already above the fold; the worst case is "already
+  // visible" instead of "invisible".
+  function sweep() {
+    for (var i = 0; i < groups.length; i += 1) {
+      var group = groups[i];
+      if (group.classList.contains('is-in')) continue;
+      if (group.getBoundingClientRect().top < window.innerHeight * 0.92) reveal(group);
+    }
+  }
+  window.addEventListener('scroll', sweep, { passive: true });
+  window.addEventListener('resize', sweep);
+  sweep();
 }());
