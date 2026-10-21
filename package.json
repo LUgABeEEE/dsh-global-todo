@@ -48,6 +48,7 @@
     "docs/screenshots",
     "!docs/screenshots/demo.mp4",
     "!docs/index.html",
+    "!docs/assets",
     "LICENSE",
     "README.md",
     "README.zh.md",
