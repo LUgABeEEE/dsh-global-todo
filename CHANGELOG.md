@@ -1,3 +1,16 @@
+## [0.11.3] — 2026-10-21
+
+Say where the plugin is actually listed, and make that claim checkable.
+
+- **`docs/DISTRIBUTION.md`** — every registry with its real state: live (npm, 1024 Store, dsh.pub,
+  DSH-Plugins-Marketplace, awesome-dsh-plugin, walkinglabs), in review (five pull requests),
+  promised (dshopen.org), and the topic feeds collected without a PR. npm is named as the only
+  install source; a listing showing an older version is described as normal rather than hidden.
+- **`tools/listings.mjs`** — asks npm, the 1024 API, dsh.pub, the marketplace registry and two
+  repository files, each with a 25-second timeout, and prints one status per registry. A fetch that
+  cannot answer reports `error`, never "listed".
+- **Both READMEs** gained a compact table; the shipped tarball now includes the doc they link to.
+
 ## [0.11.2] — 2026-10-21
 
 One test, because a review suggested lowering the Node floor.

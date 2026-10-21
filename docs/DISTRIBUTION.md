@@ -8,8 +8,8 @@ dsh plugin add dsh-global-todo
 ```
 
 A registry that shows an older version is normal — their crawlers run on their own schedule. Last
-verified **2026-10-21 11:27 (+08:00)**; re-check with `node tools/listings.mjs` instead of trusting
-this table.
+verified **2026-10-21 11:27 (+08:00)**; in a checkout, re-check with `node tools/listings.mjs` instead
+of trusting this table.
 
 ## Live
 
