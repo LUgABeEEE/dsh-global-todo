@@ -54,15 +54,43 @@ npm run verify   # static checks then the full test suite; run before every comm
 
 Publishing is automated: bump both versions, `npm run verify`, commit, tag `vX.Y.Z`, push, and
 let the `publish` workflow publish over OIDC. Then create the GitHub release from the registry
-tarball. Stop there.
+tarball. **The release ends there.** A restart is never part of publishing.
 
-**Never restart `dsh` from a turn.** The host runs in-process sessions for every open
-conversation, so a SIGTERM drops whatever they were midway through — on 2026-10-20 a
-`sleep 20 && kill` shipped from this repository cut five unrelated sessions, one of them a
-release conversation. Report the new version and let the user pick the moment. If a restart is
-genuinely needed, run `$DSH_HOME/tools/dsh-restart-guard/dsh-restart-guard.sh` first: exit 0
-means nothing is in flight, 10 means other conversations are open (ask), 20 means a subagent is
-running (do not restart — its work is lost).
+### The restart rule (hard)
+
+`dsh-web` is a single process: a SIGTERM drops every in-flight turn, every subagent, every MCP
+child. Two independent sources of "random" interruptions have been confirmed on this machine —
+an unconditional `sleep N; kill` shipped from this repository (2026-10-20, six times, one of
+them a release conversation) and `needrestart` restarting the unit after unattended-upgrades
+(2026-10-21 06:29). What follows is the standing convention:
+
+1. **Never run `sleep N; kill -TERM $(MainPID)`.** That is the pattern that caused the damage;
+   it does not ask anything before it fires.
+2. **Report, then let the user pick the moment.** "0.12.0 is on npm; restart when you like" is a
+   complete hand-off. This is the default and needs no further tooling.
+3. If a restart is genuinely required, **run the guard first and print its output** into the turn:
+
+   ```sh
+   /data/agent/tools/dsh-restart-guard/dsh-restart-guard.sh
+   ```
+
+   | exit | meaning | what to do |
+   |---|---|---|
+   | 0 | nothing in flight | a restart is safe — still ask, unless the user already said yes |
+   | 10 | other conversations are open | ask; never restart on your own |
+   | 20 | a subagent is running | **do not restart** — its drafts are lost |
+   | 12 | cannot decide | treat as 10 |
+
+4. A restart always needs the user's word in the current turn. "只有我自己在飞" is a fact, not a
+   permission.
+5. After any restart, the evidence to check is `turn/end {"kind":"interrupted"}` in
+   `~/.dsh/sessions/*/session.v4.jsonl.zstd` (zstd -dc, then grep): a restart that cut someone
+   leaves that signature at the timestamp of the restart.
+
+Making the host itself resist `needrestart` is a root action, not one an agent can take:
+`/etc/needrestart/conf.d/99-dsh-keep.conf` with
+`$nrconf{override_rc}{qr(^dsh-web\.service$)} = 0;` — the user runs it, the agent verifies that
+`dsh-web` stops appearing in "Restarting services...".
 
 ## Style
 

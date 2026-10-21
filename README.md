@@ -1,5 +1,7 @@
 # dsh-global-todo
 
+<img src="docs/icon.svg" width="52" height="52" alt="全局待办 icon: a list card with a check and an arrow leaving it">
+
 **A cross-session todo list for DeepSeek Harness: one file you own, written by you and your
 agent, and handed to a conversation in one click.**
 

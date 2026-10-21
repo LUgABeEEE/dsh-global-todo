@@ -1,3 +1,21 @@
+## [0.12.0] — 2026-10-21
+
+An identity: one mark, drawn once and used everywhere.
+
+- **The mark.** A checklist card whose top-right corner is open, with an arrow leaving through
+  the gap. It states the two things this plugin adds — there is a list, and an item leaves it for
+  a conversation. Stroke-only and `currentColor`, so the shell can render it at 16px in either
+  theme; the card's corner is deliberately broken because a closed corner plus an arrow turns
+  into mush below 24px.
+- **`docs/icon.svg`** is the same geometry 20× on a `#14171C` tile (radius 116), plus PNG exports
+  at 16/32/48/64/128/256/512 in `docs/icons/`. A coloured status dot was designed and dropped:
+  at 128 and below it reads as a dirty pixel, not as information.
+- **Sidebar glyph replaced** — same shape as the tile, 1.4/1.5/1.3 stroke weights, so the entry
+  point and the app icon are recognisably one thing.
+- **The landing page is now shareable**: favicon, apple-touch icon and a 1200×630 `docs/og.png`
+  (ink tile, icon, one-liner, install command) wired through `og:*` and `twitter:*` tags. Both
+  READMEs carry the mark at 52px next to the title.
+
 ## [0.11.3] — 2026-10-21
 
 Say where the plugin is actually listed, and make that claim checkable.
