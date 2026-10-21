@@ -313,10 +313,12 @@
    ========================================================================== */
 
 html { scroll-behavior: smooth; overflow-x: clip; }
+body { overflow-x: clip; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 
 /* Scroll position indicator: 2px, above the header, never intercepts a click. */
 .scroll-progress {
+  overflow: hidden;
   position: fixed;
   inset: 0 0 auto 0;
   height: 2px;
