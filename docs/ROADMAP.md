@@ -148,14 +148,13 @@ reminder) photographed into `docs/screenshots/` by `npm run screenshots`, and
 `npm run check:render` asserting each state's marker.
 ### Partly landed
 
-- **Session read-back** — `sessionAlive` is on every listed todo (`sessionAlive` in
-  `lib/dispatch.js`, surfaced by `GET /list`). Reading what that session last said, and
-  linking to it, is not: `lib/completion.js` reads `assistant/message` only to close a todo
-  this plugin dispatched, and stores one summary in its completion record.
-- **What the agents produced** — the per-todo record with a summary and the changed files landed
-  (`completeTodo()` in `lib/model.js`, 「完成记录」 in `lib/client.js`, the 已完成 filter and
-  group). The cross-todo "what did the sessions finish this week, and what did they touch" view
-  did not.
+- ~~**Session read-back**~~ — landed: `GET /session?id=` returns `alive`, `dir` and the last
+  assistant `tail` (`lib/routes.js`, `sessionTails` in `lib/index.js`), and the detail panel shows
+  that line (`lib/client.js`). It stays cheap and failure-tolerant: a conversation this process
+  has not seen speak answers `null`, which is the normal case for an old hand-off.
+- ~~**What the agents produced**~~ — landed: `GET /report?days=7` aggregates completion records
+  into finished items, conversations, touched files and the review backlog (`lib/report.js`), and
+  the panel shows it from `⋯ → 本周报告`.
 - **Attachment health** — a dead file link is flagged on read, but there is no 「重新挂载」 next
   to it (`relink` does not exist anywhere in `lib/`), and `annotateLinks()` has no unit test:
   today the render assertion in `tools/preview.mjs` is the only coverage.
@@ -177,17 +176,12 @@ plan. `normalizeSteps()` in `lib/model.js`, `dispatchPrompt()` in `lib/service.j
 What is left of the original idea: making a step addressable on its own (a tool that ticks step 3
 without resending the array) — not worth a tenth tool today.
 
-### 2. Session read-back — makes hand-off stop being fire-and-forget
+### 2. ~~Session read-back~~ — landed in 0.12
 
-`sessionAlive` says a bound conversation still exists. Next: one line of its latest
-assistant message plus a link to open it.
-
-- Today: `lib/completion.js` reads `assistant/message` only to close a todo this plugin
-  dispatched; nothing exposes it to the panel.
-- Effort: medium, and it must stay cheap and failure-tolerant: a missing or huge message is
-  a normal case, not an error.
-- Why second: the panel currently cannot answer "did the thing I handed over get anywhere",
-  which is the question people actually ask.
+`GET /session?id=` answers `alive`, `dir` and the last assistant `tail`, and the detail panel
+shows that line instead of a bare "still alive" flag. `lib/completion.js` keeps the tail it
+already reads for its own closing logic; a conversation this process has not seen speak answers
+`null`, which is a normal case rather than an error.
 
 ### 3. ~~Markdown import and export~~ — landed in 0.10.0
 
