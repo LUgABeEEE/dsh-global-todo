@@ -15,13 +15,28 @@ is the durable part, and a stale number is worse than none.
 - Global list, one JSON file, atomic writes, one write path for both writers.
 - Creation time on every entry, immutable and shown everywhere.
 - Attachments as references: any number of documents and addresses per todo.
-- Nine `global_todo_*` tools — `add`, `capture`, `list`, `get`, `update`, `link`, `note`,
-  `done`, `remove`; `reopen` joined them later (below). What `/health` reports as
+- Ten `global_todo_*` tools — `add`, `capture`, `list`, `get`, `update`, `link`, `note`,
+  `done`, `remove`, and `reopen`, which followed in 0.3. What `/health` reports as
   `tools.registered` is the list as it stands, and panel and tools share the same validation.
 - Four hand-off modes, with success **and failure** recorded on the record.
 - Restore/undo for a delete, keyboard shortcuts, editable detail panel.
 - Proactive capture: `global_todo_capture` for batches, plus guidance that says when the
   agent should record something itself and when it must not.
+
+### Landed in 0.6
+
+The panel became one column with one type scale, and every conditional state got a baseline.
+
+- **The layout is a column, not a wrapping row** (`0.6.0`); the header wraps its actions, the
+  toolbar is two semantic rows, and the directory / handoff / browse controls sit behind a single
+  Context toggle. Five type sizes, one 28px control height, a 340px settings inspector instead of
+  an in-flow block.
+- **The settings panel was rebuilt as an inspector** (`0.6.4`): title row, three labelled groups,
+  help text under every field, a pinned save row, and About showing the data file and version.
+- **Every conditional state has an image** (`0.6.3`, `0.6.8`): empty list, filter with no match,
+  inbox, due reminder, selection, settings. `npm run screenshots` photographs them from the same
+  `SCENARIOS` table the static preview renders, and `npm run check:render` asserts each state's
+  marker, so a blank picture fails CI instead of shipping.
 
 ### Landed since 0.1
 

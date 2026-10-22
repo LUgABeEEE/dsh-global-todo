@@ -174,7 +174,7 @@ npx dsh-global-todo-doctor "$HOME/.dsh/plugins-local/全局待办插件"
 `Plugin metadata … ENOENT … \locale`。
 
 npm 上的包才是事实来源。社区目录可能落后于 npm、或指向某个旧 release；需要确定版本时
-直接钉版本（`dsh plugin --profile web add dsh-global-todo@0.10.0`）。
+直接钉版本（`dsh plugin --profile web add dsh-global-todo@0.13.1`）。
 
 回滚：
 

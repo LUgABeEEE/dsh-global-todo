@@ -15,10 +15,10 @@ of trusting this table.
 
 | Registry | Form | What it gives you | Verified state |
 |---|---|---|---|
-| **npm** | the package | the install path | `dsh-global-todo@0.12.10` |
+| **npm** | the package | the install path | `dsh-global-todo@0.13.1` |
 | **1024 Store** ([deepseek1024.com](https://deepseek1024.com)) · [repo](https://github.com/imsai-sh/awesome-deepseek-harness-plugins) | catalog entry, merged [#654](https://github.com/imsai-sh/awesome-deepseek-harness-plugins/pull/654) | searchable, has a public API | 🟡 entry live, but its install line still resolves to `github:LUgABeEEE/dsh-global-todo` — their npm enrichment has not caught up. Install works either way. |
 | **dsh.pub** · [page](https://dsh.pub/en/plugins/dsh-global-todo/) | published page + `dshpub` CLI | `npx dshpub add LUgABeEEE/dsh-global-todo` | ✅ page live, pinned to a commit |
-| **DSH-Plugins-Marketplace** ([bradeGithub](https://github.com/bradeGithub/DSH-Plugins-Marketplace)) | `registry.json`, collected from the `dsh-plugin` topic | one-click install inside DSH | ✅ `v0.12.x`, risk tier `safe` |
+| **DSH-Plugins-Marketplace** ([bradeGithub](https://github.com/bradeGithub/DSH-Plugins-Marketplace)) | `registry.json`, collected from the `dsh-plugin` topic | one-click install inside DSH | ✅ `v0.13.x`, risk tier `safe` |
 | **awesome-dsh-plugin** ([19.7k★](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin)) | one YAML per plugin | the largest directory | ✅ merged [#7498](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/7498) |
 | **walkinglabs/awesome-deepseek-harness-plugins** | README entry (source-verified list) | review-backed listing | ✅ merged [#114](https://github.com/walkinglabs/awesome-deepseek-harness-plugins/pull/114) |
 
