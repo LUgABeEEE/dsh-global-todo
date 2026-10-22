@@ -218,11 +218,17 @@ missing-file chip instead of rendering a broken frame. `lib/links.js`, `lib/rout
 - Effort: large, and the mode of the work is different: every adapter is an external
   dependency with its own failure modes. Do it when a real source exists, not before.
 
-### 7. Small, well-understood items
+### 7. ~~Small, well-understood items~~ — landed in 0.16.0
 
-- `before:` / `after:` date bounds in the search syntax (the parser already walks tokens).
-- 「重新挂载」 next to a dead attachment, plus the `annotateLinks()` unit test it owes.
-- A screen-reader pass over the panel and the group headers; the keyboard path is close.
+- **`before:` / `after:` date bounds** in the search syntax, applied to the deadline and strict
+  at the bound (`lib/service.js`); a half-typed date stops filtering instead of erroring on
+  every keystroke.
+- **「重新挂载」** beside a dead attachment (`POST /relink`, same shape as `/update`), plus the
+  `annotateLinks()` unit test the code owed — including the image kind, which the annotation
+  used to skip.
+- **Accessibility pass**: the toast is a polite live region, errors are alerts, groups and rows
+  are list items, filter buttons report `aria-pressed`, and every icon-only button carries a
+  name (`test/a11y.test.mjs` guards all of it).
 
 ### Landed after this list was written
 

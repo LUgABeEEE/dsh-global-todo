@@ -140,6 +140,7 @@ test('the route surface is exactly the documented one', async () => {
         'link',
         'list',
         'note',
+        'relink',
         'reminders/ack',
         'remove',
         'report',
@@ -981,6 +982,29 @@ test('an image attachment is served from the store path, never from a request pa
     assert.equal(badKind.statusCode, 400)
     const badIndex = await env.call('/asset', makeReq({ method: 'GET', url: `${ROUTE_BASE}/asset?id=${todo.id}&index=9` }))
     assert.equal(badIndex.statusCode, 404)
+  } finally {
+    await env.cleanup()
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('relink re-points a dead attachment without inventing bytes', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'gt-relink-'))
+  const file = path.join(dir, 'doc.md')
+  await writeFile(file, '# ok', 'utf8')
+  const env = await harness()
+  try {
+    const todo = await env.service.create({ title: '挂着死链', links: [{ value: path.join(dir, 'gone.md') }] }, { by: 'human' })
+    const response = await env.call('/relink', makeReq({ method: 'POST', url: `${ROUTE_BASE}/relink`, body: JSON.stringify({ id: todo.id, index: 0, value: file }) }))
+    assert.equal(response.statusCode, 200)
+    const updated = response.json().data.todo
+    assert.equal(updated.links[0].value, file)
+    assert.equal(updated.links[0].kind, 'file', 're-pointing keeps the kind')
+
+    const badIndex = await env.call('/relink', makeReq({ method: 'POST', url: `${ROUTE_BASE}/relink`, body: JSON.stringify({ id: todo.id, index: 5, value: file }) }))
+    assert.equal(badIndex.statusCode, 404)
+    const blank = await env.call('/relink', makeReq({ method: 'POST', url: `${ROUTE_BASE}/relink`, body: JSON.stringify({ id: todo.id, index: 0, value: '  ' }) }))
+    assert.equal(blank.statusCode, 400)
   } finally {
     await env.cleanup()
     await rm(dir, { recursive: true, force: true })

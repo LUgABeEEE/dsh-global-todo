@@ -1,3 +1,18 @@
+## [0.16.0] — 2026-10-22
+
+The three small promises the roadmap still carried.
+
+- **`before:` / `after:` in the search box** bound the deadline (strict at the bound). Items
+  without a deadline cannot satisfy either bound, and a half-typed date such as `before:2026`
+  simply stops filtering instead of throwing on every keystroke.
+- **「重新挂载」 next to a dead attachment** re-points it in place (`POST /relink`, same
+  `{ todo, changed }` shape as `/update`), keeping the kind and title. `annotateLinks()` finally
+  has its unit test — and it now flags a dead **image** too, which it used to skip, so a missing
+  screenshot shows the existing chip instead of a broken frame.
+- **Accessibility pass**: the toast is a polite live region, errors are alerts, groups and rows
+  are list items, filter buttons report `aria-pressed`, and every icon-only button has a name.
+  `test/a11y.test.mjs` reads the client source so these cannot quietly regress without a browser.
+
 ## [0.15.0] — 2026-10-22
 
 Image attachments: a reference that renders, not a copy that goes stale.

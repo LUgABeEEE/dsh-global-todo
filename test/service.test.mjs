@@ -447,3 +447,51 @@ test('todos created in the same millisecond still sort newest first', async () =
     await env.cleanup()
   }
 })
+
+test('before: and after: bound the deadline, and a partial date stays a search term', async () => {
+  const env = await harness()
+  try {
+    const early = await env.service.create({ title: '早的', dueAt: '2026-10-01' })
+    const late = await env.service.create({ title: '晚的', dueAt: '2026-11-01' })
+    await env.service.create({ title: '没有截止' })
+    const ids = async (query) => (await env.service.list({ status: 'all', query })).todos.map((todo) => todo.id)
+
+    assert.deepEqual(await ids('before:2026-10-15'), [early.id])
+    assert.deepEqual(await ids('after:2026-10-15'), [late.id])
+    assert.deepEqual(await ids('after:2026-09-01 before:2026-12-01'), [late.id, early.id].sort())
+    assert.deepEqual(await ids('before:2026-10-01'), [], 'before is strict: the bound day itself is excluded')
+    // A half-typed bound must not throw on every keystroke; it simply filters nothing.
+    assert.deepEqual(await ids('before:2026'), [])
+    assert.deepEqual(await ids('after:tomorrow'), [])
+  } finally {
+    await env.cleanup()
+  }
+})
+
+test('annotateLinks flags a dead image as well as a dead document', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'gt-annotate-'))
+  const alive = path.join(dir, 'a.md')
+  const shot = path.join(dir, 'shot.png')
+  await writeFile(alive, 'x')
+  await writeFile(shot, 'x')
+  const env = await harness()
+  try {
+    const todo = await env.service.create({
+      title: '附件健康',
+      links: [
+        { value: alive },
+        { value: path.join(dir, 'gone.md') },
+        { kind: 'image', value: shot },
+        { kind: 'image', value: path.join(dir, 'gone.png') },
+      ],
+    }, { by: 'human' })
+    const annotated = env.service.annotateLinks(todo)
+    assert.equal(annotated.links[0].missing, undefined, 'a live document is not flagged')
+    assert.equal(annotated.links[1].missing, true, 'a dead document is flagged')
+    assert.equal(annotated.links[2].missing, undefined, 'a live image is not flagged')
+    assert.equal(annotated.links[3].missing, true, 'a dead image is flagged, so the panel shows a chip instead of a broken frame')
+  } finally {
+    await env.cleanup()
+    await rm(dir, { recursive: true, force: true })
+  }
+})

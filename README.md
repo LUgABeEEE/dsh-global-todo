@@ -252,7 +252,7 @@ Your list is not touched by install or uninstall: it lives outside the plugin, a
   That is an attempt order: an unloadable target means the next one is tried. Anything with
   nowhere to go comes back with a picker rather than being sent somewhere unchosen, and one
   failure does not abort the batch.
-- **Search syntax** — `tag:release` (or `#ops`), `is:overdue`, `is:active`, `has:link`,
+- **Search syntax** — `tag:release` (or `#ops`), `is:overdue`, `is:active`, `has:link`, `before:2026-11-01` / `after:2026-10-01` (deadline bounds; a half-typed date simply stops filtering),
   `has:note`, `level:p0`, plus free words combined with AND (which also match note text). A
   search without a colon behaves exactly as it always did.
 - **Progress notes** — an append-only trail per todo (count on the row, full text and an add
@@ -393,6 +393,7 @@ fence when that service is present, and by a strict loopback check otherwise.
 | POST | `/api/global-todo/review` | `{ id, decision: confirm\|reject }` — answer an agent's completion |
 | GET | `/api/global-todo/report?days=7` | what the agents finished in the window, and the files it touched |
 | GET | `/api/global-todo/session?id=` | what a bound conversation last said (`tail`, `alive`, `dir`) |
+| POST | `/api/global-todo/relink` | `{ id, index, value }` — re-point a dead attachment (the value must still be a valid absolute path or URL of that kind) |
 | GET | `/api/global-todo/asset?id=&index=` | the bytes of an **image** attachment (path read from the store, never from the request; ≤8 MB, png/jpg/jpeg/webp/gif/avif) |
 | POST | `/api/global-todo/link` | `{ id, add?: [...], remove?: [value \| index] }` |
 | POST | `/api/global-todo/dispatch` | `{ id, mode?: auto\|bound\|new\|current, sessionId?, dir? }` |
