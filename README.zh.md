@@ -162,6 +162,19 @@ dsh plugin --profile web add /绝对路径/dsh-global-todo
 插件是宿主组合里的**一行 Loader**，不是热加载脚本：**装完要重启宿主**（`dsh web`），
 再刷新页面。侧栏会出现「待办」入口。
 
+### 从 DSH 的 Discover 标签安装
+
+DSH 的 Discover 标签读的是**你自己添加**的一个 JSON 索引（官方不带索引），这也是唯一一条
+不用手抄命令的安装路径。本仓库发布了一份：
+
+```text
+https://lugabeeee.github.io/dsh-global-todo/market/index.json
+```
+
+它由 `npm run market` 从 npm 生成（`docs/market/index.json`），写入前会用 DSH 自己的
+`@deepseek-ai/dsh-plugin-market-index` 校验一遍。**索引里的最新版本与 `package.json` 不一致时
+`npm test` 会失败** —— 发版后忘了重新生成，会在发出去之前就被拦下。
+
 **如果你是手动拷贝目录（而不是从 npm 装）**，先自检一遍，别靠猜：
 
 ```sh

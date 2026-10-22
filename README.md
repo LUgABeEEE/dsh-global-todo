@@ -187,6 +187,21 @@ The npm package is the source of truth. A community catalog can lag behind it or
 older release; pin the version you want (`dsh plugin --profile web add dsh-global-todo@0.13.1`)
 when it matters.
 
+### Installing from DSH's Discover tab
+
+DSH's Discover tab reads a plugin market index from a URL you add yourself — dsh ships none, and
+a user-added index is the one path that installs without copying a command. This repository
+publishes one:
+
+```text
+https://lugabeeee.github.io/dsh-global-todo/market/index.json
+```
+
+It is generated from npm by `npm run market` (`docs/market/index.json`) and validated against
+dsh's own `@deepseek-ai/dsh-plugin-market-index` before it is written. `npm test` fails when its
+newest version is not the version in `package.json`, so a release that forgets to regenerate it
+is caught before it ships.
+
 **Hand-copied a directory instead?** Check it before wondering why the plugins page looks wrong:
 
 ```sh

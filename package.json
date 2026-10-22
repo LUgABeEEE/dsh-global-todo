@@ -83,7 +83,9 @@
     "prepack": "npm run verify",
     "check:render": "node tools/preview.mjs --check",
     "check:live": "node tools/live-check.mjs",
-    "check:matrix": "node scripts/matrix.mjs"
+    "check:matrix": "node scripts/matrix.mjs",
+    "market": "node tools/market.mjs",
+    "market:check": "node tools/market.mjs --check"
   },
   "dsh": {
     "manifestVersion": 1,

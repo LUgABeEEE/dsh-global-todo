@@ -76,6 +76,18 @@
           </p>
         </div>
 
+        <div class="install">
+          <div class="install-head">
+            <span class="label">DSH · Discover</span>
+            <span class="hint"><span class="zh">在 Discover 里加这个索引，一键安装</span><span class="en" lang="en">add this index in Discover</span></span>
+          </div>
+          <pre class="cmd" tabindex="0" aria-label="插件市场索引地址"><code>https://lugabeeee.github.io/dsh-global-todo/market/index.json</code></pre>
+          <p class="install-note">
+            <span class="zh">DSH 的 Discover 标签读的是你自己添加的一个 JSON 索引（官方不带索引）。加上这个地址，面板里就能直接装、直接看版本；不加也完全可以，上面的命令装的是同一个包。索引由 <code>npm run market</code> 从 npm 生成，每次发版后重跑一次。</span>
+            <span class="en" lang="en">DSH&rsquo;s Discover tab reads a JSON index you add yourself — dsh ships none. Adding this URL lets the panel install and update it directly; skipping it is fine, the command above installs the same package. The index is generated from npm by <code>npm run market</code>, rerun after every release.</span>
+          </p>
+        </div>
+
         <ul class="meta">
           <li>MIT</li>
           <li><span class="zh">10 个 Agent 工具</span><span class="en" lang="en">10 agent tools</span></li>

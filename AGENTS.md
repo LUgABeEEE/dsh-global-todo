@@ -52,9 +52,15 @@ npm run verify   # static checks then the full test suite; run before every comm
 
 ## Releasing
 
-Publishing is automated: bump both versions, `npm run verify`, commit, tag `vX.Y.Z`, push, and
-let the `publish` workflow publish over OIDC. Then create the GitHub release from the registry
-tarball. **The release ends there.** A restart is never part of publishing.
+Publishing is automated: bump both versions, `npm run market`, `npm run verify`, commit, tag
+`vX.Y.Z`, push, and let the `publish` workflow publish over OIDC. Then create the GitHub release
+from the registry tarball. **The release ends there.** A restart is never part of publishing.
+
+`npm run market` regenerates `docs/market/index.json`, the plugin market index the landing page
+tells readers to add in DSH's Discover tab. It must be regenerated **after** the new version is on
+npm, because it is built from the registry rather than from the working tree — and `npm test`
+fails while its newest version is not the version in `package.json`, so the order is enforced
+rather than remembered.
 
 ### The restart rule (hard)
 
