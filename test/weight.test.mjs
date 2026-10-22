@@ -46,3 +46,20 @@ test('the threshold normalizes to 0..1 with a fallback', () => {
   assert.equal(normalizeThreshold('nope'), DEFAULT_MIN_WEIGHT)
   assert.equal(normalizeThreshold(undefined), DEFAULT_MIN_WEIGHT)
 })
+
+test('a deadline the store would reject earns no deadline bonus', () => {
+  // Both layers used the same wide Date.parse: garbage dueAt could carry a weak candidate
+  // past the weight gate and then be rejected (or invented) at create time.
+  for (const value of ['2026', '2026-10', 'October 2026', 'tomorrow']) {
+    const ids = scoreItem({ title: '一件事', dueAt: value }).signals.map((signal) => signal.id)
+    assert.equal(ids.includes('due'), false, value)
+  }
+  assert.ok(scoreItem({ title: '一件事', dueAt: '2026-10-20' }).signals.some((signal) => signal.id === 'due'))
+})
+
+test('blank steps are not a plan', () => {
+  for (const steps of [[''], ['  ', '\t'], [{ text: '   ' }]]) {
+    assert.equal(scoreItem({ title: '一件事', steps }).signals.some((signal) => signal.id === 'steps'), false, JSON.stringify(steps))
+  }
+  assert.ok(scoreItem({ title: '一件事', steps: ['真的一步'] }).signals.some((signal) => signal.id === 'steps'))
+})

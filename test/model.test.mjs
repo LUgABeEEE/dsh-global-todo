@@ -13,6 +13,7 @@ import {
   counts,
   createTodo,
   isOverdue,
+  isValidDue,
   newId,
   normalizeDue,
   normalizeStored,
@@ -345,14 +346,19 @@ test('reviewing answers the claim and leaves nothing half-decided', () => {
 
 test('steps are a plan: strings become steps, ticks survive a load', () => {
   const todo = createTodo(
-    { title: '发版', steps: ['跑 verify', { text: '打 tag', done: true }, '  '] },
+    { title: '发版', steps: ['跑 verify', { text: '打 tag', done: true }] },
     { now: NOW },
   )
   assert.deepEqual(todo.steps, [
     { text: '跑 verify', done: false },
     { text: '打 tag', done: true },
-    // The blank line is a typo in a textarea, not a step.
   ])
+  // A blank step is refused rather than dropped: it used to disappear while the caller
+  // believed it was stored, and it earned the capture weight bonus on the way.
+  assert.throws(
+    () => createTodo({ title: '空步骤', steps: ['  '] }, { now: NOW }),
+    (error) => error instanceof TodoError && error.code === 'invalid-steps',
+  )
 
   const reloaded = normalizeStored(JSON.parse(JSON.stringify(todo)))
   assert.deepEqual(reloaded.steps, todo.steps, 'a tick has to survive the file')
@@ -409,4 +415,21 @@ test('an over-long step is refused, like an over-long list', () => {
   )
   const atLimit = createTodo({ title: 'steps', steps: ['x'.repeat(LIMITS.step)] })
   assert.equal(atLimit.steps[0].text.length, LIMITS.step)
+})
+
+test('a deadline is either a date or a date with time, and nothing invented', () => {
+  // The old parser was a bare Date.parse: "2026" became January 1st, "October 2026" a
+  // timezone-dependent day. A deadline silently invented is worse than a rejected one.
+  for (const value of ['2026', '2026-10', 'October 2026', '2026-02-31', '30', 'tomorrow', '2026-13-01', '2026-10-20T24:00']) {
+    assert.throws(
+      () => createTodo({ title: 'due', dueAt: value }, { now: NOW }),
+      (error) => error instanceof TodoError && error.code === 'invalid-due',
+      value,
+    )
+    assert.equal(isValidDue(value), false, value)
+  }
+  for (const value of ['2026-10-20', '2026-10-20T10:00', '2026-10-20 10:00', '2026-10-20T10:00:30Z', '2026-10-20T10:00+08:00']) {
+    assert.equal(isValidDue(value), true, value)
+    assert.match(createTodo({ title: 'due', dueAt: value }, { now: NOW }).dueAt, /^\d{4}-\d{2}-\d{2}T/)
+  }
 })

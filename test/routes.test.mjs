@@ -895,3 +895,40 @@ test('the capture threshold is a settings field like the others', async () => {
     await env.cleanup()
   }
 })
+
+test('null is a bad settings body, not zero', async () => {
+  const state = { autoCollect: false, idleMinutes: 30, cooldownMinutes: 30, exemptWorkspaces: [], captureMinWeight: 0.35 }
+  const settings = { get: () => state, update: async (patch) => Object.assign(state, patch) }
+  const env = await harness({ settings })
+  const post = (body) => env.call('/settings', makeReq({ method: 'POST', url: `${ROUTE_BASE}/settings`, body: JSON.stringify(body) }))
+  try {
+    // The bug the Windows sweep found: Number(null) === 0, so a null weight turned the whole
+    // capture gate off and answered 200.
+    for (const field of ['captureMinWeight', 'idleMinutes', 'cooldownMinutes', 'reminderLeadMinutes', 'ingestConfirmBelow']) {
+      const response = await post({ [field]: null })
+      assert.equal(response.statusCode, 400, field)
+      assert.match(response.json().error, /null/, field)
+    }
+    assert.equal(state.captureMinWeight, 0.35, 'the stored value must not move')
+  } finally {
+    await env.cleanup()
+  }
+})
+
+test('the weight threshold is a two-decimal value or a bad request', async () => {
+  const state = { autoCollect: false, idleMinutes: 30, cooldownMinutes: 30, exemptWorkspaces: [], captureMinWeight: 0.35 }
+  const settings = { get: () => state, update: async (patch) => Object.assign(state, patch) }
+  const env = await harness({ settings })
+  const post = (body) => env.call('/settings', makeReq({ method: 'POST', url: `${ROUTE_BASE}/settings`, body: JSON.stringify(body) }))
+  try {
+    const rounded = await post({ captureMinWeight: 0.345 })
+    assert.equal(rounded.statusCode, 400, 'storing 0.35 when 0.345 was sent is the silent adjustment the API refuses elsewhere')
+    assert.match(rounded.json().error, /两位小数/)
+
+    const ok = await post({ captureMinWeight: 0.34 })
+    assert.equal(ok.statusCode, 200)
+    assert.equal(state.captureMinWeight, 0.34)
+  } finally {
+    await env.cleanup()
+  }
+})

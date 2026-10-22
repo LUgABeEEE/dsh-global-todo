@@ -1,3 +1,20 @@
+## [0.13.2] — 2026-10-22
+
+Four gaps the Windows sweep found in the new weight/settings surface (#5).
+
+- **`null` is a bad settings body, not zero.** `Number(null) === 0`, so `{captureMinWeight: null}`
+  answered 200, stored 0 and turned the whole capture gate off — while `{autoCollect: null}` was
+  correctly 400. Every numeric field now refuses `null` with a message saying to omit the field.
+- **The weight threshold is two decimals or a bad request.** `{captureMinWeight: 0.345}` used to be
+  rounded to 0.35 and stored, the same silent adjustment a fractional minute is rejected for.
+- **A deadline must be a real date.** `normalizeDue` was a bare `Date.parse`, so `"2026"` became
+  January 1st and `"October 2026"` an implementation-defined, timezone-dependent day. Input is now
+  a date, a date with time, or a date with time and zone — and `2026-02-31` is refused instead of
+  rolling over to March. The capture scorer reuses the same rule, so a garbage deadline can no
+  longer earn the +0.2 bonus that carried weak candidates past the gate.
+- **A blank step is refused, not dropped.** `steps: ['']` was silently discarded while the caller
+  believed it was stored, and the scorer still gave it +0.15 for "already broken into steps".
+
 ## [0.13.1] — 2026-10-22
 
 The sort orders are total orders now, which is what CI caught.
