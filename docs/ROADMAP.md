@@ -200,14 +200,14 @@ of conversations involved, files touched with counts, and how many wait for revi
 time, never stored. The panel shows it from `⋯ → 本周报告`. Tests:
 `test/markdown.test.mjs` (pure aggregation) and `test/routes.test.mjs`.
 
-### 5. Image attachments
+### 5. ~~Image attachments~~ — landed in 0.15.0
 
-`kind: 'image'` beside `url` / `file`, so a screenshot can be attached instead of a path
-to one.
-
-- Today: `LINK_KINDS = ['url', 'file']` (`lib/links.js`); the link shape is already prepared.
-- Effort: medium — the store must not inline bytes, so this is a path with a preview and a
-  clear "the file is gone" state, which #3-adjacent work already models.
+`kind: 'image'` beside `url` / `file`: still an absolute reference (the store never holds
+bytes), required to carry a renderable extension, with `GET /asset?id=&index=` reading the
+path out of the record rather than from the request (8 MB cap, `nosniff`, image links only).
+The row shows a thumbnail and the detail a preview; a dead image keeps the existing
+missing-file chip instead of rendering a broken frame. `lib/links.js`, `lib/routes.js`,
+`lib/client.js`; tests in `test/links.test.mjs` and `test/routes.test.mjs`.
 
 ### 6. Source adapters for the ingest door
 
