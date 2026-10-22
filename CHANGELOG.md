@@ -1,3 +1,24 @@
+## [0.16.2] — 2026-10-22
+
+A date-only deadline is local midnight, so a date bound stops swallowing part of its own day.
+
+- **`before:` / `after:` with a bare date were anchored at UTC midnight.** `Date.parse('2026-11-01')`
+  is UTC midnight by the specification; on +08 that is 08:00 local, so `before:2026-11-01` included
+  everything due 00:00–08:00 on the bound day, and an `after:` bound lost the same window in the
+  west. Date-only values are now built with the local constructor, matching how `dueAt` is authored
+  (issue #6).
+- **This also changes what a bare `dueAt: "2026-11-01"` stores**: it used to become UTC midnight
+  and now becomes local midnight — the day the person means, on the machine they are on. Existing
+  records are untouched; only new writes differ.
+- **The timezone case is pinned in `test/tz.test.mjs`**, which runs the parser in a child process
+  with `TZ=Asia/Shanghai`: CI is UTC, where both anchors are the same number, so the regression
+  would otherwise be invisible there. On a platform that ignores `TZ` the test skips rather than
+  claiming to have checked.
+- **`docs/WINDOWS.md` gained two answers from the same round**: the date-bound row now states the
+  local-midnight contract, and a standing three-question checklist (two-layer semantics, timezone,
+  path four states) sits beside the per-feature one, plus the note that ARIA states must be
+  verified by attribute, not by searching for the words a screen reader speaks.
+
 ## [0.16.1] — 2026-10-22
 
 Same code as 0.16.0; the tag now points at a commit whose CI is green.

@@ -14,6 +14,7 @@ import {
   createTodo,
   isOverdue,
   isValidDue,
+  parseDueText,
   newId,
   normalizeDue,
   normalizeStored,
@@ -57,7 +58,8 @@ test('ids are prefixed, unique and collision safe', () => {
 test('due dates accept ISO-8601 shapes and reject nonsense', () => {
   assert.equal(normalizeDue(''), null)
   assert.equal(normalizeDue(null), null)
-  assert.equal(normalizeDue('2026-10-20'), '2026-10-20T00:00:00.000Z')
+  // A date-only deadline is local midnight (issue #6), so the ISO value depends on the zone.
+  assert.equal(normalizeDue('2026-10-20'), new Date(2026, 9, 20).toISOString())
   assert.equal(normalizeDue('2026-10-20T10:00:00+08:00'), '2026-10-20T02:00:00.000Z')
   assert.throws(() => normalizeDue('tomorrow'), /无法解析/)
   assert.throws(() => normalizeDue(1750000000000), /必须是 ISO-8601/)
@@ -77,7 +79,7 @@ test('patch reports exactly what changed and keeps createdAt immutable', () => {
   assert.deepEqual(changed, ['title', 'priority', 'dueAt'])
   assert.equal(todo.title, 'B')
   assert.equal(todo.priority, 'high')
-  assert.equal(todo.dueAt, '2026-11-01T00:00:00.000Z')
+  assert.equal(todo.dueAt, new Date(2026, 10, 1).toISOString(), 'date-only means local midnight')
   assert.equal(todo.createdAt, NOW)
   assert.equal(todo.updatedAt, NOW + 1000)
   assert.deepEqual(applyPatch(todo, { priority: 'high' }, { now: NOW + 2000 }), [])
@@ -432,4 +434,16 @@ test('a deadline is either a date or a date with time, and nothing invented', ()
     assert.equal(isValidDue(value), true, value)
     assert.match(createTodo({ title: 'due', dueAt: value }, { now: NOW }).dueAt, /^\d{4}-\d{2}-\d{2}T/)
   }
+})
+
+test('a date-only deadline is local midnight, not UTC midnight', () => {
+  // Issue #6: Date.parse('2026-11-01') is UTC midnight per the specification, so on +08 the
+  // bound covered the first eight hours of the bound day. Compare against the local
+  // constructor, which is what a person means by "that day".
+  const iso = parseDueText('2026-11-01').iso
+  assert.equal(iso, new Date(2026, 10, 1, 0, 0, 0, 0).toISOString())
+  assert.equal(normalizeDue('2026-11-01'), new Date(2026, 10, 1).toISOString())
+  // A date with a time keeps its own meaning.
+  assert.equal(parseDueText('2026-11-01T10:00').iso, new Date(2026, 10, 1, 10, 0).toISOString())
+  assert.equal(parseDueText('2026-11-01T10:00:00Z').iso, '2026-11-01T10:00:00.000Z')
 })

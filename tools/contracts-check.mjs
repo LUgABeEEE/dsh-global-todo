@@ -126,6 +126,8 @@ const equal = (group, name, actual, expected) =>
     check('D due', `accepts ${JSON.stringify(value)}`, isValidDue(value) === true)
   }
   check('D due', 'normalizeDue returns ISO', /^\d{4}-\d{2}-\d{2}T.*Z$/.test(normalizeDue('2026-10-20T10:00')))
+  // Issue #6: a date-only deadline is the local start of that day, not UTC midnight.
+  equal('D due', 'date-only is local midnight', normalizeDue('2026-10-20'), new Date(2026, 9, 20).toISOString())
 }
 
 // ── E. Steps: empty is a refusal, not a silent drop ────────────────────────────────────
