@@ -39,6 +39,86 @@ review then reload, assert no `.tmp` debris, write and read back 500 todos, impo
 file, write into a path with spaces and non-ASCII characters, and rename over an existing file. It
 prints one line per check and exits non-zero on the first failure.
 
+## 0.16 新增：这张清单是为了让新功能先在你那台机器上过一遍
+
+0.12—0.15 加的东西里有四项**能在 Windows 上表现得和 Linux 不同**，其中两项直接碰到路径与文件存在性。
+每一项都写清了「怎么做」和「什么样才算通过」，照着走一遍即可，不需要读代码。
+
+### 1. 图片附件（0.15.0，最需要真机验证）
+
+附件现在可以有第三种类型 `kind: "image"`，它和文档一样是**引用**（不复制字节），但面板会渲染它。
+
+准备工作（PowerShell，路径里故意带空格和中文）：
+
+```powershell
+$dir = Join-Path $env:TEMP 'gt 图片 测试'
+New-Item -ItemType Directory -Force $dir | Out-Null
+# 先写一张 1x1 的合法 PNG，保证没有 Pictures 目录的机器也能照着走：
+[IO.File]::WriteAllBytes(
+  (Join-Path $dir 'shot.png'),
+  [Convert]::FromBase64String('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==')
+)
+# 想用真实截图（名字里带空格/中文）就再拷一份：
+Copy-Item "$env:USERPROFILE\Pictures\*" $dir -ErrorAction SilentlyContinue
+Get-ChildItem $dir | Select-Object Name, Length
+```
+
+| 步骤 | 期望 |
+|---|---|
+| 新建一条待办，附件给 `{ "kind": "image", "value": "<上面的路径>\shot.png" }`（或用工具 `global_todo_add` 的 `links`） | 行上出现 16px 缩略图，详情里出现预览图 |
+| 把那张 png 改名（`Rename-Item`），刷新面板 | 变成红色的「文件不在了」chip，**不是一张破图** |
+| 用详情里的「重新挂载」把它指回改名后的文件 | 缩略图恢复，且类型仍是 image（不会变成文档） |
+| 给一个 `.svg` 作为 image | 被拒绝，错误里有「图片附件需要图片扩展名」 |
+| 给一个 >8MB 的图片 | 面板提示「图片超过 8MB」，缩略图不加载 |
+| 路径用反斜杠、带盘符（`D:\…\shot.png`） | 与正斜杠一致；`C:/…/shot.png` 也可以 |
+
+后端可直接验（服务在本机时）：
+
+```powershell
+# 换成真实 id 与索引；路径只从记录里取，请求里传路径会被忽略
+curl.exe -s "http://127.0.0.1:3080/api/global-todo/asset?id=<id>&index=0" -o $env:TEMP\probe.png
+Get-Item $env:TEMP\probe.png | Select-Object Length
+```
+
+### 2. 重新挂载（0.16.0）
+
+- 详情里**只有失效附件**才出现「重新挂载」按钮；点开是内联输入框，预填旧路径；
+- 保存后**原地替换**（附件顺序、标题、类型都不变），不会变成一条新附件；
+- 换成一个**非**绝对路径（如 `notes.md`）应被拒绝；换成一个不存在的路径：若 `requireExistingFiles` 默认为真，也会被拒绝——这正是设计意图，先建文件再挂。
+
+### 3. 搜索的 `before:` / `after:`（0.16.0）
+
+| 输入 | 期望 |
+|---|---|
+| `before:2026-11-01` | 只留下**截止时间早于**该时刻的条目；等于该时刻的不算 |
+| `after:2026-10-01` | 只留下截止时间晚于该时刻的；**没有截止时间的条目两个方向都不出现** |
+| `after:2026-10-01 before:2026-12-01` | 两个条件同时生效（AND） |
+| `before:2026-1`（没打完） | **不报错**，该 token 退化成普通搜索词；这不是 bug |
+| `before:2026-02-31` | 同上：非法日期不当作边界，也不会被当成 3 月 1 日 |
+
+注意时区：无时区的日期按**本机本地时间**解释，与截止时间输入框的行为一致。如果你的机器是 +08:00，`before:2026-11-01` 指的是本地 11 月 1 日 00:00。
+
+### 4. 读屏（0.16.0）
+
+用 NVDA 或 Windows 讲述人过一遍：
+
+| 位置 | 期望 |
+|---|---|
+| 分组头（会话 / 时间 / 级别 三种分组下都有） | 朗读「已展开 / 已收起」；用键盘 Space/Enter 可切换 |
+| 顶部筛选（全部 / 未完成 / …） | 当前筛选项朗读为「已按下」 |
+| 操作提示（例如「已让某对话抓取」） | 作为状态区域被朗读一次，不会抢焦点 |
+| 错误横幅 | 立即朗读（alert） |
+| 纯图标按钮（关闭、更多、保存等） | 有可读名称，不是「按钮」两个字 |
+
+### 回归（每次都跑，10 秒）
+
+```powershell
+npm run check:windows      # 7 项真实文件系统冒烟
+npm run check:contracts    # 57 项跨字段契约，模块级、离线
+```
+
+两项都过，再填上面四节的表格。哪一格和期望不符，就按「What to report if something fails」的四条信息回给我。
+
 ## What to report if something fails
 
 1. the check name from the `FAIL` line and the full message;
