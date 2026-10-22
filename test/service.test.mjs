@@ -458,7 +458,9 @@ test('before: and after: bound the deadline, and a partial date stays a search t
 
     assert.deepEqual(await ids('before:2026-10-15'), [early.id])
     assert.deepEqual(await ids('after:2026-10-15'), [late.id])
-    assert.deepEqual(await ids('after:2026-09-01 before:2026-12-01'), [late.id, early.id].sort())
+    // Two bounds in one query: compare as a set, because the default order is by creation
+    // time and two creates can share a millisecond.
+    assert.deepEqual((await ids('after:2026-09-01 before:2026-12-01')).sort(), [early.id, late.id].sort())
     assert.deepEqual(await ids('before:2026-10-01'), [], 'before is strict: the bound day itself is excluded')
     // A half-typed bound must not throw on every keystroke; it simply filters nothing.
     assert.deepEqual(await ids('before:2026'), [])
