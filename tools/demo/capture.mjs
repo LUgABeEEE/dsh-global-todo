@@ -1,4 +1,9 @@
-const fs = require('node:fs')
+// The file is ESM (.mjs), so the one CommonJS dependency (Playwright, borrowed from the
+// profile that runs the capture) goes through createRequire instead of `require`.
+import fs from 'node:fs'
+import { createRequire } from 'node:module'
+
+const require = createRequire(import.meta.url)
 // Playwright belongs to whichever profile runs the capture, not to this repository.
 // Resolve it from the environment so the script stays publishable.
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE ?? 'playwright')
