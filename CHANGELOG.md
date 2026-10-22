@@ -1,3 +1,23 @@
+## [0.14.0] — 2026-10-22
+
+Choose how much surface a deployment pays for.
+
+- **`config.toolGroups`: `all` (10 tools, default), `core` (6 — the list itself) or `none`.**
+  The ten tool schemas cost about **2k tokens per turn**; a deployment that only wants the panel
+  should not pay for a collaboration surface it never asks an agent to use. An unrecognised value
+  is reported and treated as `all`, so a typo cannot silently remove tools.
+- **The guidance section follows the tools.** With `core`/`none` the model is no longer told to
+  call `global_todo_capture`, which would be a call that cannot exist; `none` injects no guidance
+  at all.
+- **`/health` reports `modules`** (`toolGroups`, `registered`, `capture`), and the panel hides the
+  "collect from this conversation" entries when the capture tool is off instead of offering a
+  button that 404s. An older host with no `modules` field is assumed fully on.
+- **Deferred, on purpose**: splitting the package into several Loader rows (one row per module),
+  which the harness does support — `dsh.bundle.patch` may list files and a row may name a package
+  subpath. It buys Plugins-page cards for a user base of three stars; the config key buys the same
+  context saving today. `modules` in `/health` is the protocol that split would need, so it is in
+  place before anyone needs it.
+
 ## [0.13.2] — 2026-10-22
 
 Four gaps the Windows sweep found in the new weight/settings surface (#5).

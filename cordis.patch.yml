@@ -24,6 +24,13 @@
         # Inject the short usage guidance into every turn. `false` leaves the tools
         # available but stops asking the model to record things on its own.
         guidance: true
+        # Which Agent tools this deployment registers. The ten schemas cost roughly
+        # 2k tokens per turn, so a deployment that only wants the panel can shed them:
+        #   all   10 tools (default)
+        #   core  6 tools: add / list / get / update / note / done
+        #   none  no tools; the guidance section is skipped too
+        # An unrecognised value is reported and treated as `all`.
+        toolGroups: all
         # Starting point for the panel's built-in folder browser when the shell has
         # no native picker. Empty = home directory, then the Host's cwd.
         browseRoot: ''

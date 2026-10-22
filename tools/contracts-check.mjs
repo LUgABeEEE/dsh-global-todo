@@ -23,7 +23,7 @@ import { createRoutes, ROUTE_BASE } from '../lib/routes.js'
 import { createService } from '../lib/service.js'
 import { createStore } from '../lib/store.js'
 import { createTodo, isValidDue, LIMITS, normalizeDue } from '../lib/model.js'
-import { createTools } from '../lib/tools.js'
+import { createTools, selectTools, TOOL_GROUPS } from '../lib/tools.js'
 import { DEFAULT_MIN_WEIGHT, scoreItem } from '../lib/weight.js'
 import { findDuplicate } from '../lib/capture.js'
 
@@ -171,6 +171,20 @@ const equal = (group, name, actual, expected) =>
   void tool
 }
 
+// ── I. Tool groups: switching tools off must not leave guidance behind ─────────────────
+{
+  const defs = createTools({ async create() {}, async list() { return { todos: [] } } }, {})
+  const names = (mode) => selectTools(defs, mode).map((definition) => definition.name)
+  equal('I groups', 'all registers ten', names('all').length, 10)
+  equal('I groups', 'core is the list itself', names('core'), [...TOOL_GROUPS.core])
+  equal('I groups', 'none registers nothing', names('none').length, 0)
+  equal('I groups', 'a typo falls back to all', names('nonsense'), names('all'))
+  const { guidanceFor } = await import('../lib/index.js')
+  equal('I groups', 'no tools, no guidance', guidanceFor('none'), '')
+  check('I groups', 'core guidance does not name the capture tool', guidanceFor('core').includes('global_todo_capture') === false)
+}
+
 const failed = results.filter((result) => !result.ok)
 process.stdout.write(`\n${results.length - failed.length}/${results.length} contract checks passed\n`)
 process.exit(failed.length === 0 ? 0 : Math.min(failed.length, 1))
+

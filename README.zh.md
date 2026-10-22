@@ -317,6 +317,7 @@ dsh plugin --profile web remove dsh-global-todo
     storePath: /home/me/notes/global-todos.json   # 放进同步盘或版本库
     dispatchDir: /home/me/projects/thing          # 新会话的默认工作目录
     requireExistingFiles: true                    # 文件还不存在就先不让挂
+    toolGroups: all                               # all（10 个工具）| core（6 个：只操作清单）| none
 ```
 
 **文件本身就是产物**：纯 JSON、一条记录一个待办，写入走「临时文件 + rename」，

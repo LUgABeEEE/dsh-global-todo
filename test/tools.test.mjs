@@ -381,3 +381,29 @@ test('a capture run does not register what the list already has', async () => {
     await env.cleanup()
   }
 })
+
+test('tool groups shed the collaboration surface without touching the list', async () => {
+  const { selectTools, TOOL_GROUPS, normalizeToolGroups } = await import('../lib/tools.js')
+  const { createTools } = await import('../lib/tools.js')
+  const defs = createTools({ async create() {}, async list() { return { todos: [] } } }, {})
+  const names = (mode) => selectTools(defs, mode).map((definition) => definition.name)
+
+  assert.equal(names('all').length, 10)
+  assert.deepEqual(names('core'), [...TOOL_GROUPS.core])
+  assert.equal(names('none').length, 0)
+  // A typo must not quietly remove tools.
+  assert.deepEqual(names('coree'), names('all'))
+  assert.equal(normalizeToolGroups('nonsense'), 'all')
+  // The core set is exactly the list itself: no capture, no attachments, no delete.
+  for (const absent of ['global_todo_capture', 'global_todo_link', 'global_todo_remove', 'global_todo_reopen']) {
+    assert.equal(names('core').includes(absent), false, absent)
+  }
+})
+
+test('the guidance section follows the tool groups', async () => {
+  const { guidanceFor } = await import('../lib/index.js')
+  assert.equal(guidanceFor('none'), '', 'no tools, no instructions')
+  assert.match(guidanceFor('all'), /global_todo_capture/)
+  assert.doesNotMatch(guidanceFor('core'), /global_todo_capture/, 'do not tell the model to call a tool that is off')
+  assert.match(guidanceFor('core'), /global_todo_add/)
+})

@@ -79,6 +79,7 @@ async function harness(options = {}) {
     ...(options.logger === undefined ? {} : { logger: options.logger }),
     ...(options.settings === undefined ? {} : { settings: options.settings }),
     ...(options.sessionTail === undefined ? {} : { sessionTail: options.sessionTail }),
+    ...(options.modulesInfo === undefined ? {} : { modulesInfo: options.modulesInfo }),
   })
   const call = async (suffix, request) => {
     const route = routes.find((candidate) => candidate.path === `${ROUTE_BASE}${suffix}`)
@@ -928,6 +929,32 @@ test('the weight threshold is a two-decimal value or a bad request', async () =>
     const ok = await post({ captureMinWeight: 0.34 })
     assert.equal(ok.statusCode, 200)
     assert.equal(state.captureMinWeight, 0.34)
+  } finally {
+    await env.cleanup()
+  }
+})
+
+test('/health says which optional surfaces are on', async () => {
+  const env = await harness({
+    modulesInfo: () => ({ toolGroups: 'core', registered: ['global_todo_add', 'global_todo_list'], capture: false }),
+  })
+  try {
+    const health = await env.call('/health', makeReq({ method: 'GET', url: `${ROUTE_BASE}/health` }))
+    assert.equal(health.statusCode, 200)
+    const modules = health.json().data.modules
+    assert.equal(modules.toolGroups, 'core')
+    assert.equal(modules.capture, false, 'the panel reads this to hide a group action it cannot call')
+    assert.deepEqual(modules.registered, ['global_todo_add', 'global_todo_list'])
+  } finally {
+    await env.cleanup()
+  }
+})
+
+test('an older host without modules info is assumed fully on', async () => {
+  const env = await harness()
+  try {
+    const health = await env.call('/health', makeReq({ method: 'GET', url: `${ROUTE_BASE}/health` }))
+    assert.deepEqual(health.json().data.modules, { toolGroups: 'all', registered: [], capture: true })
   } finally {
     await env.cleanup()
   }

@@ -434,6 +434,7 @@ topic feeds we have not verified, is [docs/DISTRIBUTION.md](docs/DISTRIBUTION.md
     storePath: /home/me/notes/global-todos.json   # a synced or versioned folder
     dispatchDir: /home/me/projects/thing          # default cwd for a new session
     requireExistingFiles: true                    # refuse a document that is not there yet
+    toolGroups: all                               # all (10 tools) | core (6: the list itself) | none
 ```
 
 The file is the artifact: plain JSON, one record per todo, written through a temp file and
