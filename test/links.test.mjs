@@ -2,7 +2,7 @@ import { strict as assert } from 'node:assert'
 import test from 'node:test'
 
 import { TodoError } from '../lib/errors.js'
-import { defaultLinkTitle, formatLink, inferLinkKind, isAbsolutePath, linkKey, normalizeLink } from '../lib/links.js'
+import { defaultLinkTitle, formatLink, inferLinkKind, isAbsolutePath, isImagePath, linkKey, normalizeLink } from '../lib/links.js'
 
 test('a bare http(s) string is an address, anything else is a document', () => {
   assert.equal(inferLinkKind('https://example.com/doc'), 'url')
@@ -79,4 +79,25 @@ test('formatLink always has a title', () => {
 test('defaultLinkTitle tolerates odd input', () => {
   assert.equal(defaultLinkTitle('file', '/'), '/')
   assert.equal(defaultLinkTitle('url', 'not a url'), 'not a url')
+})
+
+test('an image attachment is a reference with a renderable extension', () => {
+  const image = normalizeLink({ kind: 'image', value: '/tmp/shot.png' }, {})
+  assert.equal(image.kind, 'image')
+  assert.equal(image.title, 'shot.png')
+
+  for (const value of ['/tmp/shot.svg', '/tmp/notes.txt', '/tmp/shot.png.exe']) {
+    assert.throws(
+      () => normalizeLink({ kind: 'image', value }, { requireExistingFiles: false }),
+      (error) => error instanceof TodoError && error.code === 'invalid-link',
+      value,
+    )
+  }
+  assert.throws(
+    () => normalizeLink({ kind: 'image', value: 'shot.png' }, { requireExistingFiles: false }),
+    (error) => error instanceof TodoError && error.code === 'invalid-link',
+  )
+  // A bare path is never guessed into an image: the caller states the rendering decision.
+  assert.equal(normalizeLink('/tmp/shot.png', {}).kind, 'file')
+  assert.equal(isImagePath('/tmp/A.PNG'), true)
 })

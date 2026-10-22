@@ -1,3 +1,20 @@
+## [0.15.0] — 2026-10-22
+
+Image attachments: a reference that renders, not a copy that goes stale.
+
+- **`kind: "image"` is a third attachment kind** beside `url` and `file`. The path stays an
+  absolute reference — the list still never stores bytes — but it must have a renderable
+  extension (png / jpg / jpeg / webp / gif / avif; SVG is excluded because it can carry script
+  when served inline). A bare path is never guessed into an image: the caller states it.
+- **`GET /asset?id=&index=` serves the bytes**, reading the path out of the store rather than from
+  the request, so there is no traversal surface. Capped at 8 MB with `nosniff`, and only for
+  `image` links — a document link asked through this route is a 400, a missing index a 404.
+- **The panel shows a thumbnail on the row and a preview in the detail**, both lazy, and the
+  existing "file is gone" marker still applies: a dead image renders as a bad chip, not a broken
+  frame.
+- Tool schemas accept `kind: "image"` wherever an attachment does, so an agent can attach a
+  screenshot of what it built.
+
 ## [0.14.0] — 2026-10-22
 
 Choose how much surface a deployment pays for.

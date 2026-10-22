@@ -211,7 +211,10 @@ Your list is not touched by install or uninstall: it lives outside the plugin, a
 ### The panel
 
 - **Add** — type a title and press Enter. "More fields" reveals the description, the
-  attachment box (one document path or URL per line), tags, priority and a due time.
+  attachment box (one document path or URL per line), tags, priority and a due time. An
+  attachment may also be `{ kind: "image", value: "/abs/shot.png" }` — the row then shows a
+  thumbnail and the detail a preview, with the bytes read on demand (png/jpg/jpeg/webp/gif/avif,
+  ≤8 MB) and never copied into the list.
 - **Filters** — all / open / doing / done / overdue, plus a text search across titles,
   descriptions, tags and attachments. The count chips in the header are filters too.
 - **Grouped by urgency** — overdue / today / next up / later / no due date / done, each
@@ -390,6 +393,7 @@ fence when that service is present, and by a strict loopback check otherwise.
 | POST | `/api/global-todo/review` | `{ id, decision: confirm\|reject }` — answer an agent's completion |
 | GET | `/api/global-todo/report?days=7` | what the agents finished in the window, and the files it touched |
 | GET | `/api/global-todo/session?id=` | what a bound conversation last said (`tail`, `alive`, `dir`) |
+| GET | `/api/global-todo/asset?id=&index=` | the bytes of an **image** attachment (path read from the store, never from the request; ≤8 MB, png/jpg/jpeg/webp/gif/avif) |
 | POST | `/api/global-todo/link` | `{ id, add?: [...], remove?: [value \| index] }` |
 | POST | `/api/global-todo/dispatch` | `{ id, mode?: auto\|bound\|new\|current, sessionId?, dir? }` |
 | POST | `/api/global-todo/assign` | `{ ids, items?, target?, dir? }` — hand several todos over in one call; an id that matches nothing comes back instead of being sent elsewhere |

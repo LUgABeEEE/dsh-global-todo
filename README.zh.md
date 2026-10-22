@@ -188,6 +188,7 @@ dsh plugin --profile web remove dsh-global-todo
 
 ### 面板
 
+- **图片附件**：附件也可以写成 `{ "kind": "image", "value": "/绝对路径/shot.png" }`，行上显示缩略图、详情里显示预览；字节按需读取（png/jpg/jpeg/webp/gif/avif，≤8MB），**不复制进清单**。
 - **添加**：写一句标题回车即存。「更多字段」展开描述、附件框（一行一个文档绝对路径或网址）、
   标签、优先级、截止时间。
 - **筛选**：全部 / 未完成 / 进行中 / 已完成 / 逾期，外加跨标题、描述、标签、附件的文本搜索；
@@ -293,6 +294,7 @@ dsh plugin --profile web remove dsh-global-todo
 | POST | `/api/global-todo/review` | `{ id, decision: confirm\|reject }` —— 回答 Agent 的完成声明 |
 | GET | `/api/global-todo/report?days=7` | 这段时间里 Agent 完成了什么、触及了哪些文件 |
 | GET | `/api/global-todo/session?id=` | 绑定的会话最后说了什么（`tail` / `alive` / `dir`） |
+| GET | `/api/global-todo/asset?id=&index=` | 读**图片附件**的字节（路径只从待办记录里取，不接受请求传路径；≤8MB，png/jpg/jpeg/webp/gif/avif） |
 | POST | `/api/global-todo/link` | `{ id, add?: [...], remove?: [值 或 下标] }` |
 | POST | `/api/global-todo/dispatch` | `{ id, mode?: auto\|bound\|new\|current, sessionId?, dir? }` |
 | POST | `/api/global-todo/assign` | `{ ids, items?, target?, dir? }`——一次把多条交给 Agent；配不上的 id 原样报回，不擅自送到别处 |

@@ -124,6 +124,7 @@ test('the route surface is exactly the documented one', async () => {
     assert.deepEqual(
       env.routes.map((route) => route.path.replace(`${ROUTE_BASE}/`, '')).sort(),
       [
+        'asset',
         'assign',
         'bulk',
         'capture',
@@ -957,5 +958,31 @@ test('an older host without modules info is assumed fully on', async () => {
     assert.deepEqual(health.json().data.modules, { toolGroups: 'all', registered: [], capture: true })
   } finally {
     await env.cleanup()
+  }
+})
+
+test('an image attachment is served from the store path, never from a request path', async () => {
+  const bytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00])
+  const dir = await mkdtemp(path.join(tmpdir(), 'gt-asset-'))
+  const file = path.join(dir, 'shot.png')
+  await writeFile(file, bytes)
+  const env = await harness()
+  try {
+    const todo = await env.service.create({ title: '带截图', links: [{ kind: 'image', value: file }] }, { by: 'human' })
+    const response = makeRes()
+    const route = env.routes.find((candidate) => candidate.path === `${ROUTE_BASE}/asset`)
+    await route.handler(makeReq({ method: 'GET', url: `${ROUTE_BASE}/asset?id=${todo.id}&index=0` }), response)
+    assert.equal(response.statusCode, 200)
+    assert.equal(response.headers['content-type'], 'image/png')
+    assert.equal(response.headers['x-content-type-options'], 'nosniff')
+
+    const doc = await env.service.create({ title: '文档', links: [{ value: '/tmp/notes.md' }] }, { by: 'human' })
+    const badKind = await env.call('/asset', makeReq({ method: 'GET', url: `${ROUTE_BASE}/asset?id=${doc.id}&index=0` }))
+    assert.equal(badKind.statusCode, 400)
+    const badIndex = await env.call('/asset', makeReq({ method: 'GET', url: `${ROUTE_BASE}/asset?id=${todo.id}&index=9` }))
+    assert.equal(badIndex.statusCode, 404)
+  } finally {
+    await env.cleanup()
+    await rm(dir, { recursive: true, force: true })
   }
 })
