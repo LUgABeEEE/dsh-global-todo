@@ -1,3 +1,15 @@
+## [0.16.1] — 2026-10-22
+
+Same code as 0.16.0; the tag now points at a commit whose CI is green.
+
+- **0.16.0's tag commit had all three CI jobs red.** The new `before:`/`after:` test asserted the
+  order of two todos created in the same test, and CI creates them in the same millisecond, so the
+  order it asserted was not the order the default sort produces. The behaviour under test was
+  correct; the assertion was wrong. Fixed in 8024a48 — the run after it is green on both platforms.
+- **Why a release rather than a moved tag**: `v0.16.0` is published on npm, and a tag that no
+  longer matches what was published is worse than a version bump. 0.16.1 is 0.16.0 plus the
+  assertion, so its tag has a green check.
+
 ## [0.16.0] — 2026-10-22
 
 The three small promises the roadmap still carried.
