@@ -73,6 +73,7 @@
     "check": "node scripts/check.mjs",
     "doctor": "node tools/doctor.mjs",
     "check:windows": "node tools/windows-check.mjs",
+    "check:contracts": "node tools/contracts-check.mjs",
     "notify": "node tools/notify.mjs",
     "test": "node --test \"test/**/*.test.mjs\"",
     "verify": "npm run check && npm run check:render && npm test",

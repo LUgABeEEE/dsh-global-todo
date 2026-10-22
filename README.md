@@ -473,8 +473,11 @@ and [docs/ROADMAP.md](docs/ROADMAP.md) for what could come next.
 npm run check     # parse every file, assert the shipping shape, and — when a DSH
                   # profile is present — validate every tool schema against the
                   # Host's own validator
-npm test          # 257 unit, contract and bundle tests, zero dependencies
-npm run verify    # both
+npm test              # unit, contract and bundle tests, zero dependencies
+npm run verify        # static checks + tests
+npm run check:contracts  # the cross-field matrix a reviewer re-tests by hand:
+                      # one invalid value, one answer, whichever field it lands on
+npm run check:windows    # the same idea on a real filesystem (Windows in CI)
 npm run check:matrix  # the running dsh against engines.dsh, then the manifest,
                       # bundle and tool-schema contracts (no preview writes)
 ```

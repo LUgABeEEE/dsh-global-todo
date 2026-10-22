@@ -47,6 +47,11 @@ jobs:
         # their own temp directories, so a retry is safe and keeps CI honest.
         continue-on-error: false
 
+      # The matrix reviewers keep re-testing by hand: one invalid value must get one answer
+      # whichever field it lands on. Module-level, offline, and platform-independent.
+      - name: Contracts
+        run: npm run check:contracts
+
       - name: Package shape
         run: npm pack --dry-run
 
