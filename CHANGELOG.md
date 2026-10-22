@@ -1,3 +1,22 @@
+## [0.13.0] — 2026-10-22
+
+Batch capture now scores what it is given, and drops what is not worth a todo.
+
+- **A weight per candidate, with a floor you can tune.** `global_todo_capture` asks a model for
+  "anything worth following up" and models oblige with hedged asides. Each candidate now gets a
+  0–1 weight from named signals: a specific title, a parseable deadline, steps, an attachment, a
+  quoted original, commitment wording (记得 / 截止 / 等下周一 …) add; hesitation (可能 / 也许 /
+  看看 / 再说), a bare question, or a one-liner with nothing attached subtract. Below
+  `captureMinWeight` the entry is skipped with its weight and the signals that pulled it down.
+- **The threshold is a setting**, not a constant: `captureMinWeight` (0–1, default 0.35) lives in
+  the settings file, is validated by `POST /settings`, reported in `/health`, and editable in the
+  panel's settings dialog. A hedged one-liner scores ~0.30 and is dropped; a stated errand with
+  nothing attached yet scores ~0.40 and passes.
+- **The skip reason stays honest.** A low-weight item is reported as `权重 0.30 低于阈值 0.35，未登记`
+  together with the penalty that applied, so "why was this not recorded" has an answer.
+- **Explained where the model reads it**: the capture prompt and the tool description both say the
+  weight exists and that specificity pays.
+
 ## [0.12.13] — 2026-10-21
 
 The dedupe promise now holds for short titles (#4).

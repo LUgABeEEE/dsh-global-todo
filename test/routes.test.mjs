@@ -871,3 +871,27 @@ test('settings refuse the wrong shape instead of coercing it', async () => {
     await env.cleanup()
   }
 })
+
+test('the capture threshold is a settings field like the others', async () => {
+  const state = { autoCollect: false, idleMinutes: 30, cooldownMinutes: 30, exemptWorkspaces: [], captureMinWeight: 0.35 }
+  const settings = { get: () => state, update: async (patch) => Object.assign(state, patch) }
+  const env = await harness({ settings })
+  const post = (body) => env.call('/settings', makeReq({ method: 'POST', url: `${ROUTE_BASE}/settings`, body: JSON.stringify(body) }))
+  try {
+    const ok = await post({ captureMinWeight: 0.5 })
+    assert.equal(ok.statusCode, 200)
+    assert.equal(state.captureMinWeight, 0.5)
+
+    const high = await post({ captureMinWeight: 2 })
+    assert.equal(high.statusCode, 400)
+    assert.match(high.json().error, /captureMinWeight/)
+
+    const type = await post({ captureMinWeight: '0.5' })
+    assert.equal(type.statusCode, 400)
+
+    const health = await env.call('/health', makeReq({ method: 'GET', url: `${ROUTE_BASE}/health` }))
+    assert.equal(health.json().data.settings.captureMinWeight, 0.5)
+  } finally {
+    await env.cleanup()
+  }
+})

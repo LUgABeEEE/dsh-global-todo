@@ -219,6 +219,7 @@ dsh plugin --profile web remove dsh-global-todo
 - **分组维度**：工具栏上有 `对话 / 时间 / 级别` 三个维度，**默认按对话**——同一个 agent 对话提交的待办会**合并成一条**（显示「N 条」，点开才展开），这样几次「抓一下待办」不会把清单糊成一片。单条的对话直接显示那一行；没有来源对话的（在面板里手加的）归到「手动添加」。`时间` 是原来的逾期 / 今天 / 接下来 / 以后 / 没有截止时间，`级别` 按高 / 一般 / 低分组。
 - **级别 P0–P3**：每条待办可设 `P0 紧急 / P1 高 / P2 常规 / P3 低`；接口两种写法都收（`priority: "P0"` 或 `"urgent"`），旧记录里的 high/normal/low 原样有效，默认 P2。行上有徽标，对话分组头显示组内**最高级别**，绿色小圆点表示该对话里还有在跑的会话。
 - **从本对话抓取**：面板上一个按钮，把「请把这段对话里需要跟进的事用 `global_todo_capture` 抓一下」注入你正在说话的那个对话——聊着聊着把该跟进的事一次变成待办，不用自己一条条敲。提示词里同样写清了「不要记什么」（会话计划、闲聊、已完成的事），否则抓取只会制造噪音。
+- **权重下限**：每条候选会被打一个 0–1 的权重（具体标题、截止时间、步骤、附件、原话、承诺措辞加分；「可能 / 也许 / 看看 / 再说」这类犹豫语、纯疑问句、没有任何补充信息的条目减分），低于设置里的 `captureMinWeight`（默认 0.35）就不登记，只在 `skipped` 里报出权重与原因。设置面板里可以直接改这个值。
 - **自动完成**：派发出去的会话**干净结束**时，宿主自己把这条待办标成完成，并附上**它最后那段回复**作为完成说明、**这一轮改动的文件**作为产出——不用等模型记得调工具。面板上完成的行显示「完成于 …」加产出芯片，展开详情有「完成记录」段（说明 + 产出路径，可点开或复制）。
   两条护栏值得知道：**只对刚派发过的会话生效**（你在那个会话里随便聊两句不会把待办完成掉），**失败 / 中断的回合不标记完成**（宁可留着未完成，也不能让一份干砸的活显示成已完成）。
   你也可以自己收尾：`global_todo_done` 支持 `summary` 与 `artifacts`，那是主路径，自动收尾只是兜底。
@@ -295,7 +296,7 @@ dsh plugin --profile web remove dsh-global-todo
 | POST | `/api/global-todo/link` | `{ id, add?: [...], remove?: [值 或 下标] }` |
 | POST | `/api/global-todo/dispatch` | `{ id, mode?: auto\|bound\|new\|current, sessionId?, dir? }` |
 | POST | `/api/global-todo/assign` | `{ ids, items?, target?, dir? }`——一次把多条交给 Agent；配不上的 id 原样报回，不擅自送到别处 |
-| POST | `/api/global-todo/settings` | `{ autoCollect?, idleMinutes?, cooldownMinutes?, exemptWorkspaces? }`——自动获取的开关与阈值 |
+| POST | `/api/global-todo/settings` | `{ autoCollect?, idleMinutes?, cooldownMinutes?, exemptWorkspaces?, captureMinWeight? }`——自动获取的开关与阈值；`captureMinWeight`（0–1，默认 0.35）是批量抓取的权重下限，低于它的候选只在 `skipped` 里报出、不登记 |
 | POST | `/api/global-todo/diagnostics` | `{ scope, status?, reason?, message?, url? }`——面板自己上报的错误 |
 
 `/update` 与 `/status` 的 `by` 说明这次写是谁做的：不传（面板就是这样）就是人在键盘前，

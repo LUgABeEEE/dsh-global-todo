@@ -322,7 +322,7 @@ Your list is not touched by install or uninstall: it lives outside the plugin, a
 |---|---|
 | `global_todo_add` | Record an item — description, attachments, steps, tags, priority, due time |
 | `global_todo_note` | Append a progress note — where you are, what blocks you, who must decide |
-| `global_todo_capture` | **Record a batch**: for 「抓一下待办」 or a turn that produced several follow-ups; each entry is validated on its own |
+| `global_todo_capture` | **Record a batch**: for 「抓一下待办」 or a turn that produced several follow-ups; each entry is validated on its own, and entries scoring below `captureMinWeight` are reported as skipped with their weight instead of being registered |
 | `global_todo_list` | Query by state, tag or text; every row carries its creation time |
 | `global_todo_get` | Read one item in full, including attachments and the last hand-off |
 | `global_todo_update` | Change any field of one item, including `status` (`archived` archives without deleting); `""` clears, `[]` empties |
@@ -393,7 +393,7 @@ fence when that service is present, and by a strict loopback check otherwise.
 | POST | `/api/global-todo/link` | `{ id, add?: [...], remove?: [value \| index] }` |
 | POST | `/api/global-todo/dispatch` | `{ id, mode?: auto\|bound\|new\|current, sessionId?, dir? }` |
 | POST | `/api/global-todo/assign` | `{ ids, items?, target?, dir? }` — hand several todos over in one call; an id that matches nothing comes back instead of being sent elsewhere |
-| POST | `/api/global-todo/settings` | `{ autoCollect?, idleMinutes?, cooldownMinutes?, exemptWorkspaces? }` — the Host-side switches behind automatic collect |
+| POST | `/api/global-todo/settings` | `{ autoCollect?, idleMinutes?, cooldownMinutes?, exemptWorkspaces?, captureMinWeight? }` — the Host-side switches behind automatic collect; `captureMinWeight` (0–1, default 0.35) is the floor below which a batch-capture candidate is reported as skipped instead of registered |
 | POST | `/api/global-todo/diagnostics` | `{ scope, status?, reason?, message?, url? }` — the panel's own error report |
 
 `by` on `/update` and `/status` says whose write this is: omitted (what the panel sends) it is

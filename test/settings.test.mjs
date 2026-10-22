@@ -328,3 +328,12 @@ test('only a conversation that has gone quiet is due', () => {
     'an unknown directory is not a place to volunteer a question',
   )
 })
+
+test('the capture weight threshold defaults and clamps', () => {
+  assert.equal(SETTINGS_DEFAULTS.captureMinWeight, 0.35)
+  assert.equal(normalizeSettings({}).captureMinWeight, 0.35)
+  assert.equal(normalizeSettings({ captureMinWeight: 2 }).captureMinWeight, 1)
+  assert.equal(normalizeSettings({ captureMinWeight: -1 }).captureMinWeight, 0)
+  assert.equal(normalizeSettings({ captureMinWeight: '0.6' }).captureMinWeight, 0.6)
+  assert.equal(normalizeSettings({ captureMinWeight: 'nope' }).captureMinWeight, 0.35)
+})

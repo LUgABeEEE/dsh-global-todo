@@ -1,6 +1,6 @@
 {
   "name": "dsh-global-todo",
-  "version": "0.12.13",
+  "version": "0.13.0",
   "icon": "./docs/icon.svg",
   "description": "Cross-session todo list for DeepSeek Harness: one JSON file a person and an agent both write to, with step plans that ship as a numbered hand-off, session read-back, and a human confirmation before an agent's \"done\" counts.",
   "type": "module",
