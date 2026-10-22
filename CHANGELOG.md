@@ -1,3 +1,16 @@
+## [0.13.1] — 2026-10-22
+
+The sort orders are total orders now, which is what CI caught.
+
+- **Two todos created in the same millisecond could sort in either order.** The comparators
+  returned 0 for equal timestamps and leaned on the sort's stability, so a fast machine (the
+  packed `npm pack --dry-run` step, where the whole suite runs again) produced a different order
+  than the same tests a minute earlier. `seq`, which the service assigns monotonically, is the
+  final tiebreaker for all four sorts.
+- **The ordering test uses a stepping clock**, so it asserts the semantics it is named for instead
+  of depending on how fast the machine creates three todos; a second test pins the same-millisecond
+  case on purpose.
+
 ## [0.13.0] — 2026-10-22
 
 Batch capture now scores what it is given, and drops what is not worth a todo.

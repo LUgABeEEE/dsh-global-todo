@@ -9,11 +9,12 @@ import { createStore } from '../lib/store.js'
 
 /**
  * @param {{ requireExistingFiles?: boolean }} [config]
+ * @param {{ now?: () => number }} [options] a controlled clock, for tests that assert ordering
  */
-async function harness(config = {}) {
+async function harness(config = {}, options = {}) {
   const dir = await mkdtemp(path.join(tmpdir(), 'gt-service-'))
   const store = createStore({ file: path.join(dir, 'todos.json') })
-  const service = createService({ store, config: { requireExistingFiles: false, ...config } })
+  const service = createService({ store, config: { requireExistingFiles: false, ...config }, ...(options.now === undefined ? {} : { now: options.now }) })
   return { dir, store, service, cleanup: () => rm(dir, { recursive: true, force: true }) }
 }
 
@@ -91,7 +92,11 @@ test('the search box understands tag:, is:, has: and level: tokens', async () =>
 })
 
 test('sorting by created, updated, due and priority behaves predictably', async () => {
-  const env = await harness()
+  // A stepping clock: three creates can land in the same millisecond on CI, and then the
+  // timestamps alone cannot express the order this test is about. Same-millisecond ties are
+  // covered by its own test below.
+  let clock = 1_700_000_000_000
+  const env = await harness({}, { now: () => (clock += 1000) })
   try {
     const first = await env.service.create({ title: 'first' })
     const second = await env.service.create({ title: 'second', dueAt: '2030-01-01' })
@@ -419,6 +424,25 @@ test('awaitingReview names the finished todos a person still has to confirm', as
 
     await env.service.review(claimed.id, 'confirm', { by: 'human' })
     assert.deepEqual(await env.service.awaitingReview(), [], 'confirming removes it from the queue')
+  } finally {
+    await env.cleanup()
+  }
+})
+
+test('todos created in the same millisecond still sort newest first', async () => {
+  // The flake CI found: the comparator returned 0 for equal timestamps, so the order was
+  // whatever the sort happened to do. `seq` breaks the tie deterministically.
+  const frozen = 1_700_000_000_000
+  const env = await harness({}, { now: () => frozen })
+  try {
+    const first = await env.service.create({ title: 'first' })
+    const second = await env.service.create({ title: 'second' })
+    const third = await env.service.create({ title: 'third' })
+    assert.equal(first.createdAt, third.createdAt, 'the test only means something when they really tie')
+    for (const sort of ['created', 'updated']) {
+      const ordered = await env.service.list({ status: 'all', sort })
+      assert.deepEqual(ordered.todos.map((todo) => todo.id), [third.id, second.id, first.id], sort)
+    }
   } finally {
     await env.cleanup()
   }
