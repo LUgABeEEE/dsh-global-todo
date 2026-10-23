@@ -134,7 +134,8 @@ re-litigated every time someone tries to "clean it up".
 **External ingest with an inbox** — `POST /ingest` takes source-tagged, confidence-scored items
 behind a Bearer token; low-confidence records wait in an `inbox` tag view with 确认 / 丢弃 and a
 seven-day sweep, so an external source cannot silently fill the list.
-**An agent's "done" is a claim** — finishing as an agent sets `review = { pending }`; a person
+**An agent's "done" is a claim** — finishing as an agent sets `review = { pending }`, whether the
+model reported it or the dispatch watcher closed a clean turn; a person
 confirms or sends it back through `POST /review` (`reviewTodo()` in `lib/model.js`, `review()` in
 `lib/service.js`). Confirming keeps the record finished; rejecting reopens it and drops the
 completion record, because "not actually done" is the only honest reading. The panel shows a

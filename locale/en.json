@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Global Todos",
-    "description": "Cross-session todos for DeepSeek Harness. One JSON file you own; a person and an agent write the same records. Every item keeps when it was added, a description, attached documents and links, an optional plan of steps, and the sentence it came from. Hand it to a conversation in one click - the steps travel as a numbered plan - then read back what that conversation last said. An agent's \"done\" stays a claim until you confirm it."
+    "description": "Cross-session todos for DeepSeek Harness whose central rule is that an agent's \"done\" is not completion. Whether the agent reports it from a tool or the host infers it when a dispatched conversation ends cleanly, the record waits in Needs review: a person confirms it, or it goes back to the list. One JSON file you own, written by both sides, with created time, description, attached documents and links, a plan of steps and the sentence it came from; hand an item to a conversation in one click and read back what that conversation last said."
   }
 }

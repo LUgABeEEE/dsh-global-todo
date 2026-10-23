@@ -18,7 +18,7 @@ so the file stays readable, hand-editable and diffable.
 | `priority` | `low` \| `normal` \| `high` \| `urgent` | `urgent` was added in front of the first three; `normal` stays the default |
 | `dueAt` | ISO-8601 string \| `null` | canonicalised to UTC on write |
 | `tags` | string[] | ≤ 20, each ≤ 32, de-duplicated case-insensitively |
-| `links` | `{ kind: 'url' \| 'file', value, title }[]` | documents and addresses |
+| `links` | `{ kind: 'url' \| 'file' \| 'image', value, title }[]` | documents, addresses and images |
 | `createdAt` | epoch ms | **written once, never rewritten** |
 | `updatedAt` | epoch ms | last accepted change |
 | `createdBy` | `human` \| `agent` | which side added it |
@@ -29,11 +29,31 @@ so the file stays readable, hand-editable and diffable.
 | `originSessionId` | string | the conversation that wrote it; the panel groups by this |
 | `lastDispatch` | `{ at, mode, ok, sessionId?, error? }` \| `null` | last hand-off, including its failure reason |
 | `completion` | `{ at, by, summary, sessionId, artifacts }` \| `null` | what the finishing turn said and produced; cleared on reopen |
+| `review` | `{ pending, at, by }` \| `null` | an agent's completion waiting for a person (*Done is a claim, from either door*) |
 | `notes` | `{ at, by, text }[]` | append-only progress notes, capped at `LIMITS.notes` |
 | `activity` | `{ at, by, kind, summary? }[]` | trimmed to `activityLimit` (default 50) |
 
 The activity kinds are `created`, `updated`, `status`, `done`, `reopened`, `linked`,
 `unlinked`, `dispatched`, `dispatch-failed`, `noted`, `completed`.
+
+## Done is a claim, from either door
+
+An agent "finishes" work in two places, and both are only claims. `global_todo_done` — or a status
+change to `done` through `applyPatch` — is the model saying so. The dispatch watcher (*Finishing by
+itself, without lying*) is the host inferring it from a clean `turn/end`. Either way `lib/model.js`
+sets `review: { pending: true, at, by }` when the writer is an agent, and the record keeps that mark
+until a person answers: `reviewTodo` clears it and records the person in the activity trail, or
+sending it back returns the todo to `open` with `doneAt` and `completion` cleared and everything
+else intact.
+
+Why one gate instead of trusting the better-evidenced path: a single wrong `done` makes the list
+worthless, and the two paths differ in how much evidence they carry, not in who is entitled to
+decide. The mirror matters as much — a person's own click never sets the mark, because marking your
+own work as unconfirmed would be noise. The badge means exactly one thing: *an agent said finished,
+no person has answered yet.*
+
+It is one function, not a convention. The panel's done button, `global_todo_done`, a bulk complete
+and the watcher all go through the same service path, so no writer can opt out of the gate.
 
 ## Storage
 

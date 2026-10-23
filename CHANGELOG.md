@@ -1,3 +1,33 @@
+## [0.17.0] — 2026-10-24
+
+Documentation and prompt text: the confirmation gate is the headline now, not the third bullet.
+Nothing in the write path changed — no field, no route, no validation rule — so upgrading is safe
+for existing stores.
+
+- **A release at all, because npm freezes documentation at publish time.** The README, `docs/` and
+  the plugin-page locales in the tarball are a snapshot; leading with the gate only reaches the npm
+  page and the installed docs through a version.
+
+- **Both READMEs lead with the gate.** It is claim 01 (was 03) and it names **both doors**: an
+  agent's `global_todo_done` (or a status change to `done`), and the host closing a dispatched todo
+  after a clean turn. A new early section — 「完成确认：没有一条记录能自己变成「完成」」 / *Confirmation:
+  no record finishes itself* — carries the two-door table, the two answers and the clean-turn rule;
+  the old 0.7 subsection and its row are gone rather than duplicated, and the comparison table gained
+  a *Finishing* row.
+- **The landing page, the npm description and the plugin-page locales open with the same sentence**:
+  page title, `meta`/`og`/`twitter` descriptions, hero lede, claim 01 (was 03), and the compare
+  table. `package.json` gained `human-in-the-loop`, `confirmation` and `approval`, which is how
+  someone looking for this actually searches.
+- **`docs/DESIGN.md` documents `review` for the first time.** It lived in `lib/model.js` and in no
+  design doc: there is now a *Done is a claim, from either door* section, a `review` field row, and
+  the `links` row finally admits `kind: 'image'` (0.15 shipped it).
+- **The model-facing half says it too.** The `global_todo_done` and `global_todo_update`
+  descriptions call a completion a claim; the done result prints 「这条挂在「待确认」…」; `todoLine()`
+  marks pending records in every rendering, so the model cannot read one as settled; and the injected
+  guidance tells the model to reply 「已标记完成，等你确认」 instead of 「已经结束了」. The stale
+  「插件也会在你安静下来后自动划掉」 line is gone — that idle-window heuristic was removed in 0.3.0
+  and the sentence outlived it by thirteen minor versions, telling the model the opposite of the rule.
+
 ## [0.16.3] — 2026-10-23
 
 Documentation release: the npm page finally shows the current install instructions.

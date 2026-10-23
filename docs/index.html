@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>全局待办 · dsh-global-todo — DeepSeek Harness 的跨会话清单</title>
-<meta name="description" content="dsh-global-todo：DeepSeek Harness 的跨会话待办清单。一个属于你的 JSON 文件，你和 Agent 读写同一条记录；待办可带步骤，一键交给对话继续干，Agent 标的「完成」要你确认才算数。">
+<title>全局待办 · dsh-global-todo — 完成要人点头的跨会话清单</title>
+<meta name="description" content="dsh-global-todo：DeepSeek Harness 的跨会话待办清单，中心规则是 Agent 说「做完了」不算完成——工具里报的、会话干净收尾后自动收尾的，都只进「待确认」，人点头才算。一个属于你的 JSON 文件，你和 Agent 读写同一条记录；待办可带步骤，一键交给对话继续干。">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0c0f13" media="(prefers-color-scheme: dark)">
@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta property="og:type" content="website">
 <meta property="og:title" content="全局待办 · dsh-global-todo">
-<meta property="og:description" content="跨会话一份清单：你和 Agent 读写同一份；可带步骤一键交给对话，Agent 说的「完成」要你点头才算数。">
+<meta property="og:description" content="Agent 说「完成」不算完成：工具里报的、会话收尾后自动收尾的，都要你点头。跨会话一份清单，你和 Agent 读写同一份；可带步骤一键交给对话。">
 <meta property="og:url" content="https://lugabeeee.github.io/dsh-global-todo/">
 <meta property="og:image" content="https://lugabeeee.github.io/dsh-global-todo/og.png">
 <meta property="og:image:width" content="1200">
@@ -21,7 +21,7 @@
 <meta property="og:image:alt" content="全局待办：墨黑底、白色清单与出口箭头，旁边是安装命令">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="全局待办 · dsh-global-todo">
-<meta name="twitter:description" content="跨会话一份清单：你和 Agent 读写同一份；可带步骤一键交给对话，Agent 说的「完成」要你点头才算数。">
+<meta name="twitter:description" content="Agent 说「完成」不算完成：工具里报的、会话收尾后自动收尾的，都要你点头。跨会话一份清单，你和 Agent 读写同一份；可带步骤一键交给对话。">
 <meta name="twitter:image" content="https://lugabeeee.github.io/dsh-global-todo/og.png">
 </head>
 <body>
@@ -60,8 +60,8 @@
         </p>
         <h1 id="hero-title"><span class="zh">全局待办</span><span class="en" lang="en">Global todos</span></h1>
         <p class="lede">
-          <span class="zh">一份跨会话的待办清单：一个属于你的文件，你和 Agent 读写同一份。待办可以带步骤，交出去时按编号一起交；Agent 说的「做完了」要你点头才算数。</span>
-          <span class="en" lang="en">A cross-session todo list for DeepSeek Harness: one file you own, written by you and your agent. Items carry steps that ship as a numbered plan when you hand them over — and the agent&rsquo;s &ldquo;done&rdquo; only counts once you confirm it.</span>
+          <span class="zh">一份跨会话的待办清单：一个属于你的文件，你和 Agent 读写同一份。它最要紧的一条规则是 <strong>Agent 说的「做完了」不算完成</strong>——不管是工具里报的，还是交给的会话干净收尾后自动收尾的，都只进「待确认」，你点头才算。待办还能带步骤，交出去时按编号一起交。</span>
+          <span class="en" lang="en">A cross-session todo list for DeepSeek Harness: one file you own, written by you and your agent. Its one hard rule is that <strong>an agent&rsquo;s &ldquo;done&rdquo; is not completion</strong> — whether it reports that from a tool or the host infers it when a dispatched conversation ends cleanly, the record waits in Needs review until you confirm it. Items also carry steps, which ship as a numbered plan.</span>
         </p>
 
         <div class="install">
@@ -140,6 +140,29 @@
         <article class="claim">
           <p class="claim-no">01</p>
           <h3>
+            <span class="zh">Agent 说「做完了」只是声明，两个入口一样</span>
+            <span class="en" lang="en">An agent's “done” is a claim — from either door</span>
+          </h3>
+          <p>
+            <span class="zh">它自己在工具里报完成，是一种声明；交给的会话干净收尾、宿主替它收尾，是另一种。两条路都只把记录送进 <code>review = pending</code>：人点「确认完成」才算完成，点「退回清单」就回到清单里，完成记录一并清掉。</span>
+            <span class="en" lang="en">Reporting done from a tool is a claim; so is the host closing the todo when a dispatched conversation ends cleanly. Both land in <code>review = pending</code>: a person confirms, or sends it back — completion record and all.</span>
+          </p>
+          <div class="ev">
+            <p class="chips">
+              <span class="chip chip--accent"><span class="zh">待确认</span><span class="en" lang="en">Needs review</span></span>
+              <span class="chip"><span class="zh">确认完成</span><span class="en" lang="en">Confirm</span></span>
+              <span class="chip"><span class="zh">退回清单</span><span class="en" lang="en">Send back</span></span>
+            </p>
+            <p class="ev-note">
+              <span class="zh">只有干净收尾的回合才是候选：<code>error</code>、<code>aborted</code>、<code>interrupted</code>、<code>max-tokens</code> 一律留着未完成——标错一次，整份清单就不值得信了。</span>
+              <span class="en" lang="en">Only clean turns are candidates: <code>error</code>, <code>aborted</code>, <code>interrupted</code> and <code>max-tokens</code> leave the todo open. One wrong “done” would make the whole list untrustworthy.</span>
+            </p>
+          </div>
+        </article>
+
+        <article class="claim">
+          <p class="claim-no">02</p>
+          <h3>
             <span class="zh">一个 JSON 文件就是全部</span>
             <span class="en" lang="en">One JSON file is the whole list</span>
           </h3>
@@ -165,7 +188,7 @@
         </article>
 
         <article class="claim">
-          <p class="claim-no">02</p>
+          <p class="claim-no">03</p>
           <h3>
             <span class="zh">交接是一个按钮</span>
             <span class="en" lang="en">Hand-off is a button</span>
@@ -186,28 +209,6 @@
           </div>
         </article>
 
-        <article class="claim">
-          <p class="claim-no">03</p>
-          <h3>
-            <span class="zh">Agent 说「做完了」是声明，不是事实</span>
-            <span class="en" lang="en">An agent's “done” is a claim until a person confirms</span>
-          </h3>
-          <p>
-            <span class="zh">以 agent 身份完成会落到 <code>review = pending</code>，行上显示「待确认」。人点确认，它才算完成；人点退回，它回到清单，那条完成记录一并清掉。</span>
-            <span class="en" lang="en">Finishing as an agent sets <code>review = pending</code> and the row shows 待确认. Confirm it and it stays finished; send it back and it returns to the list with its completion record cleared.</span>
-          </p>
-          <div class="ev">
-            <p class="chips">
-              <span class="chip chip--accent"><span class="zh">待确认</span><span class="en" lang="en">Needs review</span></span>
-              <span class="chip"><span class="zh">确认完成</span><span class="en" lang="en">Confirm</span></span>
-              <span class="chip"><span class="zh">退回清单</span><span class="en" lang="en">Send back</span></span>
-            </p>
-            <p class="ev-note">
-              <span class="zh">只有干净收尾的回合才自动完成：<code>error</code>、<code>aborted</code>、<code>interrupted</code>、<code>max-tokens</code> 一律留着未完成——标错一次，整份清单就不值得信了。</span>
-              <span class="en" lang="en">Only clean turns auto-complete: <code>error</code>, <code>aborted</code>, <code>interrupted</code> and <code>max-tokens</code> leave the todo open. One wrong “done” would make the whole list untrustworthy.</span>
-            </p>
-          </div>
-        </article>
       </div>
     </div>
   </section>
@@ -440,6 +441,12 @@
               <td><span class="zh">无</span><span class="en" lang="en">None</span></td>
               <td class="col-this"><span class="zh">一个按钮、四种模式，步骤变编号计划</span><span class="en" lang="en">One button, four modes, steps become a plan</span></td>
               <td><span class="zh">常见绑定会话、自动续跑</span><span class="en" lang="en">Often bound sessions, auto-resume</span></td>
+            </tr>
+            <tr>
+              <th scope="row"><span class="zh">标成完成</span><span class="en" lang="en">Finishing</span></th>
+              <td><span class="zh">Agent 改了就算</span><span class="en" lang="en">Whatever the agent writes</span></td>
+              <td class="col-this"><span class="zh"><strong>进「待确认」，人点头才算</strong>——工具里报的和自动收尾的一样</span><span class="en" lang="en"><strong>Waits in Needs review for a person</strong> — the tool call and the automatic close alike</span></td>
+              <td><span class="zh">拖到「完成」列就算</span><span class="en" lang="en">Drag to the done column</span></td>
             </tr>
             <tr>
               <th scope="row"><span class="zh">视图</span><span class="en" lang="en">Views</span></th>

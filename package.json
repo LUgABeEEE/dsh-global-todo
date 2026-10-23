@@ -1,8 +1,8 @@
 {
   "name": "dsh-global-todo",
-  "version": "0.16.3",
+  "version": "0.17.0",
   "icon": "./docs/icon.svg",
-  "description": "Cross-session todo list for DeepSeek Harness: one JSON file a person and an agent both write to, with step plans that ship as a numbered hand-off, session read-back, and a human confirmation before an agent's \"done\" counts.",
+  "description": "Cross-session todo list for DeepSeek Harness where an agent's \"done\" never settles itself: whether it is reported by the tool or inferred from a clean turn, the record waits in Needs review until a person confirms it. One JSON file both write, numbered step hand-offs, session read-back.",
   "type": "module",
   "license": "MIT",
   "author": "LUgABeEEE",
@@ -27,6 +27,9 @@
     "task-management",
     "handoff",
     "agent",
+    "human-in-the-loop",
+    "confirmation",
+    "approval",
     "productivity",
     "待办",
     "全局待办"

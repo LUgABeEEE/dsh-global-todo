@@ -5,14 +5,17 @@
 **A cross-session todo list for DeepSeek Harness: one file you own, written by you and your
 agent, and handed to a conversation in one click.**
 
-Three things it does that a session-local plan cannot:
+Three things it does that a session-local plan cannot — the first is the one it is known for:
 
-1. **One JSON file is the whole list.** `cat`, diff, commit it, put it on a NAS, carry it to
+1. **An agent saying "done" is a claim, whichever door it comes through.** Its own report — the
+   tool call, a status change — and the host closing the todo after a clean turn are both just
+   claims: the record waits in **待确认 / Needs review** until a person confirms it, or sends it
+   back with its completion cleared. A session-local plan never asks that question: the agent
+   rewrites the table and the work is "finished".
+2. **One JSON file is the whole list.** `cat`, diff, commit it, put it on a NAS, carry it to
    another machine. Nothing lives inside a session log.
-2. **Hand-off is a button, not a paragraph.** Four modes, the working directory checked, and
+3. **Hand-off is a button, not a paragraph.** Four modes, the working directory checked, and
    the todo's own **steps** arrive as a numbered plan.
-3. **An agent saying "done" is a claim.** It lands in **待确认 / Needs review** until a person
-   confirms it — or sends it back to the list.
 
 ![The panel in use: list, detail, steps, review, inbox, reminders, selection](docs/screenshots/tour.gif)
 
@@ -39,14 +42,44 @@ one record:
 | When it was added | not tracked | **`createdAt`, immutable, shown everywhere** |
 | Context | title + state | description + **documents and addresses** |
 | Hand-off | — | **one click: reuse the bound conversation or open a session** |
+| Finishing | whatever the agent writes | **waits in Needs review for a person** |
 | Storage | session event log | one JSON file you can `cat`, edit, diff and back up |
+
+## Confirmation: no record finishes itself
+
+This is the rule the plugin is known for, and the one that separates it from every list that lets
+the agent report its own progress: **an agent's "done" is a sentence it said.** The record is
+written as `done` and carries `review: { pending: true }`; the row shows a **Needs review** badge
+and the header a chip with the count, until a person answers.
+
+Both doors are gated, because both are only a claim:
+
+| Where "done" came from | The record | Who answers |
+|---|---|---|
+| the agent's `global_todo_done`, or a status change to `done` | `done` **+ pending review** | a person |
+| the dispatched conversation ended cleanly, so the host closed it (`turn/end` = `completed`) | `done` **+ pending review** | a person |
+| you clicked done in the panel | `done` | already a person |
+
+- **Two answers.** *Confirm done* drops the mark and records who confirmed it; *Send back* returns
+  the todo to `open`, clears `doneAt` and the completion record, and adds a `reopened` entry.
+  Nothing is deleted: title, description, steps, attachments and notes all stay.
+- **The automatic close goes through the same gate.** What the host writes on the agent's behalf is
+  thinner than what the agent could have written — only the closing message and the files that turn
+  changed — so it has even less business counting by itself.
+- **Only clean turns are candidates.** `error`, `aborted`, `interrupted` and `max-tokens` leave the
+  todo open. A failed job wearing a "done" label is the one failure mode that would make the whole
+  list untrustworthy.
+
+There is exactly one implementation of the rule: `completeTodo`, `applyPatch` and a status change in
+`lib/model.js` share the same `by === 'agent'` test, and the panel and the ten tools all go through
+it.
 
 ## What 0.9 and 0.10 added (and the two just before)
 
-Six surfaces these READMEs had never explained. Session read-back and evidence came in 0.9;
-Markdown and the weekly report in 0.10; steps in 0.8 and the review mark in 0.7, which until now
-only existed in the changelog. Each changes what a record can carry, or what you can do with it
-after the fact.
+Five surfaces these READMEs had never explained. Session read-back and evidence came in 0.9;
+Markdown and the weekly report in 0.10; steps in 0.8. Each changes what a record can carry, or what
+you can do with it after the fact. (The review mark came in 0.7 and now opens this document, instead
+of hiding among the new features.)
 
 ### Steps: a plan inside the todo
 
@@ -77,20 +110,6 @@ last sentence, and a button that opens that conversation.
 The tail is bounded and in memory: 200 conversations, 400 characters each, filled from every
 `assistant/message`. Nothing is written to disk, so a Host restart forgets it. A missing tail is
 normal — this process has not seen that conversation speak.
-
-### Review: "done" is a claim
-
-When an agent finishes (`global_todo_done`, or the watcher on a clean turn), the record becomes
-done **and** carries `review: { pending: true }`. The row gets a **Needs review** badge and the
-header a **Review** chip with the count.
-
-| Answer | Effect |
-|---|---|
-| **Confirm done** | stays done, the mark is dropped, the activity trail records who confirmed |
-| **Send back** | back to `open`; `doneAt` and the completion record are cleared; a `reopened` activity entry is added |
-
-Both answers are recorded as the person's action. Sending back deletes nothing: title,
-description, steps, attachments and progress notes stay.
 
 ### Markdown in and out
 
