@@ -69,6 +69,12 @@ equality cannot hold between a bump and its publish — and `prepack` runs that 
 equality test makes every release after a bump unpublishable. Freshness is `market:fresh`'s job,
 and it needs the network.
 
+**Never push a computed ref unguarded.** `git push "$NEW:refs/heads/main"` with an empty `$NEW`
+is not a no-op: an empty source means *delete that ref*. It happened on 2026-10-23 when
+`git commit-tree` had failed on an unset identity — GitHub refused to delete the default branch,
+which is luck, not a guard. Every script computes the sha into a variable and then
+`test -n "$NEW" && git push …`, the way the transplant pushes below already did.
+
 ### The restart rule (hard)
 
 `dsh-web` is a single process: a SIGTERM drops every in-flight turn, every subagent, every MCP
