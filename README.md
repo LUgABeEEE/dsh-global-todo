@@ -172,19 +172,36 @@ What each file shows, and when it is regenerated, is indexed in
 
 ## Install
 
-```sh
-# from npm
-dsh plugin --profile web add dsh-global-todo
+**Check your profile name first.** The plugin is installed into one profile, not into the
+machine; a wrong profile name still exits 0, and then nothing shows up in the sidebar after a
+restart — the most common first-run trap.
 
-# or from a checkout, which is also the development path
-dsh plugin --profile web add /absolute/path/to/dsh-global-todo
+```sh
+ls ~/.dsh/profiles          # Windows: dir %USERPROFILE%\.dsh\profiles
 ```
 
-The plugin is a Loader row, not a hot-loaded script: **restart the host** (`dsh web`)
-after installing, then refresh the page. A "待办 / Todos" entry appears in the sidebar.
+Replace `<profile>` below with one of the names that command prints (`web` on most hosts;
+use your desktop or `headless` profile name if that is what you run):
+
+```sh
+# from npm
+dsh plugin --profile <profile> add dsh-global-todo
+
+# or from a checkout, which is also the development path
+dsh plugin --profile <profile> add /absolute/path/to/dsh-global-todo
+```
+
+The plugin is a Loader row, not a hot-loaded script: **restart the host** (`dsh web`, or
+whatever start command you use) after installing, then refresh the page. A "待办 / Todos"
+entry appears in the sidebar.
+
+> Sidebar still empty? Check three things in order: ① which profiles `ls` actually printed and
+> whether the one you installed into is the one running; ② whether the host really restarted
+> (the Loader is read once at boot); ③ whether the page was refreshed (the client module graph
+> belongs to the release the page booted with).
 
 The npm package is the source of truth. A community catalog can lag behind it or point at an
-older release; pin the version you want (`dsh plugin --profile web add dsh-global-todo@0.13.1`)
+older release; pin the version you want (`dsh plugin --profile <profile> add dsh-global-todo@0.13.1`)
 when it matters.
 
 ### Installing from DSH's Discover tab
@@ -215,7 +232,7 @@ the desktop app print `Plugin metadata … ENOENT … \locale` while the plugin 
 To roll back:
 
 ```sh
-dsh plugin --profile web remove dsh-global-todo
+dsh plugin --profile <profile> remove dsh-global-todo
 ```
 
 Your list is not touched by install or uninstall: it lives outside the plugin, at

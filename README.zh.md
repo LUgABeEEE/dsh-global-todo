@@ -151,16 +151,30 @@ HTML（不依赖宿主、零依赖），再以 1280×720 拍进 `docs/screenshot
 
 ## 安装
 
-```sh
-# 从 npm 装
-dsh plugin --profile web add dsh-global-todo
+**先确认 profile 名字。** 插件是装进某个 profile 的，不是装进整台机器；profile 名写错，
+命令会成功，但重启后侧栏里什么都没有——这是最常见的一次踩坑。
 
-# 或从本地检出装（也是开发路径）
-dsh plugin --profile web add /绝对路径/dsh-global-todo
+```sh
+ls ~/.dsh/profiles          # Windows: dir %USERPROFILE%\.dsh\profiles
 ```
 
-插件是宿主组合里的**一行 Loader**，不是热加载脚本：**装完要重启宿主**（`dsh web`），
-再刷新页面。侧栏会出现「待办」入口。
+把下面命令里的 `<profile>` 换成上一步列出来的那个（本机常见是 `web`；用桌面端就填桌面端的
+profile 名，用 headless 就填 `headless`）：
+
+```sh
+# 从 npm 装
+dsh plugin --profile <profile> add dsh-global-todo
+
+# 或从本地检出装（也是开发路径）
+dsh plugin --profile <profile> add /绝对路径/dsh-global-todo
+```
+
+插件是宿主组合里的**一行 Loader**，不是热加载脚本：**装完要重启宿主**（`dsh web`，
+或你用的那个启动命令），再刷新页面。侧栏会出现「待办」入口。
+
+> 侧栏还是空的？按顺序查三件事：① 上面的 `ls` 里到底有哪几个 profile，你装的是不是正在跑的那个；
+> ② 宿主有没有真的重启（Loader 只在启动时读一次）；③ 页面有没有刷新（客户端模块图属于
+> 启动时那个 release）。
 
 ### 从 DSH 的 Discover 标签安装
 
@@ -187,12 +201,12 @@ npx dsh-global-todo-doctor "$HOME/.dsh/plugins-local/全局待办插件"
 `Plugin metadata … ENOENT … \locale`。
 
 npm 上的包才是事实来源。社区目录可能落后于 npm、或指向某个旧 release；需要确定版本时
-直接钉版本（`dsh plugin --profile web add dsh-global-todo@0.13.1`）。
+直接钉版本（`dsh plugin --profile <profile> add dsh-global-todo@0.13.1`）。
 
 回滚：
 
 ```sh
-dsh plugin --profile web remove dsh-global-todo
+dsh plugin --profile <profile> remove dsh-global-todo
 ```
 
 装卸都不会碰你的清单——它在插件之外：`$DSH_HOME/global-todo/todos.json`。

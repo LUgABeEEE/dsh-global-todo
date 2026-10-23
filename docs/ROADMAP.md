@@ -246,10 +246,15 @@ mislead.
 | Drag to reorder | Manual order is meaningful to some people; it also needs a stable `position` field and a decision about how it interacts with due-date grouping. |
 | Multi-list / projects | A `list` field with one default list; deferred because "global single list" is the current identity. |
 
-## Explicitly not planned
+## Not there yet
 
-- **Auto-running todos.** A schedule that starts work without a person is a job queue,
-  and this is a personal list.
-- **Copying attachment bytes.** See `DESIGN.md`: references beat stale copies.
-- **A second source of truth.** Anything that mirrors this list elsewhere (a database, a
-  remote service) has to justify why the file is not enough.
+Things the list does not have today. Some may arrive later; none of them is a promise.
+
+- **Calendar and board views.** The panel is a list with three groupings today. There is no
+  calendar view and no drag-and-drop board.
+- **Auto-running todos.** Nothing starts work on a schedule today; the list records what a
+  person intends to do.
+- **Copying attachment bytes.** Attachments are references (absolute path or URL) today; see
+  `DESIGN.md` for why references beat stale copies.
+- **A second source of truth.** Everything reads and writes the one JSON file today; anything
+  that mirrors it elsewhere (a database, a remote service) would have to justify itself.

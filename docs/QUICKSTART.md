@@ -15,13 +15,25 @@ headless / ACP / SDK 组合里没有面板，只剩 Agent 工具。
 
 ## 1. 安装
 
+先看你实际有哪些 profile（插件是装进某一个 profile，不是装进整台机器）：
+
 ```sh
-dsh plugin --profile web add dsh-global-todo
+ls ~/.dsh/profiles          # Windows: dir %USERPROFILE%\.dsh\profiles
 ```
 
-装完**重启宿主**（`dsh web`），再**刷新页面**。插件是 Loader 里的一行，不是热加载脚本。
+把打印出来的名字填进去（大多数是 `web`）：
+
+```sh
+dsh plugin --profile <profile> add dsh-global-todo
+```
+
+装完**重启宿主**（`dsh web`，或你用的那个启动命令），再**刷新页面**。插件是 Loader 里的一行，
+不是热加载脚本。
 
 验证：侧栏出现「待办」入口。
+
+侧栏还是空的？按顺序查三件事：① 你装的是不是正在跑的那个 profile；② 宿主有没有真的重启；
+③ 页面有没有刷新。三件都对还是没有，跑 `npx dsh-global-todo-doctor <插件目录>` 自检。
 
 ## 2. 打开面板
 
