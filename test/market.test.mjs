@@ -1,8 +1,15 @@
 /**
- * The market index is generated (`tools/market.mjs`) and committed, so it can silently drift
- * from the release it describes. This is the guard: the newest version in the index must be the
- * version in package.json. Forgetting to regenerate after a release is the one mistake that
- * makes the index actively harmful — a reader would be offered an older build than npm has.
+ * The market index is generated (`tools/market.mjs`) from the **registry** and committed, so it
+ * can silently drift from the release it describes.
+ *
+ * The offline rule is one-directional on purpose: the index may not offer a version newer than
+ * this tree, but it may lag by exactly the release in flight. A version bump happens before
+ * `npm publish`, so a strict equality test would fail between the bump and the publish — and
+ * because `prepack` runs the suite, that failure would block publishing entirely (it did: the
+ * first release after this file landed could not be tagged).
+ *
+ * "Is the index stale?" is a question about the registry, so it is answered by
+ * `npm run market:fresh`, which fetches and compares. That one belongs after the publish.
  *
  * The format itself is checked by the real validator in `tools/market.mjs` (borrowed from a DSH
  * profile); what is checked here must also hold on a machine with no profile installed.
@@ -37,9 +44,12 @@ test('the market index declares format 1 and this plugin', () => {
   assert.equal(index.plugins[0].name, pkg.name)
 })
 
-test('the market index offers the version package.json declares', () => {
+test('the market index never offers a version newer than this tree', () => {
   const newest = index.plugins[0].versions[0]
-  assert.equal(newest.version, pkg.version, 'run npm run market after bumping the version')
+  assert.ok(
+    compare(newest.version, pkg.version) >= 0,
+    `the index offers ${newest.version}, but this tree is ${pkg.version}: it cannot describe a build that does not exist yet`,
+  )
 })
 
 test('every offered version is a published npm version, newest first', () => {
@@ -58,4 +68,13 @@ test('the icon stays on the site the index is served from', () => {
   assert.ok(icon.startsWith('../'), 'a relative reference keeps the icon valid on any host')
   const resolved = new URL(icon, 'https://lugabeeee.github.io/dsh-global-todo/market/index.json')
   assert.equal(resolved.href, 'https://lugabeeee.github.io/dsh-global-todo/icon.svg')
+})
+
+test('the offline rule is one-directional, so a release can be published', () => {
+  // Guard against the strict-equality rule creeping back: equality cannot hold between the
+  // version bump and its publish, and `prepack` runs this suite — a strict test makes the
+  // release unpublishable. Freshness is `npm run market:fresh` (network).
+  const newest = index.plugins[0].versions[0]
+  assert.ok(compare(newest.version, pkg.version) >= 0)
+  assert.equal(typeof pkg.scripts['market:fresh'], 'string', 'the registry check has to exist somewhere')
 })

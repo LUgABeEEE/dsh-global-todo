@@ -1,3 +1,17 @@
+## [0.16.3] — 2026-10-23
+
+Documentation release: the npm page finally shows the current install instructions.
+
+- **npm's README is frozen at publish time**, so the install/per-profile rewrite and the
+  「哪些功能还没有 / Not there yet」 sections (README.zh.md, FAQ, ROADMAP) reach GitHub but not the
+  npm page until a new version ships. Nothing in `lib/` changes.
+- **The market index no longer blocks publishing.** Its test required the index's newest version
+  to equal `package.json`'s — which cannot hold between a version bump and its publish, and
+  `prepack` runs the suite, so the first release after the market index landed could not be
+  tagged. The offline rule is now one-directional (the index may not offer a version newer than
+  the tree), and staleness moved to `npm run market:fresh`, which asks the registry. AGENTS.md
+  documents the two-step order: publish, then regenerate the index and commit it.
+
 ## [0.16.2] — 2026-10-22
 
 A date-only deadline is local midnight, so a date bound stops swallowing part of its own day.

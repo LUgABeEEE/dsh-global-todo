@@ -38,6 +38,7 @@ const REGISTRY = 'https://registry.npmjs.org'
 
 const args = process.argv.slice(2)
 const checkOnly = args.includes('--check')
+const freshOnly = args.includes('--fresh')
 
 /** Borrow the validator from a DSH profile, the way tools/screenshot.mjs borrows playwright. */
 function loadValidator() {
@@ -168,6 +169,21 @@ if (checkOnly) {
   const committed = JSON.parse(readFileSync(OUT, 'utf8'))
   if (validator !== null) validator.parseMarketIndex(committed, INDEX_URL)
   console.log(`market: ${path.relative(root, OUT)} is valid, ${String(committed.plugins[0].versions.length)} version(s)`)
+} else if (freshOnly) {
+  // Staleness is a question about the registry, not about this tree, so it is asked here and
+  // nowhere in the offline suite: after `npm publish`, the committed file must describe what
+  // npm actually offers. Run this once the release is on the registry.
+  if (!existsSync(OUT)) throw new Error(`${path.relative(root, OUT)} does not exist; run npm run market`)
+  const committed = JSON.parse(readFileSync(OUT, 'utf8'))
+  const rebuilt = build(await fetchPackument(PACKAGE.name))
+  if (JSON.stringify(committed) !== JSON.stringify(rebuilt)) {
+    const was = committed.plugins[0].versions[0].version
+    const now = rebuilt.plugins[0].versions[0].version
+    throw new Error(
+      `market: ${path.relative(root, OUT)} is stale — it offers ${String(was)}, the registry has ${String(now)}; run npm run market`,
+    )
+  }
+  console.log(`market: ${path.relative(root, OUT)} is current with the registry (${String(rebuilt.plugins[0].versions[0].version)})`)
 } else {
   const packument = await fetchPackument(PACKAGE.name)
   const index = build(packument)

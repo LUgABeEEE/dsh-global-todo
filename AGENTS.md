@@ -52,15 +52,22 @@ npm run verify   # static checks then the full test suite; run before every comm
 
 ## Releasing
 
-Publishing is automated: bump both versions, `npm run market`, `npm run verify`, commit, tag
-`vX.Y.Z`, push, and let the `publish` workflow publish over OIDC. Then create the GitHub release
-from the registry tarball. **The release ends there.** A restart is never part of publishing.
+Publishing is automated: bump both versions, `npm run verify`, commit, tag `vX.Y.Z`, push, and
+let the `publish` workflow publish over OIDC. Then create the GitHub release from the registry
+tarball. **The release ends there.** A restart is never part of publishing.
 
-`npm run market` regenerates `docs/market/index.json`, the plugin market index the landing page
-tells readers to add in DSH's Discover tab. It must be regenerated **after** the new version is on
-npm, because it is built from the registry rather than from the working tree — and `npm test`
-fails while its newest version is not the version in `package.json`, so the order is enforced
-rather than remembered.
+`docs/market/index.json` is the plugin market index the landing page tells readers to add in DSH's
+Discover tab. It is built from the **registry**, so the order is fixed and it is one commit behind
+the tag:
+
+1. bump both versions, `npm run verify`, commit, tag, push → the publish workflow releases it;
+2. **after** the version is on npm: `npm run market` (regenerate), `npm run market:fresh`
+   (compare against the registry), commit `chore(market): index X.Y.Z`, push.
+
+The offline suite only asserts that the index never offers a version newer than this tree, because
+equality cannot hold between a bump and its publish — and `prepack` runs that suite, so a strict
+equality test makes every release after a bump unpublishable. Freshness is `market:fresh`'s job,
+and it needs the network.
 
 ### The restart rule (hard)
 
