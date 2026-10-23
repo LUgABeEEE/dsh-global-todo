@@ -1,3 +1,14 @@
+## [Unreleased]
+
+- **`README.md` is one bilingual file, Chinese half first.** npm renders exactly one README and
+  GitHub shows exactly one by default, so a sibling `README.zh.md` was invisible on both: the
+  published 0.17.0 page offered an English document with no Chinese half in sight. The Chinese
+  document now opens `README.md` (own H1, own front matter), the English one follows after a rule,
+  and each half switches to the other through an **absolute** GitHub anchor — npm rewrites or drops
+  relative links, and a CJK heading slug is not stable across renderers. `README.zh.md` stays as a
+  landing page so old links keep landing, and still quotes the Node and DSH floors because
+  `test/manifest.test.mjs` reads them out of it. AGENTS.md records the convention.
+
 ## [0.17.0] — 2026-10-24
 
 Documentation and prompt text: the confirmation gate is the headline now, not the third bullet.
