@@ -60,7 +60,7 @@ test('the client half is declared for the web platform', () => {
 })
 
 test('every published file is listed and present', async () => {
-  for (const required of ['lib', 'locale', 'cordis.patch.yml', 'LICENSE', 'README.md', 'README.zh.md', 'CHANGELOG.md']) {
+  for (const required of ['lib', 'locale', 'cordis.patch.yml', 'LICENSE', 'README.md', 'README.en.md', 'README.zh.md', 'CHANGELOG.md']) {
     assert.ok(manifest.files.includes(required), `${required} must be published`)
   }
   // The desktop Host resolves `<pkg>/locale/en.json` through `exports` and then scans that
@@ -96,7 +96,7 @@ test('the floors npm enforces are the ones the docs promise', async () => {
   assert.ok(Number.isInteger(major) && major >= 22, `engines.node is ${floor}; the Web profile needs 22.19 or newer, and 18/20 are EOL`)
   assert.match(version, /^22\.19\./, 'the floor is the profile requirement, not a rounder number')
 
-  for (const doc of ['README.md', 'README.zh.md']) {
+  for (const doc of ['README.md', 'README.en.md']) {
     const text = await read(doc)
     assert.ok(text.includes(version), `${doc} does not state the Node floor ${version}`)
     assert.ok(text.includes(manifest.engines.dsh), `${doc} does not quote the DSH range ${manifest.engines.dsh}`)

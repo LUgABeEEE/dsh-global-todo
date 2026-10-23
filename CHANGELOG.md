@@ -1,13 +1,13 @@
 ## [Unreleased]
 
-- **`README.md` is one bilingual file, Chinese half first.** npm renders exactly one README and
-  GitHub shows exactly one by default, so a sibling `README.zh.md` was invisible on both: the
-  published 0.17.0 page offered an English document with no Chinese half in sight. The Chinese
-  document now opens `README.md` (own H1, own front matter), the English one follows after a rule,
-  and each half switches to the other through an **absolute** GitHub anchor — npm rewrites or drops
-  relative links, and a CJK heading slug is not stable across renderers. `README.zh.md` stays as a
-  landing page so old links keep landing, and still quotes the Node and DSH floors because
-  `test/manifest.test.mjs` reads them out of it. AGENTS.md records the convention.
+- **Two READMEs, one language each.** `README.md` is the Chinese document — the name GitHub's
+  repository page shows and the only one npm renders — and `README.en.md` is the English one; each
+  opens with a one-line switch to the other. The 0.17.0 npm page had an English document with the
+  Chinese only reachable through a relative link, and relative links are exactly what npm rewrites
+  or drops, so the switch is an **absolute** GitHub URL (a CJK heading slug is not stable across
+  renderers either). `README.zh.md` becomes a two-line landing page so old links still resolve;
+  `README.en.md` joined `files`, and `test/manifest.test.mjs` now reads the Node and DSH floors out
+  of the two real documents. AGENTS.md records the convention.
 
 ## [0.17.0] — 2026-10-24
 

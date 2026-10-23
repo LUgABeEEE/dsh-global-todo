@@ -50,14 +50,15 @@ npm run verify   # static checks then the full test suite; run before every comm
   drifted before — `docs/DESIGN.md` still said "the seven agent tools" — because only one of
   those files was updated at a time.
 
-**`README.md` is one bilingual file, Chinese half first.** That is the only file npm renders, and
-the only one GitHub shows by default, so "Chinese first, English below" is what both surfaces get;
-a sibling `README.zh.md` cannot be rendered by npm at all. The two halves are separate documents
-with their own H1 and front matter, joined by a `---` and the in-page switches `#zh` / `#english`
-(explicit `<a id="…" name="…">` anchors, because heading slugs for CJK are not stable). Edit both
-halves in the same commit: a fact that is only in one of them is a fact half the readers get.
-`README.zh.md` is now a short landing page that points at the Chinese half and keeps old links
-alive; it still has to quote the Node and DSH floors, because `test/manifest.test.mjs` reads it.
+**Two READMEs, one language each, and a switch on the first line of both.** `README.md` is the
+Chinese document — the name GitHub renders on the repository page, and the only one npm renders at
+all — and `README.en.md` is the English one. Each opens with `**中文** · [English](…)` /
+`**English** · [中文](…)` pointing at the **absolute** GitHub URL of the other file: npm rewrites or
+drops relative links, and a CJK heading slug is not stable across renderers, so an absolute file URL
+is the only form that survives all three surfaces (GitHub, npm, the plugin page). `README.zh.md` is a
+two-line landing page that keeps old links resolving — not a second copy of the text, and not a file
+to update when the content changes. Edit both documents in the same commit: a fact that is only in
+one of them is a fact half the readers get.
 
 ## Releasing
 
