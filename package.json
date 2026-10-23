@@ -1,6 +1,6 @@
 {
   "name": "dsh-global-todo",
-  "version": "0.17.0",
+  "version": "0.17.1",
   "icon": "./docs/icon.svg",
   "description": "Cross-session todo list for DeepSeek Harness where an agent's \"done\" never settles itself: whether it is reported by the tool or inferred from a clean turn, the record waits in Needs review until a person confirms it. One JSON file both write, numbered step hand-offs, session read-back.",
   "type": "module",

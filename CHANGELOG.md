@@ -1,4 +1,7 @@
-## [Unreleased]
+## [0.17.1] — 2026-10-24
+
+Two READMEs instead of one: Chinese in `README.md`, English in `README.en.md`, and the switch to
+the other language on the first line of each.
 
 - **Two READMEs, one language each.** `README.md` is the Chinese document — the name GitHub's
   repository page shows and the only one npm renders — and `README.en.md` is the English one; each
