@@ -86,7 +86,8 @@
     "check:matrix": "node scripts/matrix.mjs",
     "market": "node tools/market.mjs",
     "market:check": "node tools/market.mjs --check",
-    "market:fresh": "node tools/market.mjs --fresh"
+    "market:fresh": "node tools/market.mjs --fresh",
+    "release:check": "node tools/release-check.mjs"
   },
   "dsh": {
     "manifestVersion": 1,

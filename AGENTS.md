@@ -69,6 +69,29 @@ equality cannot hold between a bump and its publish — and `prepack` runs that 
 equality test makes every release after a bump unpublishable. Freshness is `market:fresh`'s job,
 and it needs the network.
 
+### Release cadence (hard)
+
+**At most one release a day**, unless the change is a data-loss or security fix — shipping one of
+those an hour late is worse than shipping twice in a day.
+
+The reason is distribution, not tidiness. Every catalog a reader browses rebuilds **once a day**
+(the market's catalog publishes around 04:2x UTC, and `awesome-dsh-plugin.com/plugins.json`
+follows), so a version published at 13:00 is invisible until the next rebuild. Worse, the market
+**pins the version it lists** when it installs: a stale catalog installs a stale build. Seven
+releases went out between 12:22 and 20:04 on 2026-10-22, and two days later readers were still
+being offered 0.12.13.
+
+`npm run release:check` reports the picture and exits on the same convention as
+`dsh-restart-guard`, so a caller can branch on the code instead of parsing prose:
+
+| exit | meaning | what to do |
+|---|---|---|
+| 0 | nothing pending, or the window is open | release when you like |
+| 10 | released recently and ordinary work is waiting | hold it for the daily window |
+| 20 | nothing releasable since the last tag | there is no release to cut |
+
+Publish **after 04:2x UTC (Beijing 12:2x)** so the same day's catalog rebuild carries the version.
+
 **Never push a computed ref unguarded.** `git push "$NEW:refs/heads/main"` with an empty `$NEW`
 is not a no-op: an empty source means *delete that ref*. It happened on 2026-10-23 when
 `git commit-tree` had failed on an unset identity — GitHub refused to delete the default branch,
