@@ -40,15 +40,24 @@ npm run verify   # static checks then the full test suite; run before every comm
 - The client calls routes with a **document-relative** path (`api/global-todo/...`); the host
   registers them with a leading slash. `test/bundle.test.mjs` cross-checks the two lists.
 - Adding a route: register it in `lib/routes.js`, call it from `lib/client.js`, and extend
-  the route table in `README.md`, `README.zh.md` and `docs/DESIGN.md` if it changes shape.
+  the route table in `README.md` (both language halves) and `docs/DESIGN.md` if it changes shape.
 - Adding a field to a todo: `lib/model.js` (create + `applyPatch` + `normalizeStored`),
   `lib/tools.js` (`presentTodo` and the relevant JSON Schemas), `lib/client.js` (render),
   plus `docs/DESIGN.md`.
 - Adding a tool: define it in `lib/tools.js`, then update **every** place the count is written
-  down — the header comment there, the tool table in both READMEs, `docs/DESIGN.md` (the
-  service table), `docs/ROADMAP.md` and the assertion in `test/smoke.test.mjs`. This has drifted
-  before — `docs/DESIGN.md` still said "the seven agent tools" — because only one of those files
-  was updated at a time.
+  down — the header comment there, the tool table in `README.md` (both halves), `docs/DESIGN.md`
+  (the service table), `docs/ROADMAP.md` and the assertion in `test/smoke.test.mjs`. This has
+  drifted before — `docs/DESIGN.md` still said "the seven agent tools" — because only one of
+  those files was updated at a time.
+
+**`README.md` is one bilingual file, Chinese half first.** That is the only file npm renders, and
+the only one GitHub shows by default, so "Chinese first, English below" is what both surfaces get;
+a sibling `README.zh.md` cannot be rendered by npm at all. The two halves are separate documents
+with their own H1 and front matter, joined by a `---` and the in-page switches `#zh` / `#english`
+(explicit `<a id="…" name="…">` anchors, because heading slugs for CJK are not stable). Edit both
+halves in the same commit: a fact that is only in one of them is a fact half the readers get.
+`README.zh.md` is now a short landing page that points at the Chinese half and keeps old links
+alive; it still has to quote the Node and DSH floors, because `test/manifest.test.mjs` reads it.
 
 ## Releasing
 
