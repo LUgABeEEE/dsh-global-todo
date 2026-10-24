@@ -100,7 +100,16 @@ being offered 0.12.13.
 | 10 | released recently and ordinary work is waiting | hold it for the daily window |
 | 20 | nothing releasable since the last tag | there is no release to cut |
 
-Publish **after 04:2x UTC (Beijing 12:2x)** so the same day's catalog rebuild carries the version.
+Publish **before 04:2x UTC (Beijing 12:2x)** — that is when the catalog rebuild runs, so a version
+published after it waits a full day. The publish workflow enforces the interval itself
+(`release-check --registry`, reading npm's own publish times because a tag checkout is one commit
+deep). Its escape hatch is `workflow_dispatch` with `force: true`, for the two cases that are not
+ordinary releases: a data-loss/security fix, and retrying a publish that failed.
+
+`npm run usage:check` answers the other half of the question: whether a download number means
+anyone. A burst spread evenly across every version published that day, with the repository's stars
+and views flat, is a crawler walking new versions — on 2026-10-22 that shape produced 1,526
+downloads for a plugin with one real user. Do not read a download spike as an audience without it.
 
 **Never push a computed ref unguarded.** `git push "$NEW:refs/heads/main"` with an empty `$NEW`
 is not a no-op: an empty source means *delete that ref*. It happened on 2026-10-23 when

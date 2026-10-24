@@ -91,6 +91,7 @@
     "market": "node tools/market.mjs",
     "market:check": "node tools/market.mjs --check",
     "market:fresh": "node tools/market.mjs --fresh",
+    "usage:check": "node tools/usage-check.mjs",
     "release:check": "node tools/release-check.mjs"
   },
   "dsh": {

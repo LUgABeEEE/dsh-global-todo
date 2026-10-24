@@ -10,6 +10,14 @@ name: Publish
 # it comes from here, with no token anywhere.
 on:
   workflow_dispatch:
+    inputs:
+      # The cadence gate below is a distribution rule, not a correctness one, so it needs a
+      # documented way out: a data-loss or security fix ships the moment it is ready, and a
+      # retried publish must be able to run again after a failure.
+      force:
+        description: 'Publish even if the cadence check says hold (data-loss/security fix, or retrying a failed publish)'
+        type: boolean
+        default: false
   push:
     tags: ['v*']
 
@@ -48,6 +56,15 @@ jobs:
       # it fails the release long before the registry sees anything.
       - name: Verify
         run: npm run verify
+
+      # One release a day. Every catalog a reader browses rebuilds daily and the market pins
+      # the version it lists, so a second release in the same day is invisible to the people
+      # it was meant for — and it multiplies the "new versions" that automated fetchers pull.
+      # The check reads npm's own publish times, not the tag: a release that failed to publish
+      # never reached the registry, and the tag alone would understate the gap.
+      - name: Check the release cadence
+        if: inputs.force != true
+        run: node tools/release-check.mjs --registry
 
       - name: Publish with provenance
         run: npm publish --provenance --access public

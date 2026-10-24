@@ -30,7 +30,7 @@ import { fileURLToPath } from 'node:url'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
-/** The catalog every DSH market reads rebuilds around 04:2x UTC; publish after it lands. */
+/** The catalog every DSH market reads rebuilds around 04:2x UTC — publish *before* it. */
 const CATALOG_HOUR_UTC = 4
 /** A day minus the catalog's rebuild slack, so one release per day can still catch a rebuild. */
 const MIN_HOURS_BETWEEN_RELEASES = 20
@@ -40,6 +40,61 @@ const RELEASABLE = ['feat', 'fix', 'perf', 'refactor', 'revert']
 const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim()
 
 const pkg = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'))
+const json = process.argv.includes('--json')
+
+/**
+ * Registry mode — what the publish workflow needs.
+ *
+ * A tag checkout is one commit deep, so `git describe --tags` cannot answer "when did we last
+ * publish". npm can: the packument's `time` map lists every version with its publish moment,
+ * which also makes this the only check that measures the real thing (a release that failed to
+ * publish never reaches npm, so the tag alone would understate the gap).
+ */
+async function registryReport() {
+  const response = await fetch(`https://registry.npmjs.org/${encodeURIComponent(pkg.name)}`)
+  if (!response.ok) throw new Error(`registry answered ${String(response.status)}`)
+  const packument = await response.json()
+  const times = Object.fromEntries(
+    Object.entries(packument.time ?? {}).filter(([key]) => key !== 'created' && key !== 'modified'),
+  )
+  const published = times[pkg.version]
+  if (published !== undefined) {
+    return { version: pkg.version, alreadyPublished: published, exit: 20, verdict: `${pkg.version} is already on npm — bump the version first` }
+  }
+  const previous = Object.entries(times)
+    .filter(([version]) => version !== pkg.version)
+    .sort((left, right) => Date.parse(right[1]) - Date.parse(left[1]))[0]
+  if (previous === undefined) {
+    return { version: pkg.version, previous: null, exit: 0, verdict: 'nothing is published yet' }
+  }
+  const [previousVersion, previousAt] = previous
+  const hours = (Date.now() - Date.parse(previousAt)) / 3600000
+  const exit = hours < MIN_HOURS_BETWEEN_RELEASES ? 10 : 0
+  return {
+    version: pkg.version,
+    previous: previousVersion,
+    previousAt,
+    hoursSinceRelease: Number(hours.toFixed(1)),
+    exit,
+    verdict: exit === 10
+      ? `${previousVersion} went out ${hours.toFixed(1)} h ago — hold this one for the daily window (dispatch with hotfix=true for a data-loss or security fix)`
+      : `${previousVersion} is ${hours.toFixed(1)} h old — the cadence allows this release`,
+  }
+}
+
+if (process.argv.includes('--registry')) {
+  const report = await registryReport()
+  if (json) {
+    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`)
+  } else {
+    process.stdout.write(`release:check --registry  ${pkg.version}\n`)
+    if (report.previous !== undefined && report.previous !== null) {
+      process.stdout.write(`  previous ${report.previous} at ${report.previousAt} — ${String(report.hoursSinceRelease)} h ago\n`)
+    }
+    process.stdout.write(`\n  ${report.verdict}\n`)
+  }
+  process.exit(report.exit)
+}
 
 let lastTag = ''
 try {
