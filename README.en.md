@@ -504,6 +504,11 @@ erasing the other change. A damaged file is reported (`store-corrupt`) rather th
 and a single mangled record is skipped instead of taking the list down. Back it up by copying it —
 and check that no `.lock` file is left behind, which normally means somebody died mid-write.
 
+The same directory also holds `settings.json` (host-side switches) and `client-errors.log` (panel
+errors, capped); **only `todos.json` is worth backing up**. A `.lock` that never goes away, with
+writes answering `store-busy`, means a process is holding it — check for a second host on the same
+`storePath` first, then follow [FAQ 9](docs/FAQ.md).
+
 ## Design decisions
 
 **Attachments are references, not uploads.** A document is an absolute path that stays

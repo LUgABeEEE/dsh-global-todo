@@ -374,6 +374,10 @@ dsh plugin --profile <profile> remove dsh-global-todo
 文件坏了会明确报 `store-corrupt` 而不是被静默清空；单条记录坏了只跳过那一条。
 备份就是复制这个文件（外加确认没有 `.lock` 残留——正常情况下它写完就没了）。
 
+同一个目录里还有 `settings.json`（宿主侧开关）和 `client-errors.log`（面板错误日志，有上限）；
+**备份只需要 `todos.json`**。如果 `.lock` 一直在、而且写入一直报 `store-busy`，说明有进程正持有锁——
+先确认没有第二个宿主在用同一个 `storePath`，再按 [FAQ 第 9 问](docs/FAQ.md) 处理。
+
 ## 收录情况
 
 npm 是唯一安装源，下面每个地方都只是「能不能被找到」。核对日期 2026-10-21；复核用

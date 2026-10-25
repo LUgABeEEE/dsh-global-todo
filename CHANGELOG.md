@@ -7,6 +7,12 @@
   covers it writes a **fresh** lock file on purpose, because a stale one would pass either way.
 - `docs/WINDOWS.md` gained the matching three-point checklist for the machine that can actually
   see the difference: exclusive create, no `.lock` left on disk, and a kill -9 followed by a write.
+- **The lock is now findable from wherever somebody would look.** Both READMEs name the lock file in
+  the data section and say only `todos.json` is worth backing up; `docs/QUICKSTART.md` adds it to
+  the backup table; `docs/ROADMAP.md` records it under "landed"; the FAQ gained question 16,
+  「一直报 store-busy 怎么办」, with the five checks in the order a person should make them; and
+  AGENTS.md says the store must never be written outside `store.update`, because that is how the
+  bug can come back.
 
 ## [0.18.0] — 2026-10-25
 

@@ -11,8 +11,13 @@ host half (`lib/`, plain ESM) and a browser half (`lib/client.js`, classic scrip
   with the raw `ctx.webServer.register` contract.
 - **No build step.** `lib/client.js` is authored by hand and registers itself with
   `window.__ModuleLoader__`. Never introduce a bundler, TypeScript or a generated file.
-- **Two writers, one path.** Every mutation goes through `lib/service.js`. If you add a rule,
-  it must apply to the panel and the tools at once.
+- **Two writers, one path.** Every mutation goes through `lib/service.js` and lands in
+  `store.update`, which takes the cross-process lock (`lib/lockfile.js`) and does the
+  read-modify-write under it. If you add a rule, it must apply to the panel and the tools at once.
+- **Never write the store file directly.** `store.write` is internal to `update`; a writer that
+  bypasses the lock is exactly the overwrite 0.18.0 fixed. A new failure gets a code in
+  `ERROR_CODES` and a status in `statusForCode` — `store-busy` is 503, not 500, because the same
+  request usually succeeds a moment later.
 - **Typed failures.** Throw `TodoError` from `lib/errors.js` with a code listed in
   `ERROR_CODES`. `lib/routes.js` maps codes to HTTP statuses; `lib/tools.js` turns them into
   `{ ok: false, reason, error }` values instead of throwing at the model.

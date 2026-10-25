@@ -43,6 +43,15 @@ The panel became one column with one type scale, and every conditional state got
 Things that used to sit on the Next list (or in the Later table) and are facts in the
 tree now.
 
+**A lock across processes** — until 0.18.0 `store.update` only had a promise chain, which
+serializes writers inside one process and says nothing about a second one; two Host processes
+could each read the list, and the slower `rename` erased the other change while both calls
+returned success. Every mutation now creates `<store>.lock` with `open(…, 'wx')` before reading,
+releases it after the rename, and answers `store-busy` (503) after five seconds instead of writing
+anyway (`lib/lockfile.js`, `lib/store.js`). A dead holder on the same host is reaped at once; a
+remote one after 30 s. What it cannot cover — older plugin versions, hand edits, a sync client
+writing at an arbitrary moment — is stated in FAQ 9 and DESIGN.
+
 **Attachment health** — a file link is probed when the list is read, never when it is
 stored: `annotateLinks()` (`lib/service.js`) sets `missing: true` for a path
 that no longer resolves (`lib/service.js`), and both read routes apply it
