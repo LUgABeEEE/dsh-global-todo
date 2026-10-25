@@ -496,9 +496,13 @@ topic feeds we have not verified, is [docs/DISTRIBUTION.md](docs/DISTRIBUTION.md
 ```
 
 The file is the artifact: plain JSON, one record per todo, written through a temp file and
-`rename()`, with a write lock that serializes the human's and the agent's edits. A damaged
-file is reported (`store-corrupt`) rather than silently reset, and a single mangled record
-is skipped instead of taking the list down. Back it up by copying it.
+`rename()`. Inside one process the human's and the agent's edits share one serial chain; **across
+processes** a lock file does the same job: a mutation creates `todos.json.lock` exclusively first,
+so a second Host process (the Web panel plus a desktop or CLI session, or two machines sharing a
+synced folder) queues behind it and hears `store-busy` (503) after five seconds instead of quietly
+erasing the other change. A damaged file is reported (`store-corrupt`) rather than silently reset,
+and a single mangled record is skipped instead of taking the list down. Back it up by copying it —
+and check that no `.lock` file is left behind, which normally means somebody died mid-write.
 
 ## Design decisions
 
@@ -562,6 +566,7 @@ READMEs, so re-run `npm run screenshots` whenever the panel UI changes.
 lib/
   index.js       host entry: store + service + dispatcher + the optional surfaces
   store.js       one JSON file: atomic writes, serialized updates, tolerant loads
+lockfile.js    the cross-process lock: exclusive create, pid/host liveness, stale takeover
   model.js       the todo entity: validation, patches, status, attachments, steps, review, notes
   links.js       attachment rules (pure: no filesystem access)
   service.js     the single write path, filters, sorting and the dispatch prompt

@@ -1,3 +1,25 @@
+## [0.18.0] — 2026-10-25
+
+Two processes writing the same list no longer means one of them silently loses a change.
+
+- **A lock file, not just a promise chain.** `store.update` serialized writers **inside** one process
+  only; two DSH processes (the Web panel plus a desktop or CLI session, or two machines on a synced
+  store) each read the list, and the slower rename erased the faster change while both calls returned
+  success — the report that prompted this. Every mutation now takes `<store>.lock` with
+  `open(…, 'wx')` before reading and releases it after the rename (`lib/lockfile.js`).
+- **A crashed writer cannot lock the list forever.** The claim records `pid` + `host` + a random
+  token: on the same host takeover requires a dead pid, across hosts it requires 30 s of age, and a
+  reaped-then-retaken lock is never deleted by its previous owner. Takeovers log a warning; waiters
+  retry with jittered backoff and give up after five seconds.
+- **New code `store-busy`** (HTTP 503; a tool returns `{ ok: false, reason: "store-busy" }`): a write
+  that could not happen says so instead of returning success, and the message names the holder when
+  it can be read.
+- **What it does not cover is now said out loud** in `docs/FAQ.md` and `docs/DESIGN.md`: an older
+  plugin version that does not take the lock, a hand edit, and a sync client writing at an arbitrary
+  moment are still last-writer-wins; the panel keeps reporting external changes.
+- Tests: `test/lock.test.mjs`, including two real child processes adding ten todos each to one file
+  (all twenty survive). Checked to fail with the lock disabled, so it pins the bug, not the mechanism.
+
 ## [0.17.1] — 2026-10-24
 
 Two READMEs instead of one: Chinese in `README.md`, English in `README.en.md`, and the switch to

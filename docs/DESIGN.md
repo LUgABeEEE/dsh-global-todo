@@ -64,9 +64,10 @@ $DSH_HOME/global-todo/todos.json     ← { version: 1, todos: [ … ] }
 - **Atomic writes**: payload goes to `todos.json.<pid>.<ts>.tmp`, is flushed with
   `fsync`, then `rename()`d over the target. A crash leaves either the old file or the
   new one, never half of either.
-- **Serialized updates**: every mutation runs through one promise chain, so a
-  read-modify-write from the panel can never clobber one from a tool (and a rejected
-  write does not wedge the chain for later operations).
+- **Serialized updates**: every mutation runs through one promise chain **and** one lock file, so
+  a read-modify-write can never clobber another one — not from a tool, not from the panel, and not
+  from a second Host process (`Serializing two processes, not two callers`). A rejected write does
+  not wedge either layer.
 - **Tolerant loads**: a record without an `id` or a `title` is dropped, an unreadable
   attachment is dropped, and an unknown `status` falls back to `open`. The rest of the
   list survives.
@@ -76,6 +77,41 @@ $DSH_HOME/global-todo/todos.json     ← { version: 1, todos: [ … ] }
 - **No migration code yet**: `SCHEMA_VERSION` is 1. The loader already refuses a newer
   version, and a future migration step would run before the first write, keeping the old
   file as a backup.
+
+## Serializing two processes, not two callers
+
+One promise chain serializes writers **inside** a process. It says nothing about a second one, and
+a second one is normal: the Web panel running while a desktop or CLI session uses the same profile,
+or one store on a synced folder opened from two machines. Each process reads the whole list, edits
+its copy, renames it back — so the slower writer's `rename` erases the faster one's change while
+both calls report success. That is the worst shape a bug can have: silent, plausible, and only
+visible later as "my todo vanished".
+
+The fix is one sibling file, `todos.json.lock`, taken with `open(path, 'wx')` before the read and
+released after the rename. `O_EXCL` is the portable test-and-set: atomic on POSIX and on NTFS,
+needs no dependency, and, unlike `flock`, exists in Node. The file is closed immediately after the
+claim is written — a held handle would make it undeletable on Windows, which is exactly the class of
+bug that cost this plugin two releases.
+
+The claim inside the file is what makes a crashed writer recoverable:
+
+| Field | Why |
+|---|---|
+| `pid` + `host` | "is the holder still alive?" — `process.kill(pid, 0)` answers it on the same host |
+| `token` | a lock that was declared abandoned and retaken is not deleted by its previous owner |
+| `at` | for the log line when a stale lock is reaped |
+
+Takeover is deliberately conservative: **on the same host only a dead pid justifies stealing**,
+because a pid is stronger evidence than a timestamp. Across hosts there is no pid to ask, so age
+(30 s) decides — which is the one honest caveat of a file lock on a NAS: keep the clocks close, or
+accept that a writer stalled for half a minute can be presumed gone. Waiters retry with jittered
+backoff and, after five seconds, fail with `store-busy` (HTTP 503). Failing loudly is the point: a
+mutation that returns success has to have happened.
+
+What this does **not** cover, stated plainly: an older plugin version that does not take the lock, a
+hand edit in an editor, and a sync client writing at an arbitrary moment. Those remain "last writer
+wins" — the difference is that the panel now names the change (`externalChanges`) instead of
+pretending it never happened.
 
 ## The panel owns its own scroll
 

@@ -367,10 +367,12 @@ dsh plugin --profile <profile> remove dsh-global-todo
     toolGroups: all                               # all（10 个工具）| core（6 个：只操作清单）| none
 ```
 
-**文件本身就是产物**：纯 JSON、一条记录一个待办，写入走「临时文件 + rename」，
-并且有一把写锁把人和 Agent 的编辑串起来——两边同时改也不会互相覆盖。
+**文件本身就是产物**：纯 JSON、一条记录一个待办，写入走「临时文件 + rename」。
+同一个进程里，人和 Agent 的编辑走同一条串行链；**跨进程**还有一把文件锁：写之前先独占建出
+`todos.json.lock`，另一个宿主进程（Web 面板 + 桌面端 / 命令行会话，或两台机器共用一份同步盘）
+只能在旁边排队，等不到 5 秒就明确报 `store-busy`（503）而不是默默把你的改动覆盖掉。
 文件坏了会明确报 `store-corrupt` 而不是被静默清空；单条记录坏了只跳过那一条。
-备份就是复制这个文件。
+备份就是复制这个文件（外加确认没有 `.lock` 残留——正常情况下它写完就没了）。
 
 ## 收录情况
 
@@ -444,7 +446,8 @@ npm run tour          # 用这些 PNG 重新拼 docs/screenshots/tour.gif（需�
 ```text
 lib/
   index.js       宿主入口：store + service + dispatcher + 可选挂载面
-  store.js       一个 JSON 文件：原子写、串行更新、容错读取
+  store.js       一个 JSON 文件：原子写、进程内串行 + 跨进程文件锁、容错读取
+lockfile.js    那把锁：wx 独占建文件、pid/host 判活、过期接管
   model.js       待办实体：校验、补丁、状态、附件、步骤、待确认、进展
   links.js       附件规则（纯函数，不碰文件系统）
   service.js     唯一写入路径、筛选、排序与派发提示词

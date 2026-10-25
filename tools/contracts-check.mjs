@@ -186,6 +186,43 @@ const equal = (group, name, actual, expected) =>
   check('I groups', 'core guidance does not name the capture tool', guidanceFor('core').includes('global_todo_capture') === false)
 }
 
+// ── J. The cross-process lock: a write that cannot happen must say so ──────────────────
+{
+  const { createFileLock, LOCK_STALE_MS, LOCK_TIMEOUT_MS } = await import('../lib/lockfile.js')
+  const { ERROR_CODES } = await import('../lib/errors.js')
+  const { statusForCode } = await import('../lib/routes.js')
+
+  equal('J lock', 'store-busy is a declared code', ERROR_CODES.includes('store-busy'), true)
+  equal('J lock', 'and maps to 503, not 500', statusForCode('store-busy'), 503)
+  equal('J lock', 'the wait budget a person is told about', LOCK_TIMEOUT_MS, 5000)
+  equal('J lock', 'a remote holder is presumed gone after', LOCK_STALE_MS, 30_000)
+
+  const dir = await mkdtemp(path.join(tmpdir(), 'gt-contract-lock-'))
+  try {
+    const file = path.join(dir, 'todos.json.lock')
+    const first = createFileLock({ file, timeoutMs: 100 })
+    const second = createFileLock({ file, timeoutMs: 100 })
+    await first.acquire()
+    let code = null
+    await second.acquire().catch((error) => {
+      code = error.code
+    })
+    equal('J lock', 'a second writer is refused, not allowed to interleave', code, 'store-busy')
+    await first.release()
+    let after = false
+    await second
+      .acquire()
+      .then(() => {
+        after = true
+        return second.release()
+      })
+      .catch(() => {})
+    equal('J lock', 'and gets in as soon as the first one is done', after, true)
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+}
+
 const failed = results.filter((result) => !result.ok)
 process.stdout.write(`\n${results.length - failed.length}/${results.length} contract checks passed\n`)
 process.exit(failed.length === 0 ? 0 : Math.min(failed.length, 1))

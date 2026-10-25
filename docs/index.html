@@ -181,8 +181,8 @@
   }]
 }</code></pre>
             <p class="ev-note">
-              <span class="zh">写入走「临时文件 + rename」，人和 Agent 的改动串在同一把写锁后面；文件坏了报 <code>store-corrupt</code>，不会静默清空。</span>
-              <span class="en" lang="en">Writes go to a temp file and are renamed into place, behind one lock shared by panel and tools. A corrupt file raises <code>store-corrupt</code> instead of being silently emptied.</span>
+              <span class="zh">写入走「临时文件 + rename」；同一进程里人和 Agent 共用一条串行链，跨进程还有一把 <code>.lock</code> 独占锁——第二个宿主进程只能排队，等不到就报 <code>store-busy</code>，不会默默覆盖。文件坏了报 <code>store-corrupt</code>，不会静默清空。</span>
+              <span class="en" lang="en">Writes go to a temp file and are renamed into place; panel and tools share one serial chain, and a <code>.lock</code> file excludes other processes — a second host queues, then hears <code>store-busy</code> instead of silently overwriting. A corrupt file raises <code>store-corrupt</code>.</span>
             </p>
           </div>
         </article>
