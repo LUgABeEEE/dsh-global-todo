@@ -1,3 +1,13 @@
+## [Unreleased]
+
+- **A dead writer on the same host is reaped immediately, not after 30 s.** 0.18.0 checked the
+  lock's age before the holder's pid, so a crashed writer left the list refusing writes until the
+  file turned 30 s old — while waiters give up at 5 s. Age now only decides the case with no pid to
+  ask (another machine, or an unreadable claim); on this host a dead pid is enough. The test that
+  covers it writes a **fresh** lock file on purpose, because a stale one would pass either way.
+- `docs/WINDOWS.md` gained the matching three-point checklist for the machine that can actually
+  see the difference: exclusive create, no `.lock` left on disk, and a kill -9 followed by a write.
+
 ## [0.18.0] — 2026-10-25
 
 Two processes writing the same list no longer means one of them silently loses a change.

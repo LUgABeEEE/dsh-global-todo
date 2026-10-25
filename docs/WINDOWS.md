@@ -118,10 +118,25 @@ Get-Item $env:TEMP\probe.png | Select-Object Length
 
 ```powershell
 npm run check:windows      # 7 项真实文件系统冒烟
-npm run check:contracts    # 58 项跨字段契约，模块级、离线
+npm run check:contracts    # 64 项跨字段契约，模块级、离线
+node --test test/lock.test.mjs   # 7 项文件锁，其中一项真的起两个进程
 ```
 
 两项都过，再填上面四节的表格。哪一格和期望不符，就按「What to report if something fails」的四条信息回给我。
+
+## 0.18 新增：文件锁（跨进程写）
+
+从 0.18.0 起，每次写之前先独占建出 `todos.json.lock`，写完删掉。Windows 上这条路径有三个只有
+真机能确认的点：
+
+1. **独占创建真的排他**：开两个宿主进程（Web 面板 + 桌面端 / 命令行会话，或把同一份 `todos.json`
+   放在 OneDrive / 同步盘），两边各点几次「添加」。两边都不该丢条目；偶尔看到 `store-busy`（HTTP 503）
+   是排队超时，不是 bug——重试一次即可。
+2. **磁盘上不该有残留**：正常退出后 `%USERPROFILE%\.dsh\global-todo\` 里只有 `todos.json` 和
+   `settings.json`。若出现 `todos.json.lock`，把里面的 `pid` / `host` 一起报给我——那通常说明
+   删除被占用（杀毒软件、同步盘客户端），后续写入会等到超时。
+3. **强杀之后还能写**：用任务管理器杀掉持有锁的那个进程，再在另一个进程里添加一条。应当**立刻**
+   写入成功（同一台机器按 pid 判死，不等 30 秒），日志里会有一条「清掉一个过期的写锁」。
 
 ## 常设三问：每版发版前必答
 

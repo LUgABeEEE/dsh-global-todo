@@ -102,13 +102,13 @@ test('a lock held by a live process is waited on, then reported as store-busy - 
   }
 })
 
-test('a lock left behind by a dead process is reaped, so the list cannot stay locked', async () => {
+test('a lock left behind by a dead process is reaped at once, so the list cannot stay locked', async () => {
   const s = await space()
   try {
     const pid = await deadPid()
+    // Deliberately fresh: on the same host the pid decides, not the clock. Waiting for 30 s of
+    // age here would mean the reap lands long after every waiter has already failed at 5 s.
     await writeFile(s.lock, JSON.stringify({ pid, host: hostname(), at: 1, token: 'ghost' }) + '\n')
-    const old = new Date(Date.now() - 120_000)
-    await utimes(s.lock, old, old)
 
     const store = createStore({ file: s.file, lockTimeoutMs: 3000 })
     await store.update((doc) => {
