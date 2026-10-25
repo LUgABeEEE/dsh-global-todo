@@ -247,6 +247,12 @@ delete, cross-machine change notices, external ingest with an inbox — all four
 items here. See `Landed since 0.1` above; the entries were removed rather than left to
 mislead.
 
+The phone layout was never on this list and still shipped: the panel switches on its measured
+width at 600px (`data-mobile`), with 44px touch targets, side-scrolling filter chips, the inline
+hand-off collapsed to its icon, safe-area padding, and type that follows the shell's text-size
+setting. `tools/preview.mjs --width` made it renderable from a script, which is why it had a
+baseline before it had a device. See `docs/DESIGN.md`, "On a phone the panel is a touch surface".
+
 ## Later
 
 | Idea | Note |

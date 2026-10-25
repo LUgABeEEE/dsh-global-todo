@@ -1,6 +1,6 @@
 {
   "name": "dsh-global-todo",
-  "version": "0.18.0",
+  "version": "0.19.0",
   "icon": "./docs/icon.svg",
   "description": "Cross-session todo list for DeepSeek Harness where an agent's \"done\" never settles itself: whether it is reported by the tool or inferred from a clean turn, the record waits in Needs review until a person confirms it. One JSON file both write, numbered step hand-offs, session read-back.",
   "type": "module",
@@ -82,7 +82,9 @@
     "test": "node --test \"test/**/*.test.mjs\"",
     "verify": "npm run check && npm run check:render && npm test",
     "preview": "node tools/preview.mjs",
+    "preview:mobile": "node tools/preview.mjs --mobile",
     "screenshots": "npm run preview && node tools/screenshot.mjs",
+    "screenshots:mobile": "npm run preview:mobile && node tools/screenshot.mjs --mobile",
     "tour": "node tools/tour.mjs",
     "prepack": "npm run verify",
     "check:render": "node tools/preview.mjs --check",

@@ -1,5 +1,35 @@
 ## [Unreleased]
 
+- **Checked against DSH 0.2.1-rc.3.** It adds More menus (browse other plugins, create a plugin) to
+  the left sidebar, the conversation view tabs and the right-sidebar guide; fixes New Session losing
+  an unsent draft; and changes how the DeepSeek API-key adapter refreshes its model list. None of it
+  changes a plugin declaration: `packages/boot/hmr/src/package-manifest.ts` and
+  `packages/client/modules/src/client/manifest.ts` are byte-identical between rc.2 and rc.3, and the
+  sidebar entry keeps registering the same way — the new menu lists entries, it does not change how
+  one is declared.
+- **The declared range already admits the new line, and now says why.** `engines.dsh` stays
+  `>=0.2.0-rc.1 <0.3.0`; the Host matches with `includePrerelease: true` (dsh-app-boot's
+  `satisfies`), which is why `0.2.1-rc.3` is inside a range whose lower bound names the 0.2.0
+  prerelease. `scripts/matrix.mjs` gained that case and a warning: "cleaning up" the range into
+  `^0.2.1` would refuse both `0.2.1-rc.2` and `0.2.1-rc.3`. Both READMEs and the quickstart now
+  name the versions that were checked instead of implying one.
+
+## [0.19.0] — 2026-10-25
+
+- **A phone layout, chosen by the panel's measured width.** At 600px or less the panel is a touch
+  surface: 44px controls and inputs, filter chips that scroll sideways instead of losing the tail
+  that only appears when it has counts, the row's hand-off collapsed to its icon so meta packs two
+  or three per line (the creator attribution moves to the detail), the keyboard hints gone, the
+  bottom safe area respected, and type following the shell's `--dsh-content-font-size`. The
+  desktop page is unchanged, and DSH Mobile's phone page needs no configuration — the panel was
+  already using measured width for the 960px two-column breakpoint, and this is the same signal
+  one step down. Three stable hooks carry it (`data-mobile`, `.gt-btn-label`, `.gt-meta-by`); no
+  second render path.
+- **The fixture can answer the measurement, which it never could before.** `tools/preview.mjs`
+  gives every ref a layout stub sized to `--width` (and `--mobile` writes the 390px set into
+  `preview/mobile/`), so the narrow branch is rendered by a script instead of only by a device.
+  `npm run check:render` asserts it on every verify, and `npm run screenshots:mobile` photographs
+  the 390×844 baselines into `docs/screenshots/mobile/`.
 - **A dead writer on the same host is reaped immediately, not after 30 s.** 0.18.0 checked the
   lock's age before the holder's pid, so a crashed writer left the list refusing writes until the
   file turned 30 s old — while waiters give up at 5 s. Age now only decides the case with no pid to

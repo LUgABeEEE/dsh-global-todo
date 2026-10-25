@@ -49,8 +49,16 @@ function flagValue(name) {
   return value
 }
 
+/** The phone preset: its own directory, its own viewport, its own images. */
+const MOBILE = {
+  viewport: { width: 390, height: 844 },
+  shots: ['panel', 'panel-detail', 'panel-settings'],
+  out: path.join(root, 'docs', 'screenshots', 'mobile'),
+}
+
 const OUT_DIR = path.resolve(flagValue('--out') ?? path.join(root, 'docs', 'screenshots'))
 const PREVIEW_DIR = path.join(root, 'preview')
+const MOBILE_MODE = process.argv.includes('--mobile')
 
 /**
  * Load Playwright from the DSH profile, or from anywhere it happens to be installed.
@@ -104,6 +112,36 @@ mkdirSync(OUT_DIR, { recursive: true })
 
 const browser = await chromium.launch()
 try {
+  if (MOBILE_MODE) {
+    // A phone screenshot is viewport-shaped on purpose: what the phone shows, not the
+    // whole document. The detail state lives below the fold, so that one is scrolled to
+    // the open row first — a picture of the top of the list would not show the detail.
+    const page = await browser.newPage({ viewport: MOBILE.viewport, deviceScaleFactor: 2 })
+    mkdirSync(MOBILE.out, { recursive: true })
+    for (const name of MOBILE.shots) {
+      const source = path.join(PREVIEW_DIR, 'mobile', `${name}.html`)
+      if (existsSync(source) === false) {
+        console.error(`preview/mobile/${name}.html is missing — run: node tools/preview.mjs --mobile`)
+        process.exit(1)
+      }
+      const target = path.join(MOBILE.out, `${name}.png`)
+      await page.goto(pathToFileURL(source).href, { waitUntil: 'load' })
+      await page.waitForFunction(() => document.styleSheets.length > 0)
+      if (name === 'panel-detail') {
+        await page.evaluate(() => {
+          const open = document.querySelector('.gt-item[data-open="1"]')
+          // The row *starts* the picture: its title and the first fields are the part a
+          // reader needs to see, and centring pushed them above the fold.
+          if (open !== null) open.scrollIntoView({ block: 'start' })
+        })
+      }
+      await page.screenshot({ path: target })
+      const bytes = readFileSync(target).length
+      console.log(`${path.relative(root, target)}  ${MOBILE.viewport.width}x${MOBILE.viewport.height}  ${bytes} B`)
+    }
+    console.log(`wrote ${MOBILE.shots.length} mobile screenshot(s) to ${path.relative(root, MOBILE.out)}`)
+    process.exit(0)
+  }
   const page = await browser.newPage({ viewport: VIEWPORT, deviceScaleFactor: 1 })
   for (const name of SHOTS) {
     const source = path.join(PREVIEW_DIR, `${name}.html`)

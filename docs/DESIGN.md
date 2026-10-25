@@ -230,8 +230,65 @@ the static previews render.
 - Never let the card cover the list: it is `.gt-groups` padding that reserves the room, and the
   two numbers (360 padding / 348 card + 12 gap) have to move together.
 - Verify in the real GUI, not the preview, at **1440 / 1280 / 1100**: the card must be ≈348px wide,
-  the list must end before it, and the open row must stay visible next to it. The preview cannot
-  catch this class of bug — it is server-rendered, so no measurement effect ever runs there.
+  the list must end before it, and the open row must stay visible next to it. `node
+  tools/preview.mjs --width=1280` now answers the panel's measurement, so the narrow/wide branch
+  can be rendered without a browser session — but the card's *anchoring* still needs a real
+  layout, because the harness cannot reproduce the host's scroll container.
+
+## On a phone the panel is a touch surface, and it says so by width
+
+The phone page of DSH Mobile renders this panel in its `main` slot at viewport width, above a
+56px "back to the conversation" bar, and states plainly that it does not rearrange third-party
+plugin layouts. So the panel carries its own phone layout, and the signal is the **panel's
+measured width**: `data-mobile` is set at 600px or less, next to the existing `data-wide` (960)
+and `data-wide-detail`. No user-agent sniffing, no viewport media query — a desktop window
+dragged narrow gets the same treatment as a phone, which is what a narrow desktop wants too.
+
+What changes below 600px, and why each item is not cosmetic:
+
+- **Controls and inputs become 44px.** The desktop sizes are 28–32px, which is a mouse target.
+  The round checkbox stays *visually* 24px and grows only its hit area through a pseudo-element,
+  or a list of todos would read as a column of giant circles.
+- **The filter chips scroll sideways.** There are up to eight chips (archived, inbox and review
+  appear only when they have counts); at 390px the tail was clipped with no way to reach it,
+  because the strip was `nowrap` inside a wrapping row. `overflow-x: auto` on a single row keeps
+  every filter reachable, and the toolbar becomes one column so the search field can be full width.
+- **The row's hand-off collapses to its icon.** The label inside `.gt-actions` was taking ~140px
+  of a ~340px card, which pushed every meta item onto its own line — the row grew to ~250px for
+  four facts. With the icon the body keeps ~220px, meta packs two or three per line, and the
+  creator attribution (`.gt-meta-by`), the least actionable item, steps out of the row and stays
+  in the detail.
+- **Desktop-only affordances disappear rather than shrink.** The `/` hint and the keyboard table
+  keycaps are noise without a keyboard; the working-directory path moves into 上下文, which is
+  where its full value already lived.
+- **The bottom padding yields to the safe area.** The panel is its own scroll container, so the
+  shell's top inset does not reach the end of this list; `env(safe-area-inset-bottom)` does. The
+  toast is re-anchored for the same reason.
+- **Type follows the shell's variable.** DSH Mobile sets `--dsh-content-font-size` on `<body>`
+  from its text-size setting and forces ≥16px on inputs. The phone layout sizes its own type from
+  that variable (falling back to 15px where it does not exist), so the panel moves with the page
+  instead of staying at desktop sizes while only the inputs grow.
+
+This is one detail implementation, still: the inline detail is what a phone gets (there is no
+room for a 348px card below 960), and every rule is CSS over the same markup except three stable
+hooks — `data-mobile`, the wrapped `.gt-btn-label` (so the label can collapse), and the
+`.gt-meta-by` / `.gt-chip-dir` classes (so CSS can hide a fact without JS deciding per row).
+The settings dialog is the one place layout is chosen in JS: below 600px it is anchored to both
+edges with the measured top kept, because a fixed 360px card in a 390px viewport clipped both
+sides.
+
+### Proving it without a phone
+
+`tools/preview.mjs` renders the real client half with a hand-written hook runtime and no browser.
+The panel measures itself through `getBoundingClientRect`, which a static page cannot answer — so
+the harness answers it when a width is asked for: every ref gets a layout stub whose width is the
+requested one. `--width=390` therefore renders the actual phone branch, and `--mobile` writes that
+set into `preview/mobile/`. `npm run check:render` asserts the mobile structure on every verify
+(the branch was taken, the hooks exist, the 44px / safe-area / text-size rules are still present),
+and `npm run screenshots:mobile` photographs it at 390×844 into `docs/screenshots/mobile/`.
+
+It still cannot prove scrolling, focus, IME behaviour or how a real WebView lays out
+`env(safe-area-inset-*)`; those need the device.
 ## A shared file changes without asking
 
 The list is deliberately portable — a notes repo, a synced folder, a NAS — so another machine

@@ -159,6 +159,8 @@ in code". Everything is derived from completion records; nothing is stored.
 
 ![Settings: grouped fields, hints under each label, one save row](docs/screenshots/panel-settings.png)
 
+![Phone width 390×844: 44px touch targets, side-scrolling filters, icon-only row actions](docs/screenshots/mobile/panel.png)
+
 Every state that only appears under a condition has a fixed baseline image, rendered by the same
 preview and photographed by the same tool:
 
@@ -176,13 +178,20 @@ half is rendered to static HTML with no Host and no dependencies, then photograp
 into `docs/screenshots/`. Playwright is not a dependency — the tool borrows the copy a DSH
 profile already installed, or whatever `DSH_PLAYWRIGHT` points at.
 
+The phone set is photographed by the same tool: `npm run screenshots:mobile` renders the same
+component tree at **390×844** first — the harness answers the panel's width measurement with 390,
+so the narrow branch really runs instead of the desktop layout being scaled down — and writes into
+`docs/screenshots/mobile/`.
+
 What each file shows, and when it is regenerated, is indexed in
 [docs/screenshots/README.md](docs/screenshots/README.md).
 
 ## Requirements
 
-- DeepSeek Harness `0.2.x` (developed and verified against `0.2.1-rc.2`; `engines.dsh` is
-  `>=0.2.0-rc.1 <0.3.0`, and a Host outside it skips the bundle instead of warning)
+- DeepSeek Harness `0.2.x` (developed and verified against `0.2.1-rc.2`; the `0.2.1-rc.3` changes
+  were checked item by item — its new sidebar **More** menu does not touch how this plugin registers
+  its entry; `engines.dsh` is `>=0.2.0-rc.1 <0.3.0`, and a Host outside it skips the bundle instead
+  of warning)
 - Node.js `>= 22.19.0` (the Web profile's own requirement)
 - A **Web** client: the panel is served by the Host's web server. Headless / ACP / SDK keep the
   agent tools but have no panel; an Electron-style desktop client (file:// + IPC) is not
@@ -280,6 +289,13 @@ Your list is not touched by install or uninstall: it lives outside the plugin, a
   restores it verbatim: same id, same creation time, same attachments.
 - **Keyboard** — `/` focuses search, `n` focuses the new-todo field while the add form is
   open, `Esc` collapses the open detail. Row actions appear on hover or keyboard focus.
+- **Phone / narrow screens** — the panel switches on its own **measured width**: at 600px or
+  less it becomes a touch layout. Controls and inputs are 44px tall, the filter chips scroll
+  sideways instead of losing their tail, the inline hand-off collapses to its icon (the menu
+  and the detail keep the words), the keyboard hints disappear, the bottom padding yields to
+  the safe area, and the text follows the mobile page's text-size setting. The desktop page is
+  unchanged, and the phone page of `dsh-mobile` needs no configuration — this changes neither
+  DSH nor the mobile plugin.
 - **Reachable from the LAN and from a tunnel** — the routes defer to the Host's connection fence
   (which honours `--trusted-host`); the plugin's own loopback check is only the fallback for a
   Host without that service. `/health` reports `fence` so you can see which one is in force.

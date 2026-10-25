@@ -24,6 +24,26 @@ const OUT_ARG = process.argv.slice(2).find((argument) => argument.startsWith('-'
 const OUT = OUT_ARG === undefined ? path.join(root, 'preview', 'panel.html') : path.resolve(OUT_ARG)
 const source = readFileSync(CLIENT, 'utf8')
 
+/**
+ * The width the panel is told it has.
+ *
+ * The panel measures its own box (`data-wide`, `data-mobile`) instead of trusting the
+ * window, and this harness has no layout engine to measure. Answering with a fixed
+ * width is what lets `--check` exercise the narrow branch, and what lets the mobile
+ * screenshots show the same tree a phone gets — a viewport-only emulation would still
+ * render the desktop branch, because the panel never asks the viewport.
+ *
+ *   node tools/preview.mjs --width=390        # one mobile render next to the default
+ *   node tools/preview.mjs --mobile            # 390×844: the phone preset, all states
+ */
+const viewport = { width: 0, height: 0 }
+for (const argument of process.argv.slice(2)) {
+  const match = /^--(width|height)=(\d+)$/.exec(argument)
+  if (match !== null) viewport[match[1]] = Number(match[2])
+}
+/** Phone width for the mobile pass: iPhone 12–15 CSS pixels, the narrowest common case. */
+const MOBILE = { width: 390, height: 844 }
+
 // Read the version from the package instead of hardcoding it: the preview is where the
 // README screenshots come from, and a footer that says the wrong version is exactly the
 // kind of drift that made the last release notes outdated.
@@ -138,6 +158,35 @@ const COUNTS = { total: 4, open: 2, doing: 1, done: 1, cancelled: 0, overdue: 1 
 
 // ------------------------------------------------------------------ runtime
 
+/**
+ * The smallest element the panel is allowed to believe in.
+ *
+ * It exists for one reason: `measure()` reads `getBoundingClientRect().width`, and the
+ * panel's whole narrow/mobile branch hangs off that number. Everything else the panel
+ * asks of a DOM node (focus, contains) is answered inertly.
+ */
+function layoutStub() {
+  return {
+    getBoundingClientRect: () => ({
+      width: viewport.width,
+      height: viewport.height,
+      top: 0,
+      left: 0,
+      right: viewport.width,
+      bottom: viewport.height,
+      x: 0,
+      y: 0,
+    }),
+    contains: () => false,
+    focus() {},
+    blur() {},
+    scrollIntoView() {},
+    querySelectorAll: () => [],
+    addEventListener() {},
+    removeEventListener() {},
+  }
+}
+
 function createRuntime() {
   const stores = new Map()
   const classTypes = []
@@ -212,6 +261,12 @@ function createRuntime() {
       return element
     }
     if (Array.isArray(children)) element.children = children.map((child, index) => expand(child, effects, `${path}/${index}`))
+    // A host element with a ref gets a layout stand-in, but only when a width was asked
+    // for: the default render must keep behaving like the DOM-less page it has always
+    // been, or every committed screenshot changes shape for no reason.
+    if (typeof type === 'string' && viewport.width > 0 && props?.ref !== null && typeof props?.ref === 'object') {
+      props.ref.current = layoutStub()
+    }
     return element
   }
   return {
@@ -260,6 +315,13 @@ function toHtml(node) {
     }
     if (key === 'className') {
       attrs.push(`class="${escapeHtml(value)}"`)
+      continue
+    }
+    // React's `defaultValue` is the initial value of an uncontrolled input. A static page
+    // has no initial state to fall back to, so the attribute has to be `value`, or every
+    // number field renders as an empty box in a screenshot.
+    if (key === 'defaultValue' && (type === 'input' || type === 'textarea')) {
+      attrs.push(`value="${escapeHtml(value)}"`)
       continue
     }
     if (typeof value === 'boolean') {
@@ -372,11 +434,21 @@ const previewProps = {
   useSessions: (read) => read(FAKE_SESSIONS),
 }
 let entry = null
-new Function('window', 'document', 'navigator', source)(
-  { __ModuleLoader__: { load: (registration) => (entry = registration) } },
-  undefined,
-  { language: 'zh-CN' },
-)
+// A window that answers the two questions the panel asks it: how big am I, and can I be
+// listened to. `addEventListener` being a function keeps the resize path exercising its
+// real branch instead of silently skipping it.
+const windowStub = {
+  __ModuleLoader__: { load: (registration) => (entry = registration) },
+  addEventListener() {},
+  removeEventListener() {},
+  get innerWidth() {
+    return viewport.width
+  },
+  get innerHeight() {
+    return viewport.height
+  },
+}
+new Function('window', 'document', 'navigator', source)(windowStub, undefined, { language: 'zh-CN' })
 const plugin = entry.factory((name) => (name === 'react' ? runtime.React : undefined))
 
 const registered = new Map()
@@ -547,8 +619,8 @@ const detailButton = findButton(withMenu.tree, '详情')
 if (detailButton !== null && typeof detailButton.props?.onClick === 'function') detailButton.props.onClick()
 const third = runtime.mount(registered.get('main'), previewProps)
 
-const render = (tree) => `<!DOCTYPE html>
-<html lang="zh-CN"><head><meta charset="utf-8"><title>全局待办 · UI 预览</title>
+const render = (tree, width = viewport.width > 0 ? viewport.width : 920) => `<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>全局待办 · UI 预览</title>
 <style>
   :root{
     --dsw-alias-bg-base:#0d1017; --dsw-alias-bg-layer-1:#151922; --dsw-alias-bg-layer-2:#1b2130;
@@ -560,7 +632,7 @@ const render = (tree) => `<!DOCTYPE html>
   *{box-sizing:border-box}
   body{margin:0;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary);
     font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
-  .frame{max-width:920px;margin:0 auto;height:100vh;display:flex;flex-direction:column}
+  .frame{max-width:${width}px;margin:0 auto;height:100vh;display:flex;flex-direction:column}
   .shellbar{display:flex;gap:8px;align-items:center;padding:10px 16px;color:var(--dsw-alias-label-secondary);
     font-size:12px;border-bottom:1px solid var(--dsw-alias-border-l1)}
   .shellbar b{color:var(--dsw-alias-label-primary);font-weight:600}
@@ -568,7 +640,7 @@ const render = (tree) => `<!DOCTYPE html>
 ${css}
 </style></head>
 <body><div class="frame">
-  <div class="shellbar"><b>DSH</b><span>·</span><span>侧栏「待办」→ 主面板（预览用外壳，非真实宿主）</span></div>
+  <div class="shellbar"><b>DSH</b><span>·</span><span>侧栏「待办」→ 主面板（预览用外壳，非真实宿主${width < 600 ? ' · 手机宽度' : ''}）</span></div>
   <div class="main">${toHtml(tree)}</div>
 </div></body></html>
 `
@@ -611,6 +683,43 @@ for (const [name, props] of [
   scenarioHtml[name] = render(passTwo.tree)
 }
 scenario = 'default'
+
+// The mobile pass. Rendered on every run because `--check` asserts it: the narrow
+// branch is the one the phone gets, and it used to be reachable only by loading the
+// panel on a device. The desktop width is restored afterwards so the files below keep
+// their committed shape.
+const desktopWidth = viewport.width
+const desktopHeight = viewport.height
+viewport.width = MOBILE.width
+viewport.height = MOBILE.height
+runtime.reset()
+const mobileFirst = runtime.mount(registered.get('main'), previewProps)
+for (const effect of mobileFirst.effects) effect()
+await new Promise((resolve) => setTimeout(resolve, 20))
+const mobileList = runtime.mount(registered.get('main'), previewProps)
+const mobileMenuTriggers = []
+collectButtonsBy(mobileList.tree, (node) => node.props?.['aria-haspopup'] === 'menu', mobileMenuTriggers)
+if (mobileMenuTriggers.length > 0) mobileMenuTriggers[mobileMenuTriggers.length - 1].props.onClick()
+const mobileWithMenu = runtime.mount(registered.get('main'), previewProps)
+const mobileDetailButton = findButton(mobileWithMenu.tree, '详情')
+if (mobileDetailButton !== null && typeof mobileDetailButton.props?.onClick === 'function') {
+  mobileDetailButton.props.onClick()
+}
+const mobileDetailTree = runtime.mount(registered.get('main'), previewProps)
+// A fresh store: the settings pass must not inherit the open row above it.
+runtime.reset()
+const mobileSettingsFirst = runtime.mount(registered.get('main'), { ...previewProps, initialSettingsOpen: true })
+for (const effect of mobileSettingsFirst.effects) effect()
+await new Promise((resolve) => setTimeout(resolve, 20))
+const mobileSettingsTree = runtime.mount(registered.get('main'), { ...previewProps, initialSettingsOpen: true })
+const mobileHtml = {
+  list: render(mobileList.tree, MOBILE.width),
+  detail: render(mobileDetailTree.tree, MOBILE.width),
+  settings: render(mobileSettingsTree.tree, MOBILE.width),
+}
+viewport.width = desktopWidth
+viewport.height = desktopHeight
+
 // path.dirname, not a regex on '/': on Windows the regex matched nothing, so this created
 // a directory literally named panel.html and the write below failed with EISDIR.
 mkdirSync(path.dirname(OUT), { recursive: true })
@@ -620,6 +729,15 @@ writeFileSync(OUT.replace(/\.html?$/, '') + '-select.html', selectHtml)
 writeFileSync(OUT.replace(/\.html?$/, '') + '-settings.html', settingsHtml)
 for (const [name, html] of Object.entries(scenarioHtml)) {
   writeFileSync(OUT.replace(/\.html?$/, '') + '-' + name + '.html', html)
+}
+if (process.argv.includes('--mobile')) {
+  // The phone set, kept in its own directory so a mobile screenshot can never be
+  // mistaken for the desktop one the READMEs embed.
+  const mobileDir = path.join(path.dirname(OUT), 'mobile')
+  mkdirSync(mobileDir, { recursive: true })
+  for (const [name, html] of Object.entries(mobileHtml)) {
+    writeFileSync(path.join(mobileDir, `panel${name === 'list' ? '' : `-${name}`}.html`), html)
+  }
 }
 console.log('written', OUT, 'and the detail variant; fetch calls:', requestedUrl.join(', '))
 
@@ -732,8 +850,51 @@ function checkRenderedPanel(html, detail, select) {
   return failures
 }
 
+/**
+ * What the phone layout promises, asserted against the 390px render.
+ *
+ * The panel decides on its own measured width, so the render is the only place these
+ * can be proved without a device: the branch was taken, the hooks the mobile rules
+ * depend on exist, and the rules themselves still say what the layout needs.
+ *
+ * @param {{ list: string, detail: string, settings: string }} mobile
+ * @returns {string[]} failures, empty when the phone render looks right
+ */
+function checkMobileRender(mobile) {
+  const failures = []
+  const expect = (condition, message) => {
+    if (condition !== true) failures.push(message)
+  }
+  const { list, settings } = mobile
+  // The branch itself: a 390px panel must not render the desktop tree.
+  expect(list.includes('data-wide="0" data-mobile="1"'), 'the 390px render did not take the mobile branch')
+  // Hooks the mobile stylesheet keys on. A renamed class silently disables a rule, so the
+  // markup has to keep each one the CSS hides or shrinks.
+  expect(list.includes('class="gt-btn-label"'), 'the hand-off label is not wrapped, so it cannot collapse to its icon')
+  expect(/class="gt-btn gt-btn-quiet gt-dispatch"[\s\S]{0,240}?aria-label=/.test(list), 'the icon-only hand-off button has no accessible name')
+  expect(list.includes('gt-meta-by'), 'the creator attribution has no removable class')
+  expect(list.includes('gt-chip-dir'), 'the directory chip has no removable class')
+  // Touch: the controls a thumb has to hit are 44px, and the density styles that were
+  // right for a mouse are switched off rather than left on with smaller type.
+  expect(/\[data-mobile="1"\][^{]*\{[^}]*min-height:\s*44px/.test(css), 'no 44px touch target for mobile controls')
+  expect(/\[data-mobile="1"\][^{]*\.gt-kbd\s*\{[^}]*display:\s*none/.test(css), 'the keyboard hint is still shown on a phone')
+  expect(/\[data-mobile="1"\][^{]*\.gt-btn-label\s*\{[^}]*display:\s*none/.test(css), 'the hand-off label does not collapse on a phone')
+  expect(/\[data-mobile="1"\][^{]*\.gt-meta-by\s*\{[^}]*display:\s*none/.test(css), 'the creator attribution is still shown on a phone')
+  expect(/\[data-mobile="1"\][^{]*\.gt-tabs[^{]*\{[^}]*overflow-x:\s*auto/.test(css), 'the filter chips do not scroll sideways, so their tail is unreachable')
+  // The phone shell reserves a home indicator area; the panel is its own scroll container,
+  // so it has to respect the inset itself.
+  expect(/\[data-mobile="1"\][^}]*safe-area-inset-bottom/.test(css), 'the phone layout ignores the bottom safe area')
+  // Type follows the shell's text-size setting instead of freezing at desktop sizes.
+  expect(/\[data-mobile="1"\][^{]*\{[^}]*font-size:\s*var\(--dsh-content-font-size/.test(css), 'the phone layout ignores the shell text size')
+  // The settings sheet must be width-constrained by the viewport, not by a 360px card.
+  expect(settings.includes('data-mobile="1"'), 'the settings sheet lost the mobile branch')
+  expect(/rgb\(|#[0-9a-fA-F]{3,6}\b/.test(list.replace(/<style>[\s\S]*?<\/style>/, '')) === false, 'a literal colour leaked into the phone markup')
+  return failures
+}
+
 if (process.argv.includes('--check')) {
   const failures = checkRenderedPanel(panelHtml, detailHtml, selectHtml)
+  failures.push(...checkMobileRender(mobileHtml))
   // The four archived states are photographs, so nothing else would notice if one of them
   // quietly rendered a blank panel: assert the sentence that makes each state itself.
   for (const [name, marker] of [

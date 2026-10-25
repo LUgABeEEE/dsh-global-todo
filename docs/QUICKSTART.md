@@ -10,7 +10,7 @@
 
 | 需要 | 检查 |
 |---|---|
-| DSH `0.2.x`（`engines.dsh` 是 `>=0.2.0-rc.1 <0.3.0`） | `dsh --version` |
+| DSH `0.2.x`（`engines.dsh` 是 `>=0.2.0-rc.1 <0.3.0`；0.2.1-rc.2 上开发验证，0.2.1-rc.3 已核对） | `dsh --version` |
 | Node.js `>= 22.19.0` | `node -v` |
 | Web 客户端（面板由宿主 web server 提供） | 浏览器打开 `dsh web` 给出的地址 |
 
