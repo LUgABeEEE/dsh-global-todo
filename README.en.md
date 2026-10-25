@@ -188,10 +188,8 @@ What each file shows, and when it is regenerated, is indexed in
 
 ## Requirements
 
-- DeepSeek Harness `0.2.x` (developed and verified against `0.2.1-rc.2`; the `0.2.1-rc.3` changes
-  were checked item by item — its new sidebar **More** menu does not touch how this plugin registers
-  its entry; `engines.dsh` is `>=0.2.0-rc.1 <0.3.0`, and a Host outside it skips the bundle instead
-  of warning)
+- DeepSeek Harness `0.2.x` (developed and verified against `0.2.1-rc.2`; `engines.dsh` is
+  `>=0.2.0-rc.1 <0.3.0`, and a Host outside it skips the bundle instead of warning)
 - Node.js `>= 22.19.0` (the Web profile's own requirement)
 - A **Web** client: the panel is served by the Host's web server. Headless / ACP / SDK keep the
   agent tools but have no panel; an Electron-style desktop client (file:// + IPC) is not

@@ -163,9 +163,8 @@ HTML（不依赖宿主、零依赖），再以 1280×720 拍进 `docs/screenshot
 
 ## 环境要求
 
-- DeepSeek Harness `0.2.x`（按 `0.2.1-rc.2` 开发与验证，`0.2.1-rc.3` 的变更已逐项核对——它新增的
-  侧栏「更多」菜单不影响本插件的入口注册；`engines.dsh` 是 `>=0.2.0-rc.1 <0.3.0`，区间外的宿主会
-  **整层跳过**这个 bundle，不是警告）
+- DeepSeek Harness `0.2.x`（按 `0.2.1-rc.2` 开发与验证；`engines.dsh` 是 `>=0.2.0-rc.1 <0.3.0`，
+  区间外的宿主会**整层跳过**这个 bundle，不是警告）
 - Node.js `>= 22.19.0`（Web profile 本身的要求）
 - **Web 客户端**：面板由宿主的 web server 提供。headless / ACP / SDK 只有 Agent 工具、没有面板；
   Electron 式桌面端（file:// + IPC）暂不支持

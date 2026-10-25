@@ -81,13 +81,7 @@ function satisfies(version, rangeText) {
 
 // Self-check: these are the cases the manifest has actually used, plus the one that matters
 // when 0.3.0 lands.
-//
-// The Host matches with `{ includePrerelease: true }` (dsh-app-boot's `satisfies`), which is why
-// `0.2.1-rc.3` is inside a range whose lower bound names the 0.2.0 prerelease. Stock
-// `semver.satisfies` without that flag would call it outside and a "cleanup" of the range into
-// `^0.2.1` would refuse both 0.2.1-rc.2 and 0.2.1-rc.3. Do not narrow it.
 assert.equal(satisfies("0.2.1-rc.2", ">=0.2.0-rc.1 <0.3.0"), true)
-assert.equal(satisfies("0.2.1-rc.3", ">=0.2.0-rc.1 <0.3.0"), true)
 assert.equal(satisfies("0.3.0", ">=0.2.0-rc.1 <0.3.0"), false)
 assert.equal(satisfies("0.2.0-rc.1", ">=0.2.0-rc.1"), true)
 assert.equal(satisfies("0.2.0-alpha.5", ">=0.2.0-rc.1"), false)

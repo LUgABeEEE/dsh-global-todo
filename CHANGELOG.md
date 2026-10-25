@@ -1,19 +1,3 @@
-## [Unreleased]
-
-- **Checked against DSH 0.2.1-rc.3.** It adds More menus (browse other plugins, create a plugin) to
-  the left sidebar, the conversation view tabs and the right-sidebar guide; fixes New Session losing
-  an unsent draft; and changes how the DeepSeek API-key adapter refreshes its model list. None of it
-  changes a plugin declaration: `packages/boot/hmr/src/package-manifest.ts` and
-  `packages/client/modules/src/client/manifest.ts` are byte-identical between rc.2 and rc.3, and the
-  sidebar entry keeps registering the same way — the new menu lists entries, it does not change how
-  one is declared.
-- **The declared range already admits the new line, and now says why.** `engines.dsh` stays
-  `>=0.2.0-rc.1 <0.3.0`; the Host matches with `includePrerelease: true` (dsh-app-boot's
-  `satisfies`), which is why `0.2.1-rc.3` is inside a range whose lower bound names the 0.2.0
-  prerelease. `scripts/matrix.mjs` gained that case and a warning: "cleaning up" the range into
-  `^0.2.1` would refuse both `0.2.1-rc.2` and `0.2.1-rc.3`. Both READMEs and the quickstart now
-  name the versions that were checked instead of implying one.
-
 ## [0.19.0] — 2026-10-25
 
 - **A phone layout, chosen by the panel's measured width.** At 600px or less the panel is a touch

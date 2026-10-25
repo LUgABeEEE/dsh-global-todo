@@ -116,21 +116,6 @@ anyone. A burst spread evenly across every version published that day, with the 
 and views flat, is a crawler walking new versions — on 2026-10-22 that shape produced 1,526
 downloads for a plugin with one real user. Do not read a download spike as an audience without it.
 
-### Transplanting to the public repository (hard)
-
-The public repository is the trusted publisher; the private one is where work happens. A transplant
-pushes one tree as a single new commit on public `main`, so **the public history is not the private
-history** and the two can drift without anything failing. Two rules follow:
-
-**Preflight: compare trees, never assume.** Before pushing, compare public `main`'s tree with the
-tree of the private commit the *last* transplant published. If they differ, one of the two
-repositories already moved — a half-finished release, or another session — and pushing now
-linearizes public `main` over commits nobody transplanted. That happened on 2026-10-25: a
-`chore(release): 0.19.0` was committed and tagged in the private repository but never transplanted,
-and the next legitimate transplant jumped public `main` straight to a tree that contained the
-unreleased version. Read `git ls-remote --tags <public>` and the public log first; when the two
-disagree, name the missing commits and decide what to do with each, instead of publishing a union.
-
 **Never push a computed ref unguarded.** `git push "$NEW:refs/heads/main"` with an empty `$NEW`
 is not a no-op: an empty source means *delete that ref*. It happened on 2026-10-23 when
 `git commit-tree` had failed on an unset identity — GitHub refused to delete the default branch,
