@@ -77,7 +77,9 @@ async function registryReport() {
     hoursSinceRelease: Number(hours.toFixed(1)),
     exit,
     verdict: exit === 10
-      ? `${previousVersion} went out ${hours.toFixed(1)} h ago — hold this one for the daily window (dispatch with hotfix=true for a data-loss or security fix)`
+      // Name the workflow's own input, not an older name for it: a person who follows this
+      // message and asks for "hotfix" finds no such input and cannot ship the fix it is for.
+      ? `${previousVersion} went out ${hours.toFixed(1)} h ago — hold this one for the daily window (workflow_dispatch with force=true for a data-loss or security fix)`
       : `${previousVersion} is ${hours.toFixed(1)} h old — the cadence allows this release`,
   }
 }
