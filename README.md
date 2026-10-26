@@ -1,5 +1,9 @@
 **中文** · [English](https://github.com/LUgABeEEE/dsh-global-todo/blob/main/README.en.md)
 
+[![npm](https://img.shields.io/npm/v/dsh-global-todo?label=npm&color=cb3837)](https://www.npmjs.com/package/dsh-global-todo)
+[![listed on dsh.works](https://img.shields.io/badge/listed_on-dsh.works-00c2e9?labelColor=0d0d0d)](https://dsh.works/awesome-dsh-plugins/)
+[![dsh-xray 能力卡片](https://img.shields.io/endpoint?url=https%3A%2F%2Funstone.github.io%2Fdsh-xray%2Fbadge%2FLUgABeEEE__dsh-global-todo.json)](https://unstone.github.io/dsh-xray/p/LUgABeEEE__dsh-global-todo.html)
+
 # dsh-global-todo · 全局待办
 
 <img src="docs/icon.svg" width="52" height="52" alt="全局待办图标：一张打了勾、并有箭头离开的清单卡片">
@@ -387,19 +391,29 @@ dsh plugin --profile <profile> remove dsh-global-todo
 
 ## 收录情况
 
-npm 是唯一安装源，下面每个地方都只是「能不能被找到」。核对日期 2026-10-21；复核用
+npm 是唯一安装源，下面每个地方都只是「能不能被找到」。核对日期 2026-10-26；复核用
 `node tools/listings.mjs`，不要只信这张表。
+
+页头那三枚徽章里有两枚是**目录自己发的**，不是我们画的：`dsh.works` 的静态徽章来自他们 README
+给出的写法，`dsh-xray` 的是动态端点——它读对方每天的扫描结果，随扫描自动变，点进去是按行号列证据的
+能力卡片。第三枚只说明 npm 上的版本号。
 
 | 渠道 | 形式 | 状态 |
 |---|---|---|
-| [npm](https://www.npmjs.com/package/dsh-global-todo) | 包本体 | `0.11.2` |
-| [1024 Store](https://deepseek1024.com) | 目录条目（[PR #654](https://github.com/imsai-sh/awesome-deepseek-harness-plugins/pull/654) 已合并） | 已收录；安装行仍解析成 GitHub 源 |
-| [dsh.pub](https://dsh.pub/zh/plugins/dsh-global-todo/) | 目录页 + `dshpub` CLI | 已上线，pin 到某个 commit |
-| [DSH-Plugins-Marketplace](https://github.com/bradeGithub/DSH-Plugins-Marketplace) | `registry.json`，按 `dsh-plugin` topic 采集 | `v0.11.2`，风险分级 `safe` |
+| [npm](https://www.npmjs.com/package/dsh-global-todo) | 包本体 | `0.19.0` |
+| [dsh.works](https://dsh.works/awesome-dsh-plugins/) | 每日重建的机读索引（21,928 条） | 已收录，跟到 `0.19.0` |
+| [dsh-xray](https://unstone.github.io/dsh-xray/p/LUgABeEEE__dsh-global-todo.html) | 能力卡片 + 可嵌入徽章 | 评级 `C3`：起因是 `files` 里一条 `!` 让他们的白名单判断失效（[#7](https://github.com/unStone/dsh-xray/issues/7)）；我们已改掉自己的写法，下次扫描应降到 `C2` |
+| [1024 Store](https://deepseek1024.com) | 目录条目（[PR #654](https://github.com/imsai-sh/awesome-deepseek-harness-plugins/pull/654) 已合并） | 版本已跟到 `0.19.0`；安装行仍是 `not_checked` 的 GitHub 源——他们的仓库巡检自 2026-09-07 停摆（[#19](https://github.com/imsai-sh/dsh-1024store/issues/19)） |
 | [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin)（19.7k★） | 每个插件一个 YAML | 已合并（[PR #7498](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/7498)） |
+| [bruc3van/awesome-dsh-plugin](https://github.com/bruc3van/awesome-dsh-plugin)（469★） | `MARKET.md` 表格 | 已收录，第 656 行 |
+| [dsh.pub](https://dsh.pub/zh/plugins/dsh-global-todo/) | 目录页 + `dshpub` CLI | 页在，安装命令 pin 到某个 commit |
+| [DSH-Plugins-Marketplace](https://github.com/bradeGithub/DSH-Plugins-Marketplace) | `registry.json`，按 `dsh-plugin` topic 采集 | `v0.19.0`，风险分级 `safe` |
 | [walkinglabs](https://github.com/walkinglabs/awesome-deepseek-harness-plugins) | 带来源核验的 README | 已合并（[PR #114](https://github.com/walkinglabs/awesome-deepseek-harness-plugins/pull/114)） |
+| [Blue-Whale](https://leenkcool.github.io/plugins.zh.html) | 站点索引 + `repos.txt` | 已收录（`tools` 分类） |
+| [deepseekserver.com](https://deepseekserver.com/zh/resources/dsh-global-todo) | 中英各一个资源页 | 页在，快照偏旧（还写着 ⭐3） |
 
-另有五个在审（Zhiyuan-Fan、kejixiaoliang、beancookie、dshworks、losebird），一个维护者已承诺
+另有五个在审（Zhiyuan-Fan、kejixiaoliang、beancookie、losebird，以及一份对 1024 目录的更新
+[PR #662](https://github.com/imsai-sh/awesome-deepseek-harness-plugins/pull/662)），一个维护者已承诺
 下次提交收录（dshopen.org）。完整表格、以及我们尚未逐条核实的 topic 自动采集渠道，见
 [docs/DISTRIBUTION.md](docs/DISTRIBUTION.md)。
 

@@ -8,19 +8,24 @@ dsh plugin add dsh-global-todo
 ```
 
 A registry that shows an older version is normal — their crawlers run on their own schedule. Last
-verified **2026-10-21 11:27 (+08:00)**; in a checkout, re-check with `node tools/listings.mjs` instead
+verified **2026-10-26 22:40 (+08:00)**; in a checkout, re-check with `node tools/listings.mjs` instead
 of trusting this table.
 
 ## Live
 
 | Registry | Form | What it gives you | Verified state |
 |---|---|---|---|
-| **npm** | the package | the install path | `dsh-global-todo@0.13.1` |
+| **npm** | the package | the install path | `dsh-global-todo@0.19.0` |
 | **1024 Store** ([deepseek1024.com](https://deepseek1024.com)) · [repo](https://github.com/imsai-sh/awesome-deepseek-harness-plugins) | catalog entry, merged [#654](https://github.com/imsai-sh/awesome-deepseek-harness-plugins/pull/654) | searchable, has a public API | 🟡 entry live, but its install line still resolves to `github:LUgABeEEE/dsh-global-todo` — their npm enrichment has not caught up. Install works either way. |
 | **dsh.pub** · [page](https://dsh.pub/en/plugins/dsh-global-todo/) | published page + `dshpub` CLI | `npx dshpub add LUgABeEEE/dsh-global-todo` | ✅ page live, pinned to a commit |
-| **DSH-Plugins-Marketplace** ([bradeGithub](https://github.com/bradeGithub/DSH-Plugins-Marketplace)) | `registry.json`, collected from the `dsh-plugin` topic | one-click install inside DSH | ✅ `v0.13.x`, risk tier `safe` |
+| **DSH-Plugins-Marketplace** ([bradeGithub](https://github.com/bradeGithub/DSH-Plugins-Marketplace)) | `registry.json`, collected from the `dsh-plugin` topic | one-click install inside DSH | ✅ `v0.19.0`, risk tier `safe` |
 | **awesome-dsh-plugin** ([19.7k★](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin)) | one YAML per plugin | the largest directory | ✅ merged [#7498](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/7498) |
 | **walkinglabs/awesome-deepseek-harness-plugins** | README entry (source-verified list) | review-backed listing | ✅ merged [#114](https://github.com/walkinglabs/awesome-deepseek-harness-plugins/pull/114) |
+| **dsh.works** · [site](https://dsh.works/awesome-dsh-plugins/) · [repo](https://github.com/dshworks/awesome-dsh-plugins) | machine-readable index (21,928 rows), rebuilt daily | a stable target for anything that wants plugin metadata | ✅ in the index at `0.19.0`, category `memory`; listed by sweep, not by PR (our [#178](https://github.com/dshworks/awesome-dsh-plugins/issues/178) got the index re-cut and a daily job added) |
+| **dsh-xray** · [card](https://unstone.github.io/dsh-xray/p/LUgABeEEE__dsh-global-todo.html) · [repo](https://github.com/unStone/dsh-xray) | capability card with `file:line` evidence, plus a live badge | a reader can see what the plugin can do before installing | 🟡 rated `C3` on evidence from files the tarball does not contain — one `!` in `files` defeated their allowlist check ([#7](https://github.com/unStone/dsh-xray/issues/7), [PR #8](https://github.com/unStone/dsh-xray/pull/8)). Our `files` no longer uses negations, so the next sweep should read `C2` |
+| **bruc3van/awesome-dsh-plugin** ([469★](https://github.com/bruc3van/awesome-dsh-plugin)) | one row in `MARKET.md` | a second large table, refreshed from the topic | ✅ row 656 |
+| **Blue-Whale-Harness** · [site](https://leenkcool.github.io/plugins.zh.html) | site index + `repos.txt` | a Chinese-language zone map | ✅ listed, category `tools` (closed our request with 已收录, 2026-10-25) |
+| **deepseekserver.com** · [page](https://deepseekserver.com/zh/resources/dsh-global-todo) | a resources page per language | long-form entry with the README linked | ⚠️ page live, snapshot old — it still shows ⭐3 and files us under "渠道" |
 
 ## Pending review
 
@@ -31,9 +36,8 @@ Open PRs, all made by hand against each repository's own format:
 | Zhiyuan-Fan/Awesome-DeepSeek-Harness-Plugins | [#93](https://github.com/Zhiyuan-Fan/Awesome-DeepSeek-Harness-Plugins/pull/93) | 574★, curated bilingually |
 | kejixiaoliang/awesome-dsh-plugins | [#144](https://github.com/kejixiaoliang/awesome-dsh-plugins/pull/144) | merges in monthly batches; first-time contributor CI needs the maintainer |
 | beancookie/awesome-dsh-plugin | [#233](https://github.com/beancookie/awesome-dsh-plugin/pull/233) | same batch pattern |
-| dshworks/awesome-dsh-plugins | [#174](https://github.com/dshworks/awesome-dsh-plugins/pull/174) | machine-readable registry; this PR is a re-verification |
 | losebird/dsh-plugin-market | [#49](https://github.com/losebird/dsh-plugin-market/pull/49) | replaces a broken auto entry (`github:…#v0.6.6`, manual install) with an npm spec |
-| polang233/dsh-plugin-index (dshopen.org) | [issue #16](https://github.com/polang233/dsh-plugin-index/issues/16) | no PR channel; maintainer replied "will be included in the next commit" |
+| polang233/dsh-plugin-index (dshopen.org) | [issue #16](https://github.com/polang233/dsh-plugin-index/issues/16) | no PR channel; the maintainer said it would be included in the next commit and closed the issue — we have not seen the entry, so it stays here |
 
 ## Collected automatically
 
@@ -45,15 +49,34 @@ needed; appearance depends on their scan cycle, and we have **not** verified eac
 `ZASENJC/dsh-plugins-store` · `YELEBAI/dsh-plugin-marketplace` ·
 `awesome-dsh-plugin/dsh-find-plugin`
 
+## Badges
+
+Two registries hand out a badge an author may embed, and both are in the README under the language
+switch:
+
+```md
+<!-- dsh.works: static, their snippet, needs no upkeep -->
+[![listed on dsh.works](https://img.shields.io/badge/listed_on-dsh.works-00c2e9?labelColor=0d0d0d)](https://dsh.works/awesome-dsh-plugins/)
+
+<!-- dsh-xray: live endpoint, reads their daily scan and can say something unflattering -->
+[![dsh-xray](https://img.shields.io/endpoint?url=https%3A%2F%2Funstone.github.io%2Fdsh-xray%2Fbadge%2FLUgABeEEE__dsh-global-todo.json)](https://unstone.github.io/dsh-xray/p/LUgABeEEE__dsh-global-todo.html)
+```
+
+The others do not offer one: 1024 Store, dsh.pub, DSH-Plugins-Marketplace, bruc3van's list and
+walkinglabs only publish their own repository badges. Never invent a "listed on" badge for those —
+the npm version badge in the README covers the one fact a reader actually needs.
+
 ## How to keep this honest
 
 ```sh
 node tools/listings.mjs
 ```
 
-It asks npm, the 1024 API, dsh.pub, the marketplace registry, and two repository files, each with a
-25-second timeout, and prints a status per registry. A fetch that cannot answer is reported as
-`error`, never as "listed" — an unknown state should look unknown.
+It asks npm, the 1024 API, dsh.pub, the marketplace registry, dsh-xray's badge, bruc3van's
+`MARKET.md`, the Blue-Whale site and the deepseekserver page, each with a 25-second timeout, and
+prints a status per registry. A fetch that cannot answer is reported as `error`, never as "listed" —
+an unknown state should look unknown. dsh.works is hand-checked on purpose: its 12 MB index times
+out from here and a timeout would read as "not listed".
 
 ## What we deliberately do not do
 

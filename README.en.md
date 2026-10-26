@@ -1,5 +1,9 @@
 **English** · [中文](https://github.com/LUgABeEEE/dsh-global-todo/blob/main/README.md)
 
+[![npm](https://img.shields.io/npm/v/dsh-global-todo?label=npm&color=cb3837)](https://www.npmjs.com/package/dsh-global-todo)
+[![listed on dsh.works](https://img.shields.io/badge/listed_on-dsh.works-00c2e9?labelColor=0d0d0d)](https://dsh.works/awesome-dsh-plugins/)
+[![dsh-xray capability card](https://img.shields.io/endpoint?url=https%3A%2F%2Funstone.github.io%2Fdsh-xray%2Fbadge%2FLUgABeEEE__dsh-global-todo.json)](https://unstone.github.io/dsh-xray/p/LUgABeEEE__dsh-global-todo.html)
+
 # dsh-global-todo
 
 <img src="docs/icon.svg" width="52" height="52" alt="全局待办 icon: a list card with a check and an arrow leaving it">
@@ -481,21 +485,32 @@ reach the agents service. The body is always `{ ok, ... }` with a machine `reaso
 
 ## Where it is listed
 
-npm is the only install source; every registry below is a discovery surface. Verified 2026-10-21 —
+npm is the only install source; every registry below is a discovery surface. Verified 2026-10-26 —
 re-check with `node tools/listings.mjs` rather than trusting this list.
+
+Two of the three badges at the top are the registries' own, not ours. dsh.works publishes a static
+badge for plugins in its registry; the dsh-xray one is a live endpoint reading their daily scan, so
+it changes on its own and links to a capability card that cites a file and line for every finding.
+The third reports the npm version and nothing else.
 
 | Registry | Form | State |
 |---|---|---|
-| [npm](https://www.npmjs.com/package/dsh-global-todo) | the package | `0.11.2` |
-| [1024 Store](https://deepseek1024.com) | catalog entry ([PR #654](https://github.com/imsai-sh/awesome-deepseek-harness-plugins/pull/654), merged) | listed; its install line still resolves to the GitHub source |
-| [dsh.pub](https://dsh.pub/en/plugins/dsh-global-todo/) | published page + `dshpub` CLI | live, pinned to a commit |
-| [DSH-Plugins-Marketplace](https://github.com/bradeGithub/DSH-Plugins-Marketplace) | `registry.json`, collected from the `dsh-plugin` topic | `v0.11.2`, risk tier `safe` |
+| [npm](https://www.npmjs.com/package/dsh-global-todo) | the package | `0.19.0` |
+| [dsh.works](https://dsh.works/awesome-dsh-plugins/) | machine-readable index, rebuilt daily (21,928 rows) | listed, tracking `0.19.0` |
+| [dsh-xray](https://unstone.github.io/dsh-xray/p/LUgABeEEE__dsh-global-todo.html) | capability card + embeddable badge | rated `C3`: one `!` entry in `files` defeated their allowlist check ([#7](https://github.com/unStone/dsh-xray/issues/7)); our side of that is fixed, the next sweep should read `C2` |
+| [1024 Store](https://deepseek1024.com) | catalog entry ([PR #654](https://github.com/imsai-sh/awesome-deepseek-harness-plugins/pull/654), merged) | tracks `0.19.0`; its install line is still the `not_checked` GitHub source — their repository inspection has been down since 2026-09-07 ([#19](https://github.com/imsai-sh/dsh-1024store/issues/19)) |
 | [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) (19.7k★) | one YAML per plugin | merged ([PR #7498](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/7498)) |
+| [bruc3van/awesome-dsh-plugin](https://github.com/bruc3van/awesome-dsh-plugin) (469★) | a `MARKET.md` row | listed, row 656 |
+| [dsh.pub](https://dsh.pub/en/plugins/dsh-global-todo/) | published page + `dshpub` CLI | live, install pinned to a commit |
+| [DSH-Plugins-Marketplace](https://github.com/bradeGithub/DSH-Plugins-Marketplace) | `registry.json`, collected from the `dsh-plugin` topic | `v0.19.0`, risk tier `safe` |
 | [walkinglabs](https://github.com/walkinglabs/awesome-deepseek-harness-plugins) | source-verified README | merged ([PR #114](https://github.com/walkinglabs/awesome-deepseek-harness-plugins/pull/114)) |
+| [Blue-Whale](https://leenkcool.github.io/plugins.zh.html) | site index + `repos.txt` | listed (category `tools`) |
+| [deepseekserver.com](https://deepseekserver.com/resources/dsh-global-todo) | a resources page in each language | live, snapshot is old (still says ⭐3) |
 
-Five more are in review (Zhiyuan-Fan, kejixiaoliang, beancookie, dshworks, losebird) and one
-maintainer promised to include it (dshopen.org). The full table, including the auto-collected
-topic feeds we have not verified, is [docs/DISTRIBUTION.md](docs/DISTRIBUTION.md).
+Five more are in review (Zhiyuan-Fan, kejixiaoliang, beancookie, losebird, plus an update PR for the
+1024 catalog, [#662](https://github.com/imsai-sh/awesome-deepseek-harness-plugins/pull/662)), and one
+maintainer promised to include it (dshopen.org). The full table, including the auto-collected topic
+feeds we have not verified, is [docs/DISTRIBUTION.md](docs/DISTRIBUTION.md).
 
 ## Where the data lives
 

@@ -66,6 +66,29 @@ try {
   add('walkinglabs', readme.includes(NPM) ? 'live' : 'pending', readme.includes(NPM) ? 'in README' : 'PR open')
 } catch (error) { add('walkinglabs', 'error', error.message) }
 
+// dsh.works is not probed here on purpose: its index is a single 12 MB JSON that times out
+// from here, and a timeout reads as "not listed". Verify that one by hand against
+// https://dsh.works/awesome-dsh-plugins/plugins.json (the row is `name: dsh-global-todo`).
+try {
+  const badge = await json('https://unstone.github.io/dsh-xray/badge/LUgABeEEE__dsh-global-todo.json')
+  add('dsh-xray', 'live', String(badge.message || 'card present'))
+} catch (error) { add('dsh-xray', 'error', error.message) }
+
+try {
+  const market = await text('https://raw.githubusercontent.com/bruc3van/awesome-dsh-plugin/main/MARKET.md')
+  add('bruc3van (469 stars)', market.includes(REPO) ? 'live' : 'pending', market.includes(REPO) ? 'row in MARKET.md' : 'not listed yet')
+} catch (error) { add('bruc3van (469 stars)', 'error', error.message) }
+
+try {
+  const site = await text('https://leenkcool.github.io/plugins.zh.html')
+  add('Blue-Whale', site.includes(REPO) ? 'live' : 'missing', site.includes(REPO) ? 'in the site index' : 'not listed yet')
+} catch (error) { add('Blue-Whale', 'error', error.message) }
+
+try {
+  const page = await get('https://deepseekserver.com/zh/resources/' + NPM)
+  add('deepseekserver.com', 'live', 'page ' + page.status)
+} catch (error) { add('deepseekserver.com', 'error', error.message) }
+
 const pad = (value, width) => String(value).padEnd(width)
 console.log(pad('registry', 30) + pad('status', 10) + 'detail')
 console.log('-'.repeat(84))
