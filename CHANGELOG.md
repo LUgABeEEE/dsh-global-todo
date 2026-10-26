@@ -1,5 +1,19 @@
 ## [Unreleased]
 
+- **A bridge with the memory plugin, as a sentence rather than a wire.** When dsh-mnemon is
+  installed, the prompt gains one extra section — actions belong to this list, facts belong to
+  memory, do not store the same thing twice — and a completed todo's tool result says to
+  `mnemon_remember` the conclusion with the todo id in the body. Both exist only when
+  `mnemonMemory` does: `ctx.inject(['systemPrompt','mnemonMemory'], …)` gates the section, and
+  `createTools({ hasMemory })` asks per call. Naming a tool the deployment lacks is the failure the
+  tool-group gate already prevents.
+- **Two refusals, recorded in `docs/DESIGN.md`.** No reading or writing of its SQLite store (a
+  private schema, and its single service is a *definition registry*, not a "remember" call), and no
+  `mnemon-source-global-todo` package in this repository (a second bundle with a peer dependency;
+  this one has to keep working alone). The extension SDK it publishes is the documented path if
+  someone wants recall to see open items.
+- Tests: `memoryGuidanceFor` gating, the completion line with and without a memory plugin, and
+  three contract checks that keep the bridge from naming a tool a `core` deployment does not have.
 - **Checked against DSH 0.2.1-rc.3.** It adds More menus (browse other plugins, create a plugin) to
   the left sidebar, the conversation view tabs and the right-sidebar guide; fixes New Session losing
   an unsent draft; and changes how the DeepSeek API-key adapter refreshes its model list. None of it

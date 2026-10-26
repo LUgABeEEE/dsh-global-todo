@@ -440,6 +440,28 @@ hours (Dice similarity over character bigrams, 0.8), and the same errand finishe
 days are all refused with a reason on the record; archived and cancelled rows do not block a
 new one. The rules live in `lib/capture.js` and are tested on their own.
 
+### Dividing the work with a memory plugin (dsh-mnemon)
+
+When dsh-mnemon is installed, the plugin injects **one extra section** — and only when it can see
+the memory plugin. Two plugins that both say "remember this" tend to store the same sentence twice:
+once as an action, once as a fact.
+
+| Where it belongs | What it is |
+|---|---|
+| **the list** (`global_todo_*`) | an **action** to follow up: a reply, a deadline, a promise |
+| **memory** (`mnemon_remember` / `mnemon_recall`) | a **fact** already known: a decision, a preference, a conclusion, a trap |
+
+- A completion gains one line: "if the conclusion is worth keeping, `mnemon_remember` it with the
+  todo id in the body".
+- Reading "there is still something to do" out of memory means **adding a todo** — memory items are
+  never ticked off.
+- Without a memory plugin neither the section nor the line exists: a tool that is not there must not
+  be named.
+
+Two places implement it: `memoryGuidanceFor()` (`lib/index.js`, its own section, registered only
+when `ctx.inject(['systemPrompt','mnemonMemory'])` fires) and `createTools({ hasMemory })`
+(`lib/tools.js`, the line in the tool result).
+
 ### HTTP API
 
 The panel talks to the host over these routes. They are fenced by the host connection

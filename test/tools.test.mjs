@@ -407,3 +407,40 @@ test('the guidance section follows the tool groups', async () => {
   assert.doesNotMatch(guidanceFor('core'), /global_todo_capture/, 'do not tell the model to call a tool that is off')
   assert.match(guidanceFor('core'), /global_todo_add/)
 })
+
+test('the memory bridge is a separate section, and it never names a tool this deployment lacks', async () => {
+  const { memoryGuidanceFor } = await import('../lib/index.js')
+  assert.equal(memoryGuidanceFor('none'), '', 'no tools, no bridge: the list cannot be written to')
+  const all = memoryGuidanceFor('all')
+  assert.match(all, /mnemon_remember/)
+  assert.match(all, /global_todo_list/)
+  // It rides beside GUIDANCE rather than inside it: the core set must not learn about capture,
+  // and the whole section disappears when the memory plugin is absent (ctx.inject never fires).
+  assert.equal(memoryGuidanceFor('core'), all, 'the bridge only names tools both groups have')
+  assert.doesNotMatch(all, /global_todo_capture|global_todo_reopen/)
+})
+
+test('a completion points at the memory plugin only when one is installed', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'gt-tools-memory-'))
+  try {
+    const store = createStore({ file: path.join(dir, 'todos.json') })
+    const service = createService({ store, config: { requireExistingFiles: false } })
+    const build = (hasMemory) => {
+      const tools = createTools(service, { hasMemory })
+      return new Map(tools.map((tool) => [tool.name, tool]))
+    }
+
+    const created = await service.create({ title: '接记忆库' })
+    const offline = build(() => false).get('global_todo_done')
+    const offlineValue = await offline.execute({ id: created.id, summary: '接上了' })
+    assert.doesNotMatch(offline.output.render({}, offlineValue)[0].text, /mnemon_remember/)
+
+    const online = build(() => true).get('global_todo_done')
+    const onlineValue = await online.execute({ id: created.id, summary: '接上了' })
+    const rendered = online.output.render({}, onlineValue)[0].text
+    assert.match(rendered, /mnemon_remember/)
+    assert.ok(rendered.includes(created.id), 'the memory entry has to be able to name the todo')
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})

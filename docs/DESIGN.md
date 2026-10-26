@@ -765,6 +765,37 @@ exactly that one thing (`done` / `cancelled` → `open`), puts the reason in the
 and refuses an item that was never finished. One obvious entry point beats a capability
 buried inside the tool whose name says the opposite.
 
+## Two memories, one job
+
+A memory plugin and a todo list both promise "you will not lose this", and the first thing that goes
+wrong when both are installed is that the same sentence is stored twice — once as an action item,
+once as a fact. The model has no way to know the difference unless something says it.
+
+So the bridge with `dsh-mnemon` is a **sentence, not a wire**. Two pieces:
+
+- `memoryGuidanceFor()` (`lib/index.js`) returns the division — actions here, facts there — as a
+  **separate prompt section**, registered inside `ctx.inject(['systemPrompt', 'mnemonMemory'], …)`.
+  When no memory plugin is installed the inject never fires, so the section is *absent* rather than
+  wrong. That is the same rule as the tool-group gate: never name a tool the deployment lacks.
+- `createTools({ hasMemory })` (`lib/tools.js`) appends one line to a completion result, asked at
+  call time because the memory plugin may load after this one.
+
+**Why not write into its database, or read it?** dsh-mnemon stores memories in SQLite under
+`~/.mnemon/workspaces/<hash>/` and exposes exactly one service, `mnemonMemory`, whose surface is a
+*definition registry* (install a Source, a Strategy, a Strategy extension) — there is no
+"remember this" call for another plugin to make. Writing its tables directly would couple us to a
+private schema that changes with its releases, and the first casualty would be somebody's memory
+file. Reading it has the same problem without the risk, and still would not answer the question a
+person has ("what should I do next?").
+
+**The extension path, if this ever needs to be deeper.** dsh-mnemon publishes an extension SDK
+(`defineMemorySource`, `defineMemoryStrategy`, `defineMemoryViewExtension`), and a Source is exactly
+"where context comes from". A `dsh-mnemon-source-global-todo` package could offer open and overdue
+items to every turn without the model calling a tool. That is a second package with a peer dependency
+on the memory plugin, and it is deliberately **not** in this repository: this bundle stays
+dependency-free, and a feature that only exists with another plugin installed should not be able to
+break the one that works alone.
+
 ## Optional services
 
 | Service | Needed for | Without it |

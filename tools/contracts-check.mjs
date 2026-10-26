@@ -181,9 +181,12 @@ const equal = (group, name, actual, expected) =>
   equal('I groups', 'core is the list itself', names('core'), [...TOOL_GROUPS.core])
   equal('I groups', 'none registers nothing', names('none').length, 0)
   equal('I groups', 'a typo falls back to all', names('nonsense'), names('all'))
-  const { guidanceFor } = await import('../lib/index.js')
+  const { guidanceFor, memoryGuidanceFor } = await import('../lib/index.js')
   equal('I groups', 'no tools, no guidance', guidanceFor('none'), '')
   check('I groups', 'core guidance does not name the capture tool', guidanceFor('core').includes('global_todo_capture') === false)
+  equal('I groups', 'no tools, no memory bridge either', memoryGuidanceFor('none'), '')
+  check('I groups', 'the bridge names the memory tool and this list', memoryGuidanceFor('all').includes('mnemon_remember') && memoryGuidanceFor('all').includes('global_todo_list'))
+  equal('I groups', 'the bridge never names a tool the core set lacks', memoryGuidanceFor('core'), memoryGuidanceFor('all'))
 }
 
 // ── J. The cross-process lock: a write that cannot happen must say so ──────────────────

@@ -49,6 +49,10 @@ npm run verify   # static checks then the full test suite; run before every comm
 - Adding a field to a todo: `lib/model.js` (create + `applyPatch` + `normalizeStored`),
   `lib/tools.js` (`presentTodo` and the relevant JSON Schemas), `lib/client.js` (render),
   plus `docs/DESIGN.md`.
+- The memory bridge (`memoryGuidanceFor`, and the `hasMemory` line in a completion result) must
+  stay **gated**: no memory plugin, no sentence. A prompt section that names `mnemon_remember` on a
+  machine without it is the same bug as naming `global_todo_capture` in `core` mode, and
+  `tools/contracts-check.mjs` group I pins both.
 - Adding a tool: define it in `lib/tools.js`, then update **every** place the count is written
   down — the header comment there, the tool table in `README.md` (both halves), `docs/DESIGN.md`
   (the service table), `docs/ROADMAP.md` and the assertion in `test/smoke.test.mjs`. This has
