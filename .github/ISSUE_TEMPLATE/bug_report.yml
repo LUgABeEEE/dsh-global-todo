@@ -29,6 +29,18 @@ body:
       placeholder: v22.19.0
     validations:
       required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      description: Four of the five bugs in this repository are Windows-only, so the platform decides whether it reproduces at all
+      options:
+        - Linux
+        - macOS
+        - Windows
+        - Other (describe it under "What happened")
+    validations:
+      required: true
   - type: textarea
     id: steps
     attributes:

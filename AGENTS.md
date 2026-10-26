@@ -65,6 +65,17 @@ two-line landing page that keeps old links resolving — not a second copy of th
 to update when the content changes. Edit both documents in the same commit: a fact that is only in
 one of them is a fact half the readers get.
 
+### Issue labels
+
+Five labels carry the whole vocabulary: `bug`, `enhancement`, `documentation`, plus two this
+repository adds — `windows` (only breaks, or only differs, on Windows: paths, the atomic write's
+read-only handle, encoding, screen readers) and `distribution` (npm, plugin catalogs, the 1024 Store:
+anything about being found rather than about the plugin itself). GitHub's defaults — `duplicate`,
+`invalid`, `question`, `wontfix`, `good first issue`, `help wanted` — stay unused in practice; do
+not invent a label per subsystem. Label the closed issues too: the closed list is the only record of
+what the Windows sweeps have already cost, and an unlabelled one is invisible the next time the same
+symptom appears.
+
 ## Releasing
 
 Publishing is automated: bump both versions, `npm run verify`, commit, tag `vX.Y.Z`, push, and
