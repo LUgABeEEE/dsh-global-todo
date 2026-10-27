@@ -1,4 +1,6 @@
-## [Unreleased]
+## [0.20.0] — 2026-10-27
+
+The list stops competing with the memory store for the same sentence.
 
 - **A bridge with the memory plugin, as a sentence rather than a wire.** When dsh-mnemon is
   installed, the prompt gains one extra section — actions belong to this list, facts belong to
