@@ -13,6 +13,10 @@ Thumbs.db
 .idea/
 .vscode/
 
+# Generated page fragment: written into the Pages artifact at deploy time, never committed
+# (a bot commit on main would make the public tree differ from the private one)
+docs/where.html
+
 # Generated panel previews
 preview/
 

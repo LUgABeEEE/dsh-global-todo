@@ -1,0 +1,67 @@
+name: pages
+
+# The listings section of the landing page is live data: which registries have us, at which
+# version, in what state. It used to be hand-written into docs/index.html, so it said 0.11.2
+# while npm was three majors ahead and still listed dsh.works as "in review" after that
+# registry had indexed us. A page that can only be corrected by hand is a page that drifts.
+#
+# So the site is built from a crawl instead: tools/listings.mjs runs here, writes
+# docs/where.html into the deploy artifact, and docs/assets/site.js swaps it in. Nothing is
+# committed back — a bot commit on main would break the transplant preflight, which compares
+# the public tree with the private one.
+#
+# The deploy job needs Pages to be configured with build_type=workflow; while it is not, this
+# workflow only records the crawl and the branch deploy keeps serving the committed copy.
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # Daily, 11:23 Beijing — before the 04:2x UTC catalog rebuild, so the cards describe the
+    # same world the registries are about to publish.
+    - cron: '23 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    # The private repository is a backup with Actions turned off; nothing here may run twice.
+    if: github.repository == 'LUgABeEEE/dsh-global-todo'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          package-manager-cache: false
+
+      # No install step: the tool has no dependencies, and a registry that cannot answer in
+      # 25s is reported as unknown rather than failing the build.
+      - name: Crawl the registries into the page fragment
+        run: node tools/listings.mjs --page docs/where.html
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+  deploy:
+    needs: build
+    if: github.repository == 'LUgABeEEE/dsh-global-todo'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
