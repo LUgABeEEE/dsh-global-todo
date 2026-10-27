@@ -853,3 +853,51 @@ test('the store path from config is honoured, and the default is $DSH_HOME', asy
     await rm(dir, { recursive: true, force: true })
   }
 })
+
+test('without a memory plugin nothing changes: one section, and no memory in the reply', async () => {
+  // The question this test answers: can somebody install this plugin on a machine that has no
+  // memory plugin? Yes — the bridge is the only thing that mentions memory, and it is registered
+  // from inside `ctx.inject([... 'mnemonMemory'], …)`, whose callback a host without the service
+  // never makes. The fake host mirrors that contract (see makeHost).
+  const dir = await mkdtemp(path.join(tmpdir(), 'gt-smoke-memory-'))
+  try {
+    const file = path.join(dir, 'todos.json')
+    const host = makeHost({ tools: {}, webServer: {}, systemPrompt: {} })
+    apply(host.ctx, { storePath: file, requireExistingFiles: false })
+    assert.deepEqual(
+      host.state.promptSections.map((section) => section.name),
+      ['dsh-global-todo:guidance'],
+      'one section: the list has no business talking about a memory plugin that is not installed',
+    )
+    assert.ok(host.state.routes.size > 0, 'the panel still works')
+
+    const add = await host.state.tools.get('global_todo_add').execute({ title: '没有记忆库也要能记' })
+    const done = await host.state.tools.get('global_todo_done').execute({ id: add.todo.id, summary: '记上了' })
+    const rendered = host.state.tools.get('global_todo_done').output.render({}, done)[0].text
+    assert.doesNotMatch(rendered, /mnemon/, 'no tool that does not exist may be named')
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('with a memory plugin the bridge is one extra section, and one line in a completion', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'gt-smoke-memory-'))
+  try {
+    const file = path.join(dir, 'todos.json')
+    const host = makeHost({ tools: {}, webServer: {}, systemPrompt: {}, mnemonMemory: {} })
+    apply(host.ctx, { storePath: file, requireExistingFiles: false })
+    const names = host.state.promptSections.map((section) => section.name)
+    assert.deepEqual(names, ['dsh-global-todo:guidance', 'dsh-global-todo:memory'])
+    const bridge = host.state.promptSections[1].text
+    assert.match(bridge, /mnemon_remember/)
+    assert.match(bridge, /global_todo_/)
+
+    const add = await host.state.tools.get('global_todo_add').execute({ title: '接上了' })
+    const done = await host.state.tools.get('global_todo_done').execute({ id: add.todo.id, summary: '接上了' })
+    const rendered = host.state.tools.get('global_todo_done').output.render({}, done)[0].text
+    assert.match(rendered, /mnemon_remember/)
+    assert.ok(rendered.includes(add.todo.id), 'the memory entry has to be able to name the todo')
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
