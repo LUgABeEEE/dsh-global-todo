@@ -96,12 +96,15 @@ test('an export imported back reproduces the list exactly', async () => {
   }
 })
 
-test('merge updates by id and appends what is new', async () => {
+test('merge keeps this list\'s newer edits, and an older copy cannot undo a deletion', async () => {
   const env = await harness()
   try {
     const a = await env.service.create({ title: 'A 原样' })
     const b = await env.service.create({ title: 'B' })
     const doc = await env.exported()
+    // Distinct milliseconds: the fold decides by `updatedAt`, and a test that runs inside one
+    // tick would be asserting the tie-break instead of the rule it means to state.
+    await new Promise((resolve) => setTimeout(resolve, 5))
 
     await env.service.update(a.id, { title: 'A 改过' })
     await env.service.remove(b.id)
@@ -114,16 +117,26 @@ test('merge updates by id and appends what is new', async () => {
     assert.equal(merged.status, 200)
     assert.equal(merged.payload.data.mode, 'merge')
     assert.equal(merged.payload.data.imported, 2)
-    assert.equal(merged.payload.data.total, 3)
+    // The imported copy is older than this list's edit of A and older than B's deletion, so
+    // neither of its two records comes back. Before 0.21.0 the merge replaced by id and the
+    // deleted B was appended again — the same resurrect a second machine caused.
+    assert.equal(merged.payload.data.total, 2)
+    // The fold did try to bring B back and the local tombstone refused it; that is exactly the
+    // count worth reporting, even though the list ended up unchanged in size.
+    assert.equal(merged.payload.data.removed, 1)
 
     const after = await env.exported()
     assert.deepEqual(
       after.todos.map((todo) => todo.id),
-      [a.id, c.id, b.id],
-      'a restored record is appended, and the rest keeps its place',
+      [a.id, c.id],
+      'the newer local edit wins and the deleted record stays deleted',
     )
-    assert.equal(after.todos[0].title, 'A 原样', 'a known id is replaced by the imported record')
-    assert.equal(after.todos[1].title, 'C')
+    assert.equal(after.todos[0].title, 'A 改过')
+    assert.deepEqual(
+      after.trash.map((entry) => entry.id),
+      [b.id],
+      'the deletion travels with the document, so the next copy cannot revive it',
+    )
   } finally {
     await env.cleanup()
   }

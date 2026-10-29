@@ -58,7 +58,7 @@ and the watcher all go through the same service path, so no writer can opt out o
 ## Storage
 
 ```
-$DSH_HOME/global-todo/todos.json     ← { version: 1, todos: [ … ] }
+$DSH_HOME/global-todo/todos.json     ← { version: 2, todos: [ … ], trash: [ … ] }
 ```
 
 - **Atomic writes**: payload goes to `todos.json.<pid>.<ts>.tmp`, is flushed with
@@ -74,9 +74,16 @@ $DSH_HOME/global-todo/todos.json     ← { version: 1, todos: [ … ] }
 - **Loud failures**: unparseable JSON, or a `version` newer than this plugin understands,
   raises `store-corrupt` and **refuses to write**. Silently starting over would destroy the
   only copy of the user's list.
-- **No migration code yet**: `SCHEMA_VERSION` is 1. The loader already refuses a newer
-  version, and a future migration step would run before the first write, keeping the old
-  file as a backup.
+- **`trash` is part of the document, not a side file**: every removal appends
+  `{ id, at, by }` and every load reads it back. It travels with the list because a deletion
+  that does not travel is a deletion the other machine never learns about (`One list, several
+  machines`). It is bounded (a year, 5000 entries) so a script that deletes in a loop cannot grow
+  the file without limit.
+- **`SCHEMA_VERSION` is 2, and there is still no migration code.** A version-1 document loads
+  unchanged — it simply has no deletions to replay — and the first write upgrades it. A version-3
+  document is refused, which is deliberate: the alternative is a plugin that writes back a shape it
+  only half understands. (The flip side, stated where a user will hit it: a 0.20.0 host refuses a
+  0.21.0 file, loudly, instead of silently dropping the tombstones.)
 
 ## Serializing two processes, not two callers
 
@@ -112,6 +119,52 @@ What this does **not** cover, stated plainly: an older plugin version that does 
 hand edit in an editor, and a sync client writing at an arbitrary moment. Those remain "last writer
 wins" — the difference is that the panel now names the change (`externalChanges`) instead of
 pretending it never happened.
+
+## One list, several machines
+
+Two machines need the same list. The tempting answer is one file on a NAS with `storePath` pointed at
+it, and it fails in three ways that only show up later: every panel read becomes a network round trip
+(the list is a 1.5 MB parse), a disconnected laptop cannot open its own todos, and a stale cifs mount
+does not fail — it waits, so the page waits too. The store stays local. Machines meet at a **hub
+document** instead, and the fold that combines them is `lib/replica.js`. The directory comes from
+`settings.json` (the panel's 设置 → 多端同步) with `config.sync.dir` as the deployment default for a
+headless install — a path, per machine, read through a getter so a change takes effect without a
+restart and without a captured value writing to yesterday's share.
+
+Three facts make a copy safe to fold back:
+
+1. **A delete leaves a mark.** `remove` used to drop the record and nothing else, so the next copy
+   from a machine that still had it put it back — the deleting side had no way to say "this is
+   gone, and I mean it". Tombstones fix it, and they are why `trash` is part of the export.
+2. **`updatedAt` decides, per record.** Two machines editing different todos is the common case and
+   needs no dialogue. Two editing *the same* todo is rare, and no prompt can answer "which of these
+   two edits did you mean?" — so the later write wins. Equal millisecond stamps compare canonical
+   JSON, which is arbitrary but *stable*, and stability is all a tie-break needs to be.
+3. **Numbering is a function of the set.** `seq` is what people quote ("把 #42 交给 Agent"). Two
+   machines offline at once would both hand out #332; `assignSequence` numbers from the records
+   (createdAt, then id), so both sides renumber the same collision identically without talking.
+
+Those three give the fold its properties: **commutative** (order of machines does not matter),
+**associative** (three machines, any grouping), **idempotent** (a retried sync is not a second
+edit). That is what lets the sync be "read both, fold, write both" with no three-way merge and no
+server.
+
+The rejected alternatives, and why:
+
+| Alternative | Why not |
+|---|---|
+| One store file on a share | every read is a network call; offline is fatal; a stale mount hangs requests |
+| An HTTP hub (one machine serves the list) | needs auth for a surface that has none today, and the laptop goes dark with the host |
+| Git as the transport, with merges by the plugin | history is nice; `pull --rebase` on a JSON file is a conflict, not a merge — the fold has to exist first |
+| Field-level merge (per-field timestamps) | every mutator would have to stamp every field; the common case does not need it |
+
+Two guards worth naming, because both were learned the hard way elsewhere:
+
+- **The share is never created by the plugin.** If the parent directory is missing it answers
+  `sync-unavailable`. `mkdir -p` on an unmounted mount point creates an empty local directory, and
+  then both machines write happily and look healthy while syncing nothing.
+- **The hub write is locked and re-read under the lock.** Two machines syncing in the same second
+  would otherwise each write a document computed from the copy they read.
 
 ## The panel owns its own scroll
 
@@ -249,10 +302,73 @@ What changes below 600px, and why each item is not cosmetic:
 - **Controls and inputs become 44px.** The desktop sizes are 28–32px, which is a mouse target.
   The round checkbox stays *visually* 24px and grows only its hit area through a pseudo-element,
   or a list of todos would read as a column of giant circles.
+- **The header keeps one line, and the phone keeps two rows of toolbar.** The tagline is a
+  desktop introduction; on a phone it was a full line of the first screen spent describing a list
+  the sidebar entry already names, so `.gt-sub` steps out and the title shares its line with the
+  add button (97px → 44px). Below it: the filter chips, one search row (the field plus batch
+  selection, 选择), and the three group modes as a segmented row. The field takes what is left of
+  its row; batch selection is the same control in both layouts — the desktop keeps it with the
+  auto-collect switches, the phone moves it into the search row, and it is hidden in the one place
+  the other shows.
+- **The three group modes stay on screen.** Grouping by workspace, time or priority level changes
+  what the list *means*, so leaving it behind a native `<select>` put the one control that matters two
+  taps away. At phone widths the three tabs fit across a row of their own (the desktop tabs are
+  the same control; the `<select>` only ever existed for widths where they did not fit), and the
+  row sits **outside the fold**, so it stays put while the search line collapses.
+- **"Workspace" means the directory the work was written in.** The group header is the last
+  segment of `originDir` (falling back to `sessionDir`, because a conversation may have been
+  unloaded since), with the full path in the header's tooltip; todos with neither land in 手动添加,
+  where a hand-written record belongs. A workspace group never auto-collapses: it is a header the
+  reader asked for, and folding it would hide most of the list. The exemption action ("免打扰")
+  keys on the same directory, which is what makes it a per-workspace switch.
+- **The dispatch summary and the batch/auto-collect switches leave the phone toolbar for the
+  settings sheet.** 交给, 上下文 and the auto-collect switch with its idle-minutes field were
+  three more 44px rows on a phone. They are hidden below 600px and both moved into 设置: one group
+  renders the same context fields (`.gt-context-fields`, one function, so the desktop popover and
+  the sheet cannot drift), and one group carries the auto-collect switch plus the idle window,
+  writing immediately the way the toolbar switch always did. On the 390px preview this took the
+  toolbar from 204px to its three purposeful rows (148px) and the first card from 393px to 337px.
+- **Scrolling down folds the search row.** It is the one row between the reader and the list that
+  is not needed while reading, so moving down folds it; the chips and the group modes stay, and
+  the first upward flick — or reaching the top — unfolds it. Geometry on the 390px preview: the
+  toolbar goes 148px → 106px and the list gains ~42px of height.
+- **The fold is smoothed rather than merely toggled.** One curve and one duration carry the whole
+  gesture (220ms, `cubic-bezier(.22,.61,.36,1)`, repeated rather than named because the bundle
+  rejects an unknown CSS custom property the way it rejects an unknown theme token), so the
+  toolbar height and the rows move together instead of each picking its own timing; the folded row leaves the tab order
+  only after it has finished collapsing, because a zero-height input still takes focus. The
+  decision lives in `lib/client.js` and reads the list's own `scrollTop` — the panel is a slot and
+  the page around it may not scroll at all. It also refuses to fold while a control inside the
+  toolbar has focus (folding the field somebody is typing in would lose the caret) or 上下文 is
+  open (its details hang off the row being folded).
+
+  What actually stopped the shake was three filters, in this order of importance:
+
+  1. **The gesture is measured from the extreme it came from, not per event.** A resting thumb
+     reports a few pixels back and forth forever; `deepest - top` (unfold at 48px) and
+     `top - highest` (fold at 80px) stay near zero for that, while a flick keeps going one way.
+     A per-event rule is what let a wobble toggle the header.
+  2. **The fold waits until the reader is past the chrome it removes** (110px, because the
+     collapsed search row is ~52px). Folding earlier pulls the list's box above the viewport,
+     where the browser's scroll compensation hits 0 and the content jumps.
+  3. **After a flip the gesture is deaf for one animation (300ms).** The fold moves the list's
+     box, the browser compensates the offset to keep the content still under the finger (scroll
+     anchoring, ~52px here), and that compensation arrives as a scroll in the opposite direction
+     — acting on it folds, unfolds, folds. The extreme is re-read once the window closes.
+- **The fold simplifies the rows as well.** With the chrome away the list is for scanning, so
+  every card keeps its title on one line and only the signals that change what to do next — a
+  deadline (`.gt-due`), a priority (`.gt-level`), a review badge (`.gt-review`), a completion
+  time (`.gt-completed`). The attachment chips are the tallest thing a row can lose, so they
+  collapse and fade (max-height + opacity) instead of vanishing; the rest of what goes — the
+  "n minutes ago" stamp, step progress, tags, note counts, session state — is text, which reads
+  as a change of content rather than as an object disappearing. The row a reader has opened is
+  exempt (`:not([data-open="1"])`): that is the one being read, and folding it would hide the
+  content they tapped for. Measured on the 390px preview, three rows of 66 / 230 / 113px become
+  66 / 66 / 66px.
 - **The filter chips scroll sideways.** There are up to eight chips (archived, inbox and review
   appear only when they have counts); at 390px the tail was clipped with no way to reach it,
   because the strip was `nowrap` inside a wrapping row. `overflow-x: auto` on a single row keeps
-  every filter reachable, and the toolbar becomes one column so the search field can be full width.
+  every filter reachable, and the chips keep a row of their own instead of wrapping.
 - **The row's hand-off collapses to its icon.** The label inside `.gt-actions` was taking ~140px
   of a ~340px card, which pushed every meta item onto its own line — the row grew to ~250px for
   four facts. With the icon the body keeps ~220px, meta packs two or three per line, and the
@@ -284,11 +400,17 @@ The panel measures itself through `getBoundingClientRect`, which a static page c
 the harness answers it when a width is asked for: every ref gets a layout stub whose width is the
 requested one. `--width=390` therefore renders the actual phone branch, and `--mobile` writes that
 set into `preview/mobile/`. `npm run check:render` asserts the mobile structure on every verify
-(the branch was taken, the hooks exist, the 44px / safe-area / text-size rules are still present),
-and `npm run screenshots:mobile` photographs it at 390×844 into `docs/screenshots/mobile/`.
+(the branch was taken, the hooks exist, the 44px / safe-area / text-size rules are still present,
+the header stays on one line, the search field keeps sharing its row with the group selector, and
+the compact switch plus its fold, row-simplification and tab-order rules are still in place, and
+the settings sheet renders the dispatch context and the auto-collect idle field), and
+`npm run screenshots:mobile` photographs it at 390×844 into `docs/screenshots/mobile/`.
 
 It still cannot prove scrolling, focus, IME behaviour or how a real WebView lays out
-`env(safe-area-inset-*)`; those need the device.
+`env(safe-area-inset-*)`; those need the device. That now includes the fold gesture itself: the
+fixture's refs are layout stubs without event plumbing, so what `check:render` pins is the switch
+(`data-compact`) and the rules that read it — the fold, the thresholds, the tab-order removal and
+the restore all have to be felt on a phone.
 ## A shared file changes without asking
 
 The list is deliberately portable — a notes repo, a synced folder, a NAS — so another machine
@@ -800,7 +922,7 @@ break the one that works alone.
 
 | Service | Needed for | Without it |
 |---|---|---|
-| `tools` | the ten agent tools | the panel still works; the model sees no tools |
+| `tools` | the eleven agent tools | the panel still works; the model sees no tools |
 | `webServer` | the panel's HTTP routes | the tools still work |
 | `agents` | handing a todo to a session | the ▶ button reports `agents-unavailable` |
 | `agentPresets` | composing a new session | a session is created without a preset (documented, degraded) |

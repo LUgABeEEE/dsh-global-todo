@@ -52,6 +52,37 @@ anyway (`lib/lockfile.js`, `lib/store.js`). A dead holder on the same host is re
 remote one after 30 s. What it cannot cover — older plugin versions, hand edits, a sync client
 writing at an arbitrary moment — is stated in FAQ 9 and DESIGN.
 
+**A phone page that folds, and a fold that is a gesture** — at 600px or less the panel is a touch
+surface: a 44px header line, a three-row toolbar (filters / search / grouping), 66px rows, 44px
+controls and the safe area respected. Scrolling down past 80px folds the search line away, but only
+after clearing the 110px it gives back — a 48px flick up or the top unfolds it, and either direction
+is deaf for 300ms after a flip, which is what stopped a resting thumb from oscillating. A folded row
+keeps its title plus the signals that change what to do next; the open row stays whole, and
+attachments fade rather than vanish so the height does not move. Read on 390×844 the list starts at
+287px with eight rows on the first screen. The dispatch summary and the auto-collect switch left the
+phone toolbar for the settings sheet (one function renders both places), and 选择 moved after the
+search field. The desktop is pixel-identical — `check:render` asserts 601 / 900 / 1280 / 1440 — and
+`dsh-mobile` needs no configuration. Tests: `tools/preview.mjs` phone fixtures, the mobile baselines
+in `docs/screenshots/mobile/`.
+
+**Grouping by workspace, for real** — the first group mode is the directory the work was written in
+(`originDir`, falling back to the session directory; neither means 手动添加), headed by the last
+segment with the full path as its tooltip. A workspace group never auto-collapses, the per-group
+exemption keys on exactly what the group is, and an old `conversation` preference still resolves to
+a grouping the reader recognises. Labels: 工作区 / 时间 / 待办等级.
+
+**Two machines, one list** — 0.21.0 turns "keep the list in a synced folder" into something the
+plugin actually understands. Each machine still owns a local file; both fold through a
+`todos.hub.json` in a shared directory (the panel's 设置 → 多端同步, or `config.sync.dir` for a
+headless install), and `lib/replica.js` merges by record:
+later `updatedAt` wins, a deletion travels as a tombstone (`trash`, a year, 5000 entries), and `seq`
+is renumbered from the record set so two offline machines cannot both hand out #332. The fold is
+commutative and idempotent, so a retried or concurrent sync cannot lose a record, and a sync that
+changes nothing writes nothing. Reading the list never touches the share: `/health.sync` reports the
+last attempt instead of making the panel wait on a mount. Deliberately not attempted: field-level
+merges, a server, and attachment bytes (see DESIGN.md). Tests: `test/replica.test.mjs`,
+`test/sync.test.mjs`, contract group K.
+
 **Attachment health** — a file link is probed when the list is read, never when it is
 stored: `annotateLinks()` (`lib/service.js`) sets `missing: true` for a path
 that no longer resolves (`lib/service.js`), and both read routes apply it

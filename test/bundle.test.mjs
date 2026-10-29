@@ -431,6 +431,24 @@ test('only theme tokens that exist are used', () => {
   }
 })
 
+test('a surface token is never used as a text colour', () => {
+  // The bug this guards: `.gt-btn-primary` painted its label with `--dsw-alias-bg-base`, the
+  // *canvas* token. That reads as "the opposite of the background" in the default themes, and it
+  // is exactly why it survived review — but a wallpaper theme sets the canvas transparent so the
+  // picture shows through, and then the label is transparent too: the button keeps its white pill
+  // and loses its word (reported with a screenshot on 2026-10-28). A surface token belongs in a
+  // `background`/`border-color`; text uses a `label-*` token.
+  const start = source.indexOf('const CSS = `')
+  const css = source.slice(start, source.indexOf('`', start + 'const CSS = `'.length))
+  const surfaces = ['--dsw-alias-bg-', '--dsw-alias-border-', '--dsw-alias-menu-', '--dsw-alias-scrollbar-', '--dsw-specific-menu']
+  const offenders = []
+  for (const match of css.matchAll(/(?:^|[;{\s])(color|fill|stroke)\s*:\s*var\(\s*(--[a-z0-9-]+)/g)) {
+    const token = match[2]
+    if (surfaces.some((prefix) => token.startsWith(prefix))) offenders.push(`${match[1]}: ${token}`)
+  }
+  assert.deepEqual(offenders, [], 'text colours must come from label-* / state-* tokens, not from surfaces')
+})
+
 test('no literal colors leak into the stylesheet', () => {
   // Slice to the end of the template literal, not to the first '.gt-root' inside it.
   // The old end index sat 14 characters into the CSS, so this guard never actually

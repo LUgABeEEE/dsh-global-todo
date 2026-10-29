@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>全局待办 · dsh-global-todo — 完成要人点头的跨会话清单</title>
-<meta name="description" content="dsh-global-todo：DeepSeek Harness 的跨会话待办清单，中心规则是 Agent 说「做完了」不算完成——工具里报的、会话干净收尾后自动收尾的，都只进「待确认」，人点头才算。一个属于你的 JSON 文件，你和 Agent 读写同一条记录；待办可带步骤，一键交给对话继续干。">
+<meta name="description" content="dsh-global-todo：DeepSeek Harness 的跨会话待办清单，中心规则是 Agent 说「做完了」不算完成——工具里报的、会话干净收尾后自动收尾的，都只进「待确认」，人点头才算。一个属于你的 JSON 文件，你和 Agent 读写同一条记录；待办可带步骤，一键交给对话继续干；手机端按面板实测宽度切换，滑动折叠、66px 一行、44px 触摸目标，DSH Mobile 手机页零配置。">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0c0f13" media="(prefers-color-scheme: dark)">
@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta property="og:type" content="website">
 <meta property="og:title" content="全局待办 · dsh-global-todo">
-<meta property="og:description" content="Agent 说「完成」不算完成：工具里报的、会话收尾后自动收尾的，都要你点头。跨会话一份清单，你和 Agent 读写同一份；可带步骤一键交给对话。">
+<meta property="og:description" content="Agent 说「完成」不算完成：工具里报的、会话收尾后自动收尾的，都要你点头。跨会话一份清单，你和 Agent 读写同一份；可带步骤一键交给对话；手机上一屏读完，滑动折叠、44px 触摸目标。">
 <meta property="og:url" content="https://lugabeeee.github.io/dsh-global-todo/">
 <meta property="og:image" content="https://lugabeeee.github.io/dsh-global-todo/og.png">
 <meta property="og:image:width" content="1200">
@@ -38,6 +38,7 @@
     <nav class="nav" aria-label="页面导航">
       <a class="nav-section" href="#claims"><span class="zh">三件事</span><span class="en" lang="en">Claims</span></a>
       <a class="nav-section" href="#how"><span class="zh">怎么走</span><span class="en" lang="en">How it works</span></a>
+      <a class="nav-section" href="#phone"><span class="zh">手机</span><span class="en" lang="en">Phone</span></a>
       <a class="nav-section" href="#where"><span class="zh">收录</span><span class="en" lang="en">Listings</span></a>
       <a class="nav-section" href="#compare"><span class="zh">对比</span><span class="en" lang="en">Compare</span></a>
       <a class="nav-section" href="#states"><span class="zh">状态图</span><span class="en" lang="en">States</span></a>
@@ -167,22 +168,23 @@
             <span class="en" lang="en">One JSON file is the whole list</span>
           </h3>
           <p>
-            <span class="zh">清单在 <code>$DSH_HOME/global-todo/todos.json</code>：没有数据库，没有服务端。能 <code>cat</code>、能 diff、能提交进仓库、能丢进同步盘，拷到另一台机器就接着用。</span>
-            <span class="en" lang="en">The list lives at <code>$DSH_HOME/global-todo/todos.json</code>: no database, no server. <code>cat</code> it, diff it, commit it, drop it in a sync folder, copy it to another machine.</span>
+            <span class="zh">清单在 <code>$DSH_HOME/global-todo/todos.json</code>：没有数据库，没有服务端。能 <code>cat</code>、能 diff、能提交进仓库、能丢进同步盘。两台机器要共用一份时，各自留一份本地文件、在一个碰头目录里折成一份——按记录合并，删除靠墓碑传播，离线也不会互相覆盖。</span>
+            <span class="en" lang="en">The list lives at <code>$DSH_HOME/global-todo/todos.json</code>: no database, no server. <code>cat</code> it, diff it, commit it, drop it in a sync folder. Two machines share one list by keeping their own file and folding through a hub directory — per record, with deletions carried as tombstones, so being offline cannot overwrite anyone.</span>
           </p>
           <div class="ev">
             <pre><code>{
-  "version": 1,
+  "version": 2,
   "todos": [{
     "id": "t-4f1a9c02",
     "title": "等交换机到货后重测内网吞吐",
     "createdAt": 1768867200000,
     "steps": [{ "text": "换上万兆模块", "done": false }]
-  }]
+  }],
+  "trash": [{ "id": "t-1c0d7e44", "at": 1768953600000, "by": "human" }]
 }</code></pre>
             <p class="ev-note">
-              <span class="zh">写入走「临时文件 + rename」；同一进程里人和 Agent 共用一条串行链，跨进程还有一把 <code>.lock</code> 独占锁——第二个宿主进程只能排队，等不到就报 <code>store-busy</code>，不会默默覆盖。文件坏了报 <code>store-corrupt</code>，不会静默清空。</span>
-              <span class="en" lang="en">Writes go to a temp file and are renamed into place; panel and tools share one serial chain, and a <code>.lock</code> file excludes other processes — a second host queues, then hears <code>store-busy</code> instead of silently overwriting. A corrupt file raises <code>store-corrupt</code>.</span>
+              <span class="zh">写入走「临时文件 + rename」；同一进程里人和 Agent 共用一条串行链，跨进程还有一把 <code>.lock</code> 独占锁——第二个宿主进程只能排队，等不到就报 <code>store-busy</code>，不会默默覆盖。文件坏了报 <code>store-corrupt</code>，不会静默清空。<code>trash</code> 是删除留下的墓碑：没有它，另一台机器手里的旧副本会把记录原样带回来。</span>
+              <span class="en" lang="en">Writes go to a temp file and are renamed into place; panel and tools share one serial chain, and a <code>.lock</code> file excludes other processes — a second host queues, then hears <code>store-busy</code> instead of silently overwriting. A corrupt file raises <code>store-corrupt</code>. <code>trash</code> holds the tombstones; without them another machine's older copy would bring a deleted record straight back.</span>
             </p>
           </div>
         </article>
@@ -295,6 +297,65 @@
       <p class="shots-note">
         <span class="zh">图里是同一份清单的连续状态。截图不写进设计稿，而是每次从真实客户端渲染出来，所以样式一改、图就跟着变。</span>
         <span class="en" lang="en">The images are consecutive states of one real list, re-rendered from the real client on every change rather than hand-edited.</span>
+      </p>
+    </div>
+  </section>
+
+  <section id="phone" class="reveal-group" aria-labelledby="phone-title">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">
+          <span class="zh">手机端</span>
+          <span class="en" lang="en">On a phone</span>
+        </p>
+        <h2 id="phone-title">
+          <span class="zh">手机上，一屏读完的清单</span>
+          <span class="en" lang="en">A list a phone can read in one screen</span>
+        </h2>
+        <p class="section-lede">
+          <span class="zh">面板按自己的<strong>实测宽度</strong>切换，≤600px 就是触控布局——DSH Mobile 的手机页不用任何配置，桌面窗口拖窄也是同一套。向下滑收起搜索那一行，每条待办收成「标题 + 一行信号」：390×844 下 66px 一行，第一屏就能看八条左右。</span>
+          <span class="en" lang="en">The panel switches on its own <strong>measured width</strong>: 600px or less is the touch layout. DSH Mobile's phone page needs no configuration, and a narrow desktop window gets the same treatment. Scrolling down folds the search line away and every row becomes one title line plus its signals — 66px per row at 390×844, about eight on the first screen.</span>
+        </p>
+      </div>
+
+      <div class="phone-split">
+        <figure class="phone-shot">
+          <a href="screenshots/mobile/panel.png" aria-label="打开大图：手机端面板">
+            <img src="screenshots/mobile/panel.png" width="390" height="844" decoding="async" alt="390×844 的手机面板：三行 44px 工具栏，66px 一行待办，底部让出安全区">
+          </a>
+          <figcaption>
+            <span class="zh">390×844，真的按手机分支渲染，不是把桌面缩小</span>
+            <span class="en" lang="en">390×844, rendered through the phone branch — not a shrunk desktop</span>
+          </figcaption>
+        </figure>
+
+        <ul class="phone-points">
+          <li>
+            <span class="zh"><b>折叠是手势，不是开关。</b>向下滑 80px 收起搜索行，还要越过它让出的 110px；向上滑 48px 或回到顶部展开。翻面后 300ms 内不响应，拇指停在边界上也不会抖。</span>
+            <span class="en" lang="en"><b>The fold is a gesture, not a switch.</b> 80px down folds the search line away and it must clear the 110px that frees; a 48px flick up, or the top, unfolds it. Either direction is deaf for 300ms after a flip, so a resting thumb cannot oscillate.</span>
+          </li>
+          <li>
+            <span class="zh"><b>收起后只剩标题 + 一行信号</b>：截止、优先级、待确认、完成时间；打开着的那条保持完整，附件芯片淡出而不是硬消失。</span>
+            <span class="en" lang="en"><b>Folded, a row is its title plus one line of signals</b> — deadline, priority, review, completion time. The open row stays whole; attachment chips fade instead of vanishing.</span>
+          </li>
+          <li>
+            <span class="zh"><b>三种分组一直可见</b>：工作区 / 时间 / 待办等级，横排标签，不随折叠收起。「工作区」按写下这条待办的目录分组，组头就是目录名。</span>
+            <span class="en" lang="en"><b>All three group modes stay visible</b> — workspace / time / priority — and the fold never takes them away. “Workspace” groups by the directory the work was written in.</span>
+          </li>
+          <li>
+            <span class="zh"><b>手机上不摆没用的开关</b>：「交给 / 上下文」与「自动获取」搬进设置面板（桌面照旧），「选择」挪到搜索框后面，工具栏只剩筛选、搜索、分组三行。</span>
+            <span class="en" lang="en"><b>No dead switches on a phone</b>: the dispatch summary and the auto-collect switch moved into settings (the desktop keeps them), selection moved next to search, and the toolbar is filters, search, grouping.</span>
+          </li>
+          <li>
+            <span class="zh"><b>触摸与安全区</b>：按钮、输入框、筛选胶囊 44px；筛选横滑而不是被裁掉；行内「交给 Agent」收成图标；底部让出安全区；正文跟随手机页字号，输入框不小于 16px（否则 iOS 会替你放大页面）。</span>
+            <span class="en" lang="en"><b>Touch and safe areas</b>: 44px buttons, inputs and chips; chips scroll sideways instead of being clipped; the inline hand-off becomes its icon; the bottom yields to the safe area; text follows the page's size setting and inputs stay 16px or more.</span>
+          </li>
+        </ul>
+      </div>
+
+      <p class="where-note">
+        <span class="zh">桌面一字不变：601 / 900 / 1280 / 1440 四个宽度有像素断言，改样式时会在 <code>npm run check:render</code> 里挂给你看。三张手机基线图：<a href="screenshots/mobile/panel.png">面板</a> · <a href="screenshots/mobile/panel-detail.png">展开一条</a> · <a href="screenshots/mobile/panel-settings.png">设置</a>。</span>
+        <span class="en" lang="en">The desktop is untouched: <code>check:render</code> asserts pixel-identical output at 601 / 900 / 1280 / 1440. Three phone baselines: <a href="screenshots/mobile/panel.png">panel</a> · <a href="screenshots/mobile/panel-detail.png">one row open</a> · <a href="screenshots/mobile/panel-settings.png">settings</a>.</span>
       </p>
     </div>
   </section>

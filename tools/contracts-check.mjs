@@ -13,7 +13,7 @@
  * It is deliberately module-level and offline: no browser, no host, no network, no
  * fixture files outside os.tmpdir(). Exit code is the number of failed groups.
  */
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { Readable } from 'node:stream'
@@ -177,7 +177,7 @@ const equal = (group, name, actual, expected) =>
 {
   const defs = createTools({ async create() {}, async list() { return { todos: [] } } }, {})
   const names = (mode) => selectTools(defs, mode).map((definition) => definition.name)
-  equal('I groups', 'all registers ten', names('all').length, 10)
+  equal('I groups', 'all registers eleven', names('all').length, 11)
   equal('I groups', 'core is the list itself', names('core'), [...TOOL_GROUPS.core])
   equal('I groups', 'none registers nothing', names('none').length, 0)
   equal('I groups', 'a typo falls back to all', names('nonsense'), names('all'))
@@ -224,6 +224,52 @@ const equal = (group, name, actual, expected) =>
   } finally {
     await rm(dir, { recursive: true, force: true })
   }
+}
+
+// ── K. Multi-machine: a copy that comes back must not undo a deletion ──────────────────
+{
+  const { mergeDocuments, TOMBSTONE_TTL_MS } = await import('../lib/replica.js')
+  const { HUB_FILE } = await import('../lib/sync.js')
+  const { ERROR_CODES } = await import('../lib/errors.js')
+  const { statusForCode } = await import('../lib/routes.js')
+
+  const newer = { todos: [{ id: 't-a', title: 'a', seq: 1, createdAt: 1, updatedAt: 100 }], trash: [] }
+  const older = { todos: [{ id: 't-a', title: 'a', seq: 1, createdAt: 1, updatedAt: 50 }], trash: [] }
+  equal('K sync', 'the newer copy of one record wins', mergeDocuments(newer, older).todos[0].updatedAt, 100)
+  equal(
+    'K sync',
+    'and the fold does not depend on which side came first',
+    JSON.stringify(mergeDocuments(newer, older).todos),
+    JSON.stringify(mergeDocuments(older, newer).todos),
+  )
+
+  const deleted = { todos: [], trash: [{ id: 't-b', at: 200, by: 'human' }] }
+  const stale = { todos: [{ id: 't-b', title: 'b', seq: 2, createdAt: 1, updatedAt: 100 }], trash: [] }
+  equal('K sync', 'an older copy cannot bring a deleted record back', mergeDocuments(stale, deleted).todos.length, 0)
+  equal('K sync', 'a deletion is remembered for a year', TOMBSTONE_TTL_MS, 365 * 24 * 60 * 60 * 1000)
+  equal('K sync', 'the hub has one documented name', HUB_FILE, 'todos.hub.json')
+
+  const declared = ['sync-not-configured', 'sync-busy', 'sync-unavailable', 'sync-corrupt', 'sync-failed', 'sync-timeout']
+  equal('K sync', 'every sync failure is a declared code', declared.every((code) => ERROR_CODES.includes(code)), true)
+  equal('K sync', 'an unreachable share is 503, not an internal error', statusForCode('sync-unavailable'), 503)
+  equal('K sync', 'a corrupt hub is 500, because retrying cannot fix it', statusForCode('sync-corrupt'), 500)
+  equal('K sync', 'the sync tool is not part of the core list', TOOL_GROUPS.core.includes('global_todo_sync'), false)
+
+  // The configuration is a deployment fact, and the documentation is the only place a person
+  // can learn the key's name. A README that never mentions `sync.dir` makes it unreachable.
+  const { normalizeSyncDir, SETTINGS_DEFAULTS } = await import('../lib/settings.js')
+  equal('K sync', 'a relative directory names nothing', normalizeSyncDir('nas/todo'), '')
+  equal('K sync', 'a trailing separator is not a second share', normalizeSyncDir('/mnt/x/'), '/mnt/x')
+  equal('K sync', 'a drive root keeps its separator', normalizeSyncDir('C:\\'), 'C:\\')
+  equal('K sync', 'a machine starts on its own', SETTINGS_DEFAULTS.syncDir, '')
+  equal('K sync', 'and folds every five minutes once pointed somewhere', SETTINGS_DEFAULTS.syncMinutes, 5)
+
+  const zh = await readFile(new URL('../README.md', import.meta.url), 'utf8')
+  const en = await readFile(new URL('../README.en.md', import.meta.url), 'utf8')
+  check('K sync', 'the Chinese README documents sync.dir', zh.includes('sync.dir'))
+  check('K sync', 'the English README documents sync.dir', en.includes('sync.dir'))
+  check('K sync', 'the Chinese README names the hub file', zh.includes(HUB_FILE))
+  check('K sync', 'the English README names the hub file', en.includes(HUB_FILE))
 }
 
 const failed = results.filter((result) => !result.ok)

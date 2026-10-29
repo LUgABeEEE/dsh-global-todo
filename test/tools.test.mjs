@@ -37,6 +37,7 @@ test('every tool is a complete, self-describing definition', async () => {
         'global_todo_note',
         'global_todo_remove',
         'global_todo_reopen',
+        'global_todo_sync',
         'global_todo_update',
       ],
     )
@@ -388,14 +389,14 @@ test('tool groups shed the collaboration surface without touching the list', asy
   const defs = createTools({ async create() {}, async list() { return { todos: [] } } }, {})
   const names = (mode) => selectTools(defs, mode).map((definition) => definition.name)
 
-  assert.equal(names('all').length, 10)
+  assert.equal(names('all').length, 11)
   assert.deepEqual(names('core'), [...TOOL_GROUPS.core])
   assert.equal(names('none').length, 0)
   // A typo must not quietly remove tools.
   assert.deepEqual(names('coree'), names('all'))
   assert.equal(normalizeToolGroups('nonsense'), 'all')
   // The core set is exactly the list itself: no capture, no attachments, no delete.
-  for (const absent of ['global_todo_capture', 'global_todo_link', 'global_todo_remove', 'global_todo_reopen']) {
+  for (const absent of ['global_todo_capture', 'global_todo_link', 'global_todo_remove', 'global_todo_reopen', 'global_todo_sync']) {
     assert.equal(names('core').includes(absent), false, absent)
   }
 })

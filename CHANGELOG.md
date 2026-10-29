@@ -1,3 +1,65 @@
+## [0.21.0] — 2026-10-28
+
+One list, two machines — without one of them holding the other's file.
+
+- **A replica layer, not a shared path.** Pointing `storePath` at a NAS makes every panel read a
+  network round trip and makes an offline machine unable to open its own list. Instead each machine
+  keeps its own file and they meet at `todos.hub.json` in a directory both can reach. The
+  directory is a **panel field** (设置 → 多端同步: `syncDir`, `syncMinutes`, 0 = manual only), read
+  through a getter so a change applies without a restart; `config.sync.dir` stays the deployment
+  default for a headless install. The timer, the panel's Sync now, `POST /api/global-todo/sync`
+  and the `global_todo_sync` tool all run the same fold, and "did the other machine answer" is
+  one line in `/health.sync`.
+- **A deletion now leaves a tombstone.** `remove` used to drop the record, so the next copy from a
+  machine that still had it put it back — a deletion the other side never learned about. Documents
+  carry `trash: [{ id, at, by }]`, the export/import path folds through the same merge, and an undo
+  (`/restore`) revokes the tombstone instead of leaving it to delete the restored copy again.
+- **The fold is commutative and idempotent.** Per record the later `updatedAt` wins (equal stamps
+  compare content, which both sides order the same), `seq` is renumbered from the record set so two
+  offline machines cannot both hand out #332, and a sync that changes nothing writes nothing.
+- **Reading the list never touches the share.** A stale cifs mount used to be able to hang a page;
+  now the local file answers and `/health.sync` reports the last attempt and why it failed. A missing
+  share is `sync-unavailable` (503) and is never created as an empty local directory that would look
+  healthy while syncing nothing.
+- **Schema 2.** A version-1 document still loads (it simply has no deletions to replay); a version-1
+  plugin refuses a version-2 file, which is the loud failure that keeps it from silently dropping
+  tombstones. Every machine has to be on 0.21.0 to share a hub.
+- **The phone page folds, and the fold is a gesture.** Scrolling down past 80px folds the search
+  line away — after clearing the 110px that line gives back, so the content does not jump out from
+  under the thumb — and a 48px flick up, or the top, unfolds it. Either direction is deaf for 300ms
+  after a flip, which is what stopped a resting thumb from oscillating. A folded row is its title
+  plus the signals that change what to do next (deadline, priority, review badge, completion time);
+  the open row stays whole, and attachment chips fade instead of vanishing so the row height stays
+  66px. Measured at 390×844: 44px header, a three-row toolbar (filters / search / grouping), the
+  list at 287px, 66px per row.
+- **The phone toolbar stopped carrying rows nobody touches.** The dispatch summary (交给 / 上下文)
+  and the auto-collect switch moved into the settings sheet — the desktop popover and the sheet
+  render the same fields from one function, so they cannot drift — and 选择 moved after the search
+  field. Controls are 44px, chips scroll sideways instead of being clipped, the inline hand-off
+  collapses to its icon, and text follows the mobile page's size setting with inputs at 16px or more.
+- **Grouping by workspace, for real.** The first mode is now the directory the work was written in
+  (`originDir`, falling back to the session's directory; neither means 手动添加), headed by that
+  directory's last segment with the full path as its tooltip. A workspace group never auto-collapses,
+  the per-group exemption finally keys on exactly what the group is, and a browser that stored the
+  old `conversation` mode keeps a grouping it recognises. Labels: 工作区 / 时间 / 待办等级.
+- **One registration per route path.** `/sync` was registered twice, once for GET and once for
+  POST; the Host keys exact routes by path alone and throws on the second, and the bundle registers
+  its whole list in one pass — so every route declared after `/sync` silently disappeared while
+  reads kept answering and every write returned a bare 404. It is one `verbs(['GET','POST'])`
+  definition now; the smoke-test host rejects a duplicate the way the Host does, and
+  `test/routes.test.mjs` pins unique paths.
+- **Text on a filled surface uses a foreground token.** The primary button painted its label with
+  `--dsw-alias-bg-base` — the canvas token. In the default themes that happens to read as "the
+  opposite of the background", but a wallpaper theme sets the canvas transparent so the picture
+  shows through, and the label went transparent with it: a white pill with no word on it (reported
+  2026-10-28 with a screenshot). Five places fixed (primary and brand buttons, the done check, the
+  selection box, the step tick), and a new test forbids surface tokens in `color` / `fill` /
+  `stroke` so the class cannot come back quietly.
+- Tests: 14 replica tests (commutativity, idempotence, tombstone semantics, TTL, renumbering), 11
+  sync tests over two real stores and a shared directory, a rewritten import test that pins
+  "an older copy cannot undo a deletion", contract group K, the duplicate-route guard in the smoke
+  host, the surface-token guard in `test/bundle.test.mjs`, and both screenshot sets regenerated.
+
 ## [0.20.0] — 2026-10-27
 
 The list stops competing with the memory store for the same sentence.

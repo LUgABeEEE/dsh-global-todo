@@ -14,10 +14,26 @@ host half (`lib/`, plain ESM) and a browser half (`lib/client.js`, classic scrip
 - **Two writers, one path.** Every mutation goes through `lib/service.js` and lands in
   `store.update`, which takes the cross-process lock (`lib/lockfile.js`) and does the
   read-modify-write under it. If you add a rule, it must apply to the panel and the tools at once.
+- **One registration per route path.** The Host keys exact routes by **path alone**
+  (`dsh-host-webserver`), and this bundle registers its whole list in one pass: a second
+  definition for the same path throws `duplicate exact route`, and every route declared after
+  it silently disappears — reads keep answering while every write returns a bare 404 (that is
+  how `/sync`, registered once for GET and once for POST, cost eighteen routes on 2026-10-29).
+  A path that answers more than one verb is **one** definition that checks the verb itself
+  (`verbs` in `lib/routes.js`); `test/routes.test.mjs` and the smoke-test host both reject a
+  duplicate instead of letting it pass.
 - **Never write the store file directly.** `store.write` is internal to `update`; a writer that
   bypasses the lock is exactly the overwrite 0.18.0 fixed. A new failure gets a code in
   `ERROR_CODES` and a status in `statusForCode` — `store-busy` is 503, not 500, because the same
   request usually succeeds a moment later.
+- **A removal leaves a tombstone.** `service.remove` pushes `{ id, at, by }` into `doc.trash`, and
+  `store.update` writes that array back with the todos. A mutator that drops a record without the
+  mark makes the deletion local-only: the next fold from another machine puts the record back
+  (0.21.0). `restore` must take the mark away for the same reason.
+- **The fold is pure, the share is not.** `lib/replica.js` merges two documents and touches no
+  filesystem, network or clock beyond the `now` it is handed; `lib/sync.js` owns the mount, the hub
+  lock and the timeouts. Put a merging rule in `replica.js` so the import path and the sync path
+  cannot disagree, and keep it commutative/idempotent: the test asserts both.
 - **Typed failures.** Throw `TodoError` from `lib/errors.js` with a code listed in
   `ERROR_CODES`. `lib/routes.js` maps codes to HTTP statuses; `lib/tools.js` turns them into
   `{ ok: false, reason, error }` values instead of throwing at the model.

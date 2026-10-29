@@ -121,8 +121,12 @@ test('ingest is closed until enabled, refuses a wrong token, and writes through 
 test('the route surface is exactly the documented one', async () => {
   const env = await harness()
   try {
+    // The documented surface is the set of *paths*, and the Host keys routes by path alone:
+    // two methods on one path (`/sync`) are one registration that checks the verb itself, so
+    // the count below is the number of paths (a second registration throws, and every route
+    // declared after it silently disappears).
     assert.deepEqual(
-      env.routes.map((route) => route.path.replace(`${ROUTE_BASE}/`, '')).sort(),
+      [...new Set(env.routes.map((route) => route.path.replace(`${ROUTE_BASE}/`, '')))].sort(),
       [
         'asset',
         'assign',
@@ -149,9 +153,14 @@ test('the route surface is exactly the documented one', async () => {
         'session',
         'settings',
         'status',
+        'sync',
         'update',
       ],
     )
+    assert.equal(env.routes.length, 27, 'twenty-seven paths; /sync is one registration answering GET and POST')
+    const sync = env.routes.find((route) => route.path === `${ROUTE_BASE}/sync`)
+    assert.match(sync.method, /GET/)
+    assert.match(sync.method, /POST/)
     for (const route of env.routes) assert.equal(route.kind, 'exact')
   } finally {
     await env.cleanup()
@@ -777,6 +786,38 @@ test('out-of-range settings are reported instead of silently clamped', async () 
   }
 })
 
+test('the sync directory is set from the panel, and a relative one is refused', async () => {
+  const state = { autoCollect: false, idleMinutes: 30, cooldownMinutes: 30, exemptWorkspaces: [], ingest: {}, syncDir: '', syncMinutes: 5 }
+  const settings = {
+    get: () => state,
+    update: async (patch) => {
+      Object.assign(state, patch)
+      return state
+    },
+  }
+  const env = await harness({ settings })
+  try {
+    const post = (body) =>
+      env.call('/settings', makeReq({ method: 'POST', url: `${ROUTE_BASE}/settings`, body: JSON.stringify(body) }))
+
+    const relative = await post({ syncDir: 'nas/todo' })
+    assert.equal(relative.statusCode, 400, 'a relative path would mean two machines meeting in two places')
+    assert.equal(relative.json().reason, 'invalid-body')
+
+    const absolute = await post({ syncDir: '/mnt/nas/agent-rw/global-todo', syncMinutes: 0 })
+    assert.equal(absolute.statusCode, 200)
+    const saved = absolute.json().data.settings
+    assert.equal(saved.syncDir, '/mnt/nas/agent-rw/global-todo')
+    assert.equal(saved.syncMinutes, 0, 'zero means manual only, and it must survive the round trip')
+
+    const cleared = await post({ syncDir: '' })
+    assert.equal(cleared.statusCode, 200)
+    assert.equal(cleared.json().data.settings.syncDir, '', 'an empty field turns the machine back into a single one')
+  } finally {
+    await env.cleanup()
+  }
+})
+
 test('restore refuses a partial record instead of inventing defaults', async () => {
   const env = await harness()
   try {
@@ -1008,5 +1049,20 @@ test('relink re-points a dead attachment without inventing bytes', async () => {
   } finally {
     await env.cleanup()
     await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('no two routes claim the same path', async () => {
+  // The Host's route table is keyed by path alone and routes are registered in one pass:
+  // a duplicate path throws at registration, and every route declared after it silently
+  // disappears — reads keep answering while writes return a bare 404. `/sync` was once
+  // registered twice (GET and POST) and cost eighteen routes; see `verbs` in routes.js.
+  const env = await harness()
+  try {
+    const paths = env.routes.map((route) => route.path)
+    const duplicates = paths.filter((value, index) => paths.indexOf(value) !== index)
+    assert.deepEqual(duplicates, [], 'the Host cannot hold two routes for one path')
+  } finally {
+    await env.cleanup()
   }
 })

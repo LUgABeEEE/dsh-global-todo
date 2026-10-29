@@ -112,6 +112,7 @@ const TODOS = [
     id: 't-9c0d1e2f',
     title: '给 staging 迁移动手写一个回滚脚本',
     originSessionId: 'session-00000000-0000-4000-8000-000000000001',
+    originDir: '/home/me/projects/dorm-network',
     description: '先把现网 schema 导出成 SQL，再在 staging 上演练一次。',
     status: 'open',
     priority: 'low',
@@ -129,6 +130,7 @@ const TODOS = [
   {
     id: 't-3a4b5c6d',
     originSessionId: 'session-55bb11ff-aaaa-bbbb-cccc-ddddeeeeffff',
+    originDir: '/home/me/projects/dsh-global-todo',
     title: '把周报模板换成新的四段式',
     description: '',
     status: 'done',
@@ -757,18 +759,15 @@ function checkRenderedPanel(html, detail, select) {
     if (condition !== true) failures.push(message)
   }
 
-  // Every todo in the sample that came from the same conversation must be one
-  // entry: the header line, and none of the rows it stands for.
-  // The shell knows the conversation titles, so the merged group is named after
-  // the conversation rather than after an id suffix.
-  expect(html.includes('Docker 与知识库'), 'the merged conversation header is missing its title')
-  expect(html.includes('2 条'), 'the merged header does not carry its count')
-  // The group header carries the titles in its tooltip, which is fine — what
-  // must not exist is a *row* for them.
-  expect(!html.includes('gt-item-title">等交换机到货后重测内网吞吐'), 'a merged todo is still rendered as its own row')
-  expect(!html.includes('gt-item-title">给 staging 迁移动手写一个回滚脚本'), 'a merged todo is still rendered as its own row')
-  // Single-item conversations keep their row.
-  expect(html.includes('把周报模板换成新的四段式'), 'a single-item conversation lost its row')
+  // Grouping is by workspace: the header names the directory it came from (its last
+  // segment), and a workspace group is a header, not a fold — every todo in it stays a row.
+  expect(html.includes('>dorm-network<'), 'the workspace group header is missing its directory')
+  expect(html.includes('>dsh-global-todo<'), 'a second workspace group is missing')
+  expect(html.includes('>手动添加<'), 'the manual group lost its name')
+  expect(html.includes('2 条'), 'a workspace header does not carry its count')
+  expect(html.includes('gt-item-title">等交换机到货后重测内网吞吐'), 'a workspace row is missing')
+  expect(html.includes('gt-item-title">给 staging 迁移动手写一个回滚脚本'), 'a workspace row is missing')
+  expect(html.includes('gt-item-title">把周报模板换成新的四段式'), 'a workspace row is missing')
   // Levels are visible, and the switcher offers all three dimensions.
   expect(html.includes('data-level="high"'), 'no level badge was rendered')
   // The overdue sample is P0, and its conversation is collapsed — so the level has
@@ -832,7 +831,7 @@ function checkRenderedPanel(html, detail, select) {
   // The hand-off picker must offer real conversations, not only fallbacks.
   expect(html.includes('dsh-global-todo · 设计与实现'), 'the hand-off picker lost its conversation list')
   expect(html.includes('最近说过话'), 'the picker no longer marks the conversation the Host would pick')
-  for (const label of ['对话', '时间', '级别']) {
+  for (const label of ['工作区', '时间', '待办等级']) {
     expect(html.includes(`>${label}</button>`), `the ${label} grouping button is missing`)
   }
   // The scroll contract: the panel clips and the list scrolls. A flex item defaults to
@@ -881,6 +880,31 @@ function checkMobileRender(mobile) {
   expect(/\[data-mobile="1"\][^{]*\.gt-btn-label\s*\{[^}]*display:\s*none/.test(css), 'the hand-off label does not collapse on a phone')
   expect(/\[data-mobile="1"\][^{]*\.gt-meta-by\s*\{[^}]*display:\s*none/.test(css), 'the creator attribution is still shown on a phone')
   expect(/\[data-mobile="1"\][^{]*\.gt-tabs[^{]*\{[^}]*overflow-x:\s*auto/.test(css), 'the filter chips do not scroll sideways, so their tail is unreachable')
+  // The first screen belongs to the list. The header keeps one line (the tagline is a
+  // desktop introduction), and the search field shares its row with the group selector
+  // instead of each control taking a full-width 44px row of its own.
+  expect(/\[data-mobile="1"\][^{]*\.gt-head\s*\{[^}]*flex-wrap:\s*nowrap/.test(css), 'the phone header can wrap onto a second line')
+  expect(/\[data-mobile="1"\][^{]*\.gt-head\s+\.gt-sub\s*\{[^}]*display:\s*none/.test(css), 'the desktop tagline still takes a phone line')
+  expect(/\[data-mobile="1"\][^{]*\.gt-toolbar-main\s*\{[^}]*flex-direction:\s*row/.test(css), 'the search field and the group selector are stacked on a phone')
+  // The three group modes are visible tabs on a phone, not a native picker hidden behind one
+  // tap: grouping changes what the list means, so it keeps a row of its own.
+  expect(/\[data-mobile="1"\][^{]*\.gt-group-tabs\s*\{[^}]*display:\s*flex/.test(css), 'the phone hides the three group modes behind a picker')
+  expect(/\[data-mobile="1"\][^{]*\.gt-group-select\s*\{[^}]*display:\s*none/.test(css), 'the phone still renders the group picker')
+  // The compact gesture: the render has to carry the switch the scroll handler toggles, and
+  // the rules that fold the toolbar — including taking it out of the tab order.
+  expect(list.includes('data-compact='), 'the phone render carries no compact switch to fold on')
+  expect(/\[data-mobile="1"\]\[data-compact="1"\][^{]*\.gt-search[\s\S]{0,200}?max-height:\s*0/.test(css), 'the compact phone header does not fold the search field away')
+  expect(/\[data-mobile="1"\]\[data-compact="1"\][^{]*\.gt-select-toggle[\s\S]{0,400}?visibility:\s*hidden/.test(css), 'a folded phone control can still take focus')
+  // The phone hides the desktop-only toolbar rows: the dispatch summary (交给 + 上下文) and
+  // the batch/auto-collect switches. Batch selection instead rides in the one search row.
+  expect(/\[data-mobile="1"\][^{]*\.gt-context-summary[^{]*\{[^}]*display:\s*none/.test(css), 'the dispatch summary still takes phone rows')
+  expect(/\[data-mobile="1"\][^{]*\.gt-toolbar > \.gt-tabs[^{]*\{[^}]*display:\s*none/.test(css), 'the batch/auto-collect switches still take phone rows')
+  expect(list.includes('gt-select-toggle'), 'the phone search row carries no batch selector')
+  // The fold simplifies the rows too: one title line, the signals only, no attachment
+  // chips — and the row a reader has opened is exempt, because that is the one they read.
+  expect(/\[data-mobile="1"\]\[data-compact="1"\][^{]*\.gt-item:not\(\[data-open="1"\]\)[^{]*\.gt-meta\s*>\s*span[\s\S]{0,160}?display:\s*none/.test(css), 'the compact phone rows keep every meta line')
+  expect(/\[data-mobile="1"\]\[data-compact="1"\][^{]*\.gt-meta\s*>\s*span\.gt-due/.test(css), 'the compact phone rows drop the deadline along with the noise')
+  expect(/\[data-mobile="1"\]\[data-compact="1"\][^{]*\.gt-item:not\(\[data-open="1"\]\)[^{]*\.gt-attach/.test(css), 'the compact phone rows keep their attachment chips')
   // The phone shell reserves a home indicator area; the panel is its own scroll container,
   // so it has to respect the inset itself.
   expect(/\[data-mobile="1"\][^}]*safe-area-inset-bottom/.test(css), 'the phone layout ignores the bottom safe area')
@@ -888,6 +912,13 @@ function checkMobileRender(mobile) {
   expect(/\[data-mobile="1"\][^{]*\{[^}]*font-size:\s*var\(--dsh-content-font-size/.test(css), 'the phone layout ignores the shell text size')
   // The settings sheet must be width-constrained by the viewport, not by a 360px card.
   expect(settings.includes('data-mobile="1"'), 'the settings sheet lost the mobile branch')
+  // The phone reaches the dispatch context and the auto-collect switch in the settings
+  // sheet, because its toolbar hides them; both have to render there.
+  expect(settings.includes('gt-context-fields'), 'the settings sheet carries no dispatch context')
+  expect(settings.includes('gt-auto-idle'), 'the settings sheet carries no auto-collect idle field')
+  // The 上下文 button keeps its own label: a settings title once reused `settings.context`
+  // and silently renamed it (caught here, and by the duplicate-key test).
+  expect(list.includes('>上下文<'), 'the 上下文 button lost its label')
   expect(/rgb\(|#[0-9a-fA-F]{3,6}\b/.test(list.replace(/<style>[\s\S]*?<\/style>/, '')) === false, 'a literal colour leaked into the phone markup')
   return failures
 }

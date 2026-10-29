@@ -1,8 +1,8 @@
 {
   "name": "dsh-global-todo",
-  "version": "0.20.0",
+  "version": "0.21.0",
   "icon": "./docs/icon.svg",
-  "description": "Cross-session todo list for DeepSeek Harness where an agent's \"done\" never settles itself: whether it is reported by the tool or inferred from a clean turn, the record waits in Needs review until a person confirms it. One JSON file both write, numbered step hand-offs, session read-back.",
+  "description": "Cross-session todo list for DeepSeek Harness where an agent\"s \"done\" never settles itself — the record waits in Needs review until a person confirms it. Built for a phone: the panel measures its own width, folds on scroll and keeps 44px touch targets. One JSON file both sides write, numbered step hand-offs, session read-back, and two machines folding one list through a shared directory.",
   "type": "module",
   "license": "MIT",
   "author": "LUgABeEEE",
@@ -32,7 +32,12 @@
     "approval",
     "productivity",
     "待办",
-    "全局待办"
+    "全局待办",
+    "mobile",
+    "phone",
+    "responsive",
+    "sync",
+    "multi-device"
   ],
   "engines": {
     "node": ">=22.19.0",

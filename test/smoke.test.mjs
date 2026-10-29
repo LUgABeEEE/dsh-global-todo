@@ -11,7 +11,7 @@
  */
 
 import { strict as assert } from 'node:assert'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
@@ -29,6 +29,7 @@ function makeHost(services = {}) {
     effects: [],
     tools: new Map(),
     routes: new Map(),
+    routeTable: new Map(),
     promptSections: [],
     warnings: [],
     infos: [],
@@ -81,8 +82,19 @@ function makeHost(services = {}) {
   if (services.webServer !== undefined) {
     services.webServer = {
       register(route) {
+        // The real Host keys exact routes by path and throws on a second one for the same
+        // path. The stub has to throw too: a duplicate aborts the Host's whole registration
+        // pass (every route declared after it disappears) while every test here stays green
+        // — that is how `/sync` answered GET and POST as two registrations until 2026-10-29.
+        if (state.routes.has(route.path)) throw new Error(`webserver: duplicate exact route "${route.path}"`)
         state.routes.set(route.path, route)
-        return () => state.routes.delete(route.path)
+        // A route may answer more than one verb (`/sync` does); lookups stay by verb+path.
+        const verbs = String(route.method).split(',')
+        for (const verb of verbs) state.routeTable.set(`${verb} ${route.path}`, route)
+        return () => {
+          state.routes.delete(route.path)
+          for (const verb of verbs) state.routeTable.delete(`${verb} ${route.path}`)
+        }
       },
     }
   }
@@ -240,8 +252,8 @@ test('the plugin mounts, registers its surfaces, and survives a full round trip'
     apply(host.ctx, { storePath: file, requireExistingFiles: false, dispatchDir: '/home/me/projects/demo' })
 
     // Surfaces
-    assert.equal(host.state.tools.size, 10, 'all ten tools must register')
-    assert.equal(host.state.routes.size, 26, 'all twenty-six routes must register')
+    assert.equal(host.state.tools.size, 11, 'all eleven tools must register')
+    assert.equal(host.state.routes.size, 27, 'all twenty-seven routes must register')
     assert.equal(host.state.promptSections.length, 1)
     assert.equal(host.state.promptSections[0].name, 'dsh-global-todo:guidance')
     assert.ok(host.state.warnings.length === 0, `no warnings expected, got: ${host.state.warnings.join('; ')}`)
@@ -289,7 +301,7 @@ test('the plugin mounts, registers its surfaces, and survives a full round trip'
 
     // The file itself is the artifact: readable JSON, one record per todo.
     const raw = JSON.parse(await readFile(file, 'utf8'))
-    assert.equal(raw.version, 1)
+    assert.equal(raw.version, 2, 'the document carries tombstones, so the schema moved to 2')
     assert.equal(raw.todos.length, 2)
     assert.equal(raw.todos[0].createdBy, 'agent')
     assert.equal(typeof raw.todos[0].createdAt, 'number')
@@ -826,7 +838,7 @@ test('a broken tools surface does not stop the web surface from mounting', async
     }
     assert.doesNotThrow(() => apply(host.ctx, { storePath: path.join(dir, 'todos.json') }))
     assert.ok(host.state.warnings.some((line) => line.includes('工具注册失败')))
-    assert.equal(host.state.routes.size, 26, 'routes are independent of the tool registry')
+    assert.equal(host.state.routes.size, 27, 'routes are independent of the tool registry')
   } finally {
     await rm(dir, { recursive: true, force: true })
   }
@@ -901,3 +913,90 @@ test('with a memory plugin the bridge is one extra section, and one line in a co
     await rm(dir, { recursive: true, force: true })
   }
 })
+
+test('the mounted plugin folds through the shared directory, and /health says what happened', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'gt-smoke-sync-'))
+  const file = path.join(dir, 'todos.json')
+  const share = path.join(dir, 'share')
+  try {
+    const host = makeHost({ tools: {}, webServer: {} })
+    // The deployment key is the fallback the panel writes over; the route and the tool below
+    // go through the same instance, which is the wiring a restart has to get right.
+    apply(host.ctx, { storePath: file, requireExistingFiles: false, sync: { dir: share } })
+
+    const call = async (method, suffix, body) => {
+      const route = host.state.routeTable.get(`${method} /api/global-todo${suffix}`)
+      assert.ok(route !== undefined, `no ${method} route for ${suffix}`)
+      const response = makeRes()
+      await route.handler(
+        makeReq({
+          method,
+          url: `/api/global-todo${suffix}`,
+          body: body === undefined ? '' : JSON.stringify(body),
+        }),
+        response,
+      )
+      return response
+    }
+
+    const before = await call('GET', '/sync')
+    assert.equal(before.statusCode, 200)
+    const initial = before.json().data
+    assert.equal(initial.configured, true, 'a configured deployment reports itself as configured')
+    assert.equal(initial.dir, share)
+    assert.equal(initial.last, null, 'nothing has run yet')
+
+    const add = await host.state.tools.get('global_todo_add').execute({ title: '这一条要过一遍共享目录' })
+    assert.equal(add.ok, true)
+
+    const ran = await call('POST', '/sync', {})
+    assert.equal(ran.statusCode, 200)
+    const result = ran.json().data
+    assert.equal(result.stats.total, 1)
+    assert.equal(result.hubCreated, true, 'the first sync creates the hub')
+
+    const hubFile = path.join(share, 'todos.hub.json')
+    const hub = JSON.parse(await readFile(hubFile, 'utf8'))
+    assert.equal(hub.version, 2)
+    assert.equal(hub.todos.length, 1)
+    assert.equal(hub.todos[0].id, add.todo.id)
+
+    // The other machine: a record appears in the hub, and this one folds it in on the next run.
+    hub.todos.push({
+      id: 't-other001',
+      seq: 2,
+      title: '另一台机器上记的',
+      status: 'open',
+      priority: 'normal',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      tags: [],
+      links: [],
+      steps: [],
+      activity: [],
+    })
+    await writeFile(hubFile, JSON.stringify(hub), 'utf8')
+
+    const second = await call('POST', '/sync', {})
+    assert.equal(second.statusCode, 200)
+    assert.equal(second.json().data.stats.received, 1, 'the record the other machine left is received')
+
+    const listed = await host.state.tools.get('global_todo_list').execute({ status: 'all' })
+    assert.deepEqual(listed.todos.map((todo) => todo.id).sort(), [add.todo.id, 't-other001'].sort())
+
+    const health = await call('GET', '/health')
+    assert.equal(health.statusCode, 200)
+    const sync = health.json().data.sync
+    assert.equal(sync.configured, true)
+    assert.equal(sync.last.ok, true, '/health carries the last attempt, not a guess')
+    assert.equal(sync.last.stats.received, 1)
+
+    // And the same fold through the agent tool, so the model reaches it the same way the panel does.
+    const viaTool = await host.state.tools.get('global_todo_sync').execute({ dryRun: true })
+    assert.equal(viaTool.ok, true)
+    assert.equal(viaTool.total, 2)
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+

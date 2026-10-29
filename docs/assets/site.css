@@ -246,6 +246,21 @@
   .nots strong { color: var(--ink); font-weight: 600; }
   .finep { margin: 22px 0 0; max-width: 70ch; font-size: 13.5px; line-height: 1.7; color: var(--ink-3); }
 
+  /* ---------- phone ---------- */
+  .phone-split { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 30px; align-items: start; margin-top: 26px; }
+  .phone-shot { margin: 0; }
+  .phone-shot a { display: block; }
+  .phone-shot img { display: block; width: 100%; height: auto; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); box-shadow: var(--shadow); }
+  .phone-shot figcaption { margin-top: 10px; font-size: 12.5px; line-height: 1.5; color: var(--ink-3); }
+  .phone-points { list-style: none; margin: 0; padding: 0; display: grid; gap: 15px; }
+  .phone-points li { position: relative; padding-left: 24px; font-size: 14.5px; line-height: 1.65; color: var(--ink-2); }
+  .phone-points li::before { content: ""; position: absolute; left: 2px; top: 0.62em; width: 8px; height: 8px; border-radius: 2px; background: var(--accent); }
+  .phone-points b { color: var(--ink); font-weight: 650; }
+  @media (max-width: 760px) {
+    .phone-split { grid-template-columns: minmax(0, 1fr); gap: 22px; }
+    .phone-shot { max-width: 300px; margin: 0 auto; }
+  }
+
   /* ---------- states ---------- */
   .states { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: clamp(16px, 2vw, 22px); }
   .state figure { margin: 0; }

@@ -1,6 +1,6 @@
 # 常见问题
 
-17 个真问题，答案都能在代码里核对。文中路径相对仓库根；`$DSH_HOME` 默认是 `~/.dsh`。
+18 个真问题，答案都能在代码里核对。文中路径相对仓库根；`$DSH_HOME` 默认是 `~/.dsh`。
 
 > **这个插件的中心规则：完成要人点头。** Agent 在工具里报完成，和交给的会话干净收尾后宿主自动
 > 收尾，都只把记录送进「待确认」；你点「确认完成」才算完成，点「退回清单」就回到清单里。为什么
@@ -16,13 +16,36 @@
 
 ## 2. 两台机器之间会同步吗？
 
-不会。插件没有账号、没有同步服务，也不发网络请求——它只读写那一个文件。
+0.21.0 起会了，但要你自己指定一个**碰头目录**（插件仍然没有账号、没有服务器）：
 
-跨机使用靠你自己：把 `storePath` 指到同步盘或版本库里的同一份文件，同步交给 Dropbox / Syncthing /
-git 那套工具。另一个进程改了文件，本进程下一次读会通过 `mtime:size` 发现，面板提示
-「清单在别处被改过，已载入最新内容」。
+在**每台机器**的面板里打开 设置 → 多端同步，把「共享目录」填成同一个绝对路径（Windows 用盘符或 UNC，
+例如 `Z:\Agent产出\global-todo`；「自动同步间隔」填 0 就只在手动同步）。无面板的 headless 部署可以在
+`cordis.patch.yml` 的 `config.sync.dir` 里给默认值。
 
-注意：**没有合并逻辑**。两边同时改，最后落盘的那份赢，另一边那次改动丢失（见第 9 题）。
+每台机器**各存一份**本地文件，在那个目录里交换一份 `todos.hub.json`。同步 = 两边都折一次：
+按记录合并（同一条看 `updatedAt`，删除靠墓碑传播，`seq` 重号会按创建顺序重排），所以顺序、重试、
+两台同时同步都不会丢记录。规则与限制见 README 的「两台机器，一份清单」。
+
+- 读列表**永远读本地文件**：共享盘挂了、NAS 掉线，清单照常能用，只是 `/health.sync` 报失败原因。
+- 手动同步：面板/脚本 `POST /api/global-todo/sync`，或让 Agent 调 `global_todo_sync`。
+- **不要**再把 `storePath` 指到共享盘上：那是另一种做法（共享同一个文件），每次读都走网络、
+  断网就打不开，而且它和 `sync` 混用会互相覆盖。
+
+老办法仍然可用（把 `storePath` 放在 Syncthing/Dropbox 里），但它**没有合并逻辑**：两边同时改，
+最后落盘的那份赢，另一边丢失；删除也会在对方的下一次写里复活。真正跨机请用 `sync`。
+
+## 2b. 配了 `sync.dir`，另一台机器还是看不到我的改动？
+
+按顺序查（`GET /api/global-todo/sync` 或 `/health.sync` 会给答案）：
+
+| 现象（`last.error` / 状态） | 原因 |
+|---|---|
+| `sync-not-configured` | 那台机器的面板里没填共享目录，或 headless 部署的 `config.sync.dir` 没写 |
+| `sync-unavailable` | 上层目录不存在（共享盘没挂上）。插件**故意不替你建**这个目录，否则会安静地写进本地空目录 |
+| `sync-busy` | 上一次还没跑完（网络盘卡住时常见）；等下一轮 |
+| `sync-timeout` | 单次文件操作超过 20 秒：挂载点僵死，检查 `mount` / 重挂 |
+| `sync-corrupt` | `todos.hub.json` 不是合法 JSON，或被别的程序改坏。它不会被覆盖：手工检查/移走后下一轮重建 |
+| 一切正常但另一台没变 | 两台看的是不是同一个目录（Windows 盘符映射 vs Linux 挂载点）？那台机器的插件是不是 ≥ 0.21.0？ |
 
 ## 3. Agent 把一条标成完成之后会发生什么？
 
@@ -58,7 +81,7 @@ git 那套工具。另一个进程改了文件，本进程下一次读会通过 
 
 | 入口 | 形状 | 行为 |
 |---|---|---|
-| JSON 文档 | `{ "version": 1, "todos": [...] }` | 面板「更多操作 → 导入」，或 `POST /api/global-todo/import`；面板用 merge（同 id 覆盖、新 id 追加），`dryRun: true` 只返回 `wouldCreate` / `wouldUpdate` |
+| JSON 文档 | `{ "version": 2, "todos": [...], "trash": [...] }` | 面板「更多操作 → 导入」，或 `POST /api/global-todo/import`；面板用 merge（按记录合并：`updatedAt` 晚的赢，删除随 `trash` 传播，旧副本里的已删记录不会复活），`dryRun: true` 只返回 `wouldCreate` / `wouldUpdate` |
 | Markdown | `- [ ] 标题` 任务列表，缩进标注 `优先级 / 截止 / 标签 / 原话 / 描述 / 附件 / #` | 同上，选 `.md` 文件；按 `create` **新建**，没有 id 所以不会覆盖任何记录 |
 | 外部写入 | `POST /api/global-todo/ingest`，带 `Authorization: Bearer <settings.ingestToken>` | 来源只接受 `mail / notification / announcement`；一次最多 100 条；置信度低于 `ingestConfirmBelow`（默认 0.8）的进收件箱 |
 

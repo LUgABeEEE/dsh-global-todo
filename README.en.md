@@ -77,7 +77,7 @@ Both doors are gated, because both are only a claim:
   list untrustworthy.
 
 There is exactly one implementation of the rule: `completeTodo`, `applyPatch` and a status change in
-`lib/model.js` share the same `by === 'agent'` test, and the panel and the ten tools all go through
+`lib/model.js` share the same `by === 'agent'` test, and the panel and the eleven tools all go through
 it.
 
 ## What 0.9 and 0.10 added (and the two just before)
@@ -294,12 +294,8 @@ Your list is not touched by install or uninstall: it lives outside the plugin, a
 - **Keyboard** — `/` focuses search, `n` focuses the new-todo field while the add form is
   open, `Esc` collapses the open detail. Row actions appear on hover or keyboard focus.
 - **Phone / narrow screens** — the panel switches on its own **measured width**: at 600px or
-  less it becomes a touch layout. Controls and inputs are 44px tall, the filter chips scroll
-  sideways instead of losing their tail, the inline hand-off collapses to its icon (the menu
-  and the detail keep the words), the keyboard hints disappear, the bottom padding yields to
-  the safe area, and the text follows the mobile page's text-size setting. The desktop page is
-  unchanged, and the phone page of `dsh-mobile` needs no configuration — this changes neither
-  DSH nor the mobile plugin.
+  less it becomes a touch layout (fold gesture, 66px rows, 44px targets, safe areas). Details,
+  thresholds and measured sizes are in the “On a phone” section below.
 - **Reachable from the LAN and from a tunnel** — the routes defer to the Host's connection fence
   (which honours `--trusted-host`); the plugin's own loopback check is only the fallback for a
   Host without that service. `/health` reports `fence` so you can see which one is in force.
@@ -360,12 +356,12 @@ Your list is not touched by install or uninstall: it lives outside the plugin, a
   session; `new` always opens one; `bound` insists on the bound conversation and says why
   if it is gone. When nothing usable can be resolved the hand-off **fails with a reason**
   instead of quietly opening another conversation.
-- **Grouping** — the toolbar offers `conversation / time / level` and defaults to
-  **conversation**: everything one agent conversation submitted collapses into a single
-  entry that says how many it holds, so a few 「抓一下待办」 runs do not turn the list into a
-  wall of rows. A conversation with one item shows that row directly; items with no source
-  conversation (added in the panel) sit under 手动添加. `time` is the original
-  overdue / today / soon / later / no-due buckets, `level` groups by priority.
+- **Grouping** — the toolbar offers `workspace / time / priority` and defaults to
+  **workspace**: everything written in one directory collapses into a single entry that says how
+  many it holds, headed by that directory's name (the full path is the tooltip), so a few
+  「抓一下待办」 runs do not turn the list into a wall of rows. An item with neither an origin
+  directory nor a bound conversation (added in the panel) sits under 手动添加. `time` is the
+  original overdue / today / soon / later / no-due buckets, `priority` groups by level.
 - **Levels P0–P3** — `P0 urgent / P1 high / P2 normal (default) / P3 low`; the API accepts
   either the canonical names or the labels (`priority: "P0"` works), with a badge on the
   row. Records written before levels existed keep their `high/normal/low`, so nothing needed a
@@ -392,6 +388,42 @@ Your list is not touched by install or uninstall: it lives outside the plugin, a
   the three available, the hand-off is **refused with a reason** — a session without a
   working directory is a session where the agent can do nothing.
 
+### On a phone
+
+Nothing to configure: DSH Mobile puts the panel in its `main` slot, the panel **measures its own
+width**, and at 600px or less it becomes a touch layout. Dragging a desktop window narrower than
+600px gets the same treatment — the signal is the panel's measured width, not the window's and not
+the user agent. Above 601px the desktop page is pixel-identical, and `check:render` asserts that at
+601 / 900 / 1280 / 1440.
+
+Measured at 390×844: a 44px header line, a three-row toolbar (filters / search / grouping, 44px
+each), the list starting at 287px, and 66px per row — about eight rows on the first screen.
+
+- **The fold is a gesture, not a switch.** Scrolling down past 80px folds the search line away, and
+  it has to clear the 110px that line gives back — otherwise the content the reader is looking at
+  jumps out from under the thumb. The first upward flick of 48px, or reaching the top, unfolds it.
+  Either direction is deaf for 300ms after a flip, so a thumb resting on the boundary does not
+  oscillate.
+- **A folded row is one title line plus the signals that change what to do next** — deadline,
+  priority, review badge, completion time — with the open row kept whole. Attachment chips fade
+  instead of vanishing, so the row height stays 66px.
+- **The three group modes stay visible**: workspace / time / priority are side-by-side tabs that the
+  fold does not touch. “Workspace” groups by the directory the work was written in, headed by the
+  directory name.
+- **No dead switches on a phone**: the dispatch summary (交给 / 上下文) and the auto-collect switch
+  moved into the settings sheet (the desktop keeps them), and 选择 moved after the search field. The
+  toolbar is filters, search, grouping — nothing else.
+- **Touch and safe areas**: buttons, inputs and filter chips are 44px; chips scroll sideways instead
+  of being clipped; the inline hand-off collapses to its icon (the menu and the detail keep the
+  words); keyboard hints are gone; the bottom padding yields to the safe area; text follows the
+  mobile page's text-size setting, and inputs stay at 16px or more so iOS does not zoom the page.
+- **Nothing else changes**: `dsh-mobile`, DSH and the mobile plugin need no configuration, and the
+  desktop keeps its layout.
+
+The three 390×844 baselines: [panel](docs/screenshots/mobile/panel.png) ·
+[one row open](docs/screenshots/mobile/panel-detail.png) ·
+[settings](docs/screenshots/mobile/panel-settings.png).
+
 ### Agent tools
 
 | Tool | Purpose |
@@ -405,7 +437,8 @@ Your list is not touched by install or uninstall: it lives outside the plugin, a
 | `global_todo_link` | Attach or detach documents and addresses |
 | `global_todo_done` | Mark done, back to open, or in progress |
 | `global_todo_reopen` | Put a **wrongly finished** item back (`done` / `cancelled` → `open`); refuses anything else, and the trail records it as the agent |
-| `global_todo_remove` | Delete permanently (done items should be marked, not deleted) |
+| `global_todo_remove` | Delete permanently (done items should be marked, not deleted); the removal leaves a tombstone, so the other machine cannot bring it back |
+| `global_todo_sync` | Fold the list with the copy in the shared directory (needs the panel's Shared directory, or a deployment `sync.dir`); `dryRun` computes without writing |
 
 ### Live check
 
@@ -462,6 +495,69 @@ Two places implement it: `memoryGuidanceFor()` (`lib/index.js`, its own section,
 when `ctx.inject(['systemPrompt','mnemonMemory'])` fires) and `createTools({ hasMemory })`
 (`lib/tools.js`, the line in the tool result).
 
+### Two machines, one list
+
+When the same list has to be visible on a workstation and a laptop, the plugin does **not** share
+a file: each machine keeps its own, and they meet in the middle. Pointing `storePath` at a NAS makes
+every panel read a network round trip, and an offline machine cannot open its own list at all.
+
+On **each machine**, open the panel's Settings → Multi-machine sync and enter the **same absolute
+path**:
+
+| Field | Value (example) |
+|---|---|
+| Shared directory (Linux / macOS) | `/mnt/nas/agent-rw/global-todo` |
+| Shared directory (Windows) | `Z:\Agent产出\global-todo` (a mapped drive or a UNC path) |
+| Auto-sync interval | 5 minutes by default; **0 = only when asked** (the panel button or the tool) |
+
+The values land in `settings.json` as `syncDir` / `syncMinutes`. A headless deployment can set a
+default as `config.sync.dir` in the plugin patch; the panel wins once it has a value:
+
+```yaml
+# the profile's cordis.patch.yml (`config` is replaced wholesale — restate what you keep)
+- id: global-todo
+  config:
+    sync:
+      dir: /mnt/nas/agent-rw/global-todo
+      intervalMinutes: 5
+```
+
+Once both point at the same directory, a **`todos.hub.json`** appears there (with its `.lock`).
+One sync = read local + read hub → fold → write the hub back (locked, re-merged under the lock) →
+write the fold back to local. The fold has three rules:
+
+| Situation | Result |
+|---|---|
+| Two machines changed **different** todos | both survive |
+| Two machines changed **the same** todo | the later `updatedAt` wins; only a millisecond tie compares content, and both sides order it the same way |
+| One deleted, the other only holds **an old copy** | the deletion wins. Every removal leaves a tombstone (the document's `trash`), and undo removes the tombstone with the record |
+| Both were **offline and created** something | `seq` is numbered from the set of records: the earlier creation keeps its number, the other is renumbered by creation order — the same on both machines |
+
+- **Triggers**: about 10 s after start, then a one-minute ticker that compares the interval (the
+  panel's value — changing it needs no restart); also the panel's Sync now, `POST
+  /api/global-todo/sync`, or the agent calling `global_todo_sync` (`{ "dryRun": true }` writes nothing).
+- **Reading the list always reads the local file.** A slow, disconnected or unmounted share never
+  blocks the panel or the tools; `/health.sync` reports the last attempt and why it failed.
+- **The plugin will not invent the share.** If the parent directory is missing it answers
+  `sync-unavailable` (503) instead of creating an empty local directory — which would leave both
+  machines writing happily and looking healthy while syncing nothing.
+- **The hub write is locked and re-merged**: two machines syncing in the same second cannot erase
+  each other's arrivals.
+- **An idle sync writes nothing** (no mtime churn, no waking the sync client).
+
+**Every machine has to be on 0.21.0 or newer.** An older build refuses a document with `trash` on the
+grounds of a newer schema — deliberately: silently dropping tombstones is how a deletion comes back,
+and that looks like "delete is broken".
+
+**What it cannot do** (stated here rather than discovered later):
+
+- merge two **field-level** edits inside one record (a tag added on A, a priority changed on B — only
+  the later one survives);
+- keep a tombstone longer than a year (`TOMBSTONE_TTL_MS`); a machine offline for longer is treated
+  as holding real data;
+- trust the clocks: `updatedAt` is each machine's wall clock, so a fast clock wins more often;
+- carry attachment **bytes**: an attachment is a path, and it has to be reachable on both machines.
+
 ### HTTP API
 
 The panel talks to the host over these routes. They are fenced by the host connection
@@ -473,7 +569,7 @@ fence when that service is present, and by a strict loopback check otherwise.
 | GET | `/api/global-todo/dirs` | `path?` — list subdirectories for the panel's built-in folder picker (the shell's own picker is preferred when mounted) |
 | GET | `/api/global-todo/get` | `id` |
 | GET | `/api/global-todo/export` | — (the store's own JSON document; `?format=md` gives a Markdown task list) |
-| POST | `/api/global-todo/import` | `{ doc, mode?: replace\|merge, dryRun? }` — `replace` is an exact round trip, `merge` updates by id and appends (what the panel sends); `dryRun` returns `wouldCreate` / `wouldUpdate` and writes nothing |
+| POST | `/api/global-todo/import` | `{ doc, mode?: replace\|merge, dryRun? }` — `replace` is an exact round trip, `merge` folds by record (later `updatedAt` wins, deletions travel as tombstones; what the panel sends); `dryRun` returns `wouldCreate` / `wouldUpdate` and writes nothing |
 | POST | `/api/global-todo/reminders/ack` | `{ ids }` — stop listing these passed deadlines as due |
 | POST | `/api/global-todo/note` | `{ id, text }` — append a progress note |
 | POST | `/api/global-todo/capture` | `{ sessionId? }` — ask the current conversation to collect its follow-ups |
@@ -495,6 +591,8 @@ fence when that service is present, and by a strict loopback check otherwise.
 | POST | `/api/global-todo/assign` | `{ ids, items?, target?, dir? }` — hand several todos over in one call; an id that matches nothing comes back instead of being sent elsewhere |
 | POST | `/api/global-todo/settings` | `{ autoCollect?, idleMinutes?, cooldownMinutes?, exemptWorkspaces?, captureMinWeight? }` — the Host-side switches behind automatic collect; `captureMinWeight` (0–1, default 0.35) is the floor below which a batch-capture candidate is reported as skipped instead of registered |
 | POST | `/api/global-todo/diagnostics` | `{ scope, status?, reason?, message?, url? }` — the panel's own error report |
+| GET | `/api/global-todo/sync` | — (`configured`, `dir`, `last`, `error`: what the multi-machine sync is doing) |
+| POST | `/api/global-todo/sync` | `{ dryRun? }` — fold now and write both sides; `sync-not-configured` when no share is set |
 
 `by` on `/update` and `/status` says whose write this is: omitted (what the panel sends) it is
 the person at the keyboard, and a script acting for the agent says `by: 'agent'` rather than
@@ -545,7 +643,10 @@ feeds we have not verified, is [docs/DISTRIBUTION.md](docs/DISTRIBUTION.md).
     storePath: /home/me/notes/global-todos.json   # a synced or versioned folder
     dispatchDir: /home/me/projects/thing          # default cwd for a new session
     requireExistingFiles: true                    # refuse a document that is not there yet
-    toolGroups: all                               # all (10 tools) | core (6: the list itself) | none
+    toolGroups: all                               # all (11 tools) | core (6: the list itself) | none
+    sync:
+      dir: /mnt/nas/agent-rw/global-todo           # the directory two machines meet in; empty = on its own
+      intervalMinutes: 5                           # how often to fold
 ```
 
 The file is the artifact: plain JSON, one record per todo, written through a temp file and
@@ -556,6 +657,11 @@ synced folder) queues behind it and hears `store-busy` (503) after five seconds 
 erasing the other change. A damaged file is reported (`store-corrupt`) rather than silently reset,
 and a single mangled record is skipped instead of taking the list down. Back it up by copying it —
 and check that no `.lock` file is left behind, which normally means somebody died mid-write.
+
+The document also carries `trash`: every removal leaves a tombstone `{ id, at, by }`, kept for a year
+and capped at 5000 entries (`TOMBSTONE_TTL_MS` / `TOMBSTONE_LIMIT` in `lib/replica.js`). **Without it,
+a deletion never reaches the other machine** — its older copy puts the record straight back. You can
+clear them, and that is the same decision as giving up on deletions propagating.
 
 The same directory also holds `settings.json` (host-side switches) and `client-errors.log` (panel
 errors, capped); **only `todos.json` is worth backing up**. A `.lock` that never goes away, with
@@ -629,7 +735,7 @@ lockfile.js    the cross-process lock: exclusive create, pid/host liveness, stal
   links.js       attachment rules (pure: no filesystem access)
   service.js     the single write path, filters, sorting and the dispatch prompt
   routes.js      the HTTP surface for the panel
-  tools.js       the ten agent tools
+  tools.js       the eleven agent tools
   dispatch.js    handing a todo to an agent session (auto / bound / new / current)
   completion.js  the clean-turn watcher behind automatic completion
   capture.js     the capture duplicate gate (title, paraphrase, recent done)

@@ -95,17 +95,21 @@ Agent 说做完了，不等于你做完了：
 | 方式 | 怎么做 | 适合 |
 |---|---|---|
 | 复制文件 | `cp "$DSH_HOME/global-todo/todos.json" ~/backup/todos.json` | 快照、放进同步盘或版本库 |
-| 导出 JSON | 面板「更多操作 → 导出」 | 需要导回去：面板导入用 merge（同 id 覆盖、新 id 追加），API 传 `mode: 'replace'` 是精确还原 |
+| 导出 JSON | 面板「更多操作 → 导出」 | 需要导回去：面板导入用 merge（按记录合并，删除随墓碑传播），API 传 `mode: 'replace'` 是精确还原 |
 | 导出 Markdown | 面板「更多操作 → 导出 Markdown」 | 要读、要 diff、要贴进笔记（导入时只新增，不覆盖） |
 
-换机器：把新环境的 `storePath` 指向同步盘里的同一个文件，或者把上面两个文件复制过去：
+换机器（一次性的搬运）：把上面那个文件复制过去，或临时把新环境的 `storePath` 指向它。
 
-```yaml
-# profile 的 cordis.patch.yml
-- id: global-todo
-  config:
-    storePath: /home/me/sync/global-todos.json
+**两台机器长期共用一份清单**：不要共享同一个 `storePath`（每次读都走网络，断网就打不开）。在每台机器的
+面板里打开 设置 → 多端同步，填同一个绝对路径，各自留一份本地文件、在那个目录里折成一份：
+
 ```
+SER8:   /mnt/nas/agent-rw/global-todo
+笔记本: Z:\Agent产出\global-todo      （或 UNC 路径）
+```
+
+按记录合并：同一条看 `updatedAt`；删除留墓碑，另一台的旧副本不会把它带回来；两台离线都新建时编号会重排。
+「自动同步间隔」填 0 就只在手动同步。详见 [README](../README.md) 的「两台机器，一份清单」。
 
 ## 7. 接下来
 

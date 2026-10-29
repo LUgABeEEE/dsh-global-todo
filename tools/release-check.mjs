@@ -32,6 +32,16 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
 /** The catalog every DSH market reads rebuilds around 04:2x UTC — publish *before* it. */
 const CATALOG_HOUR_UTC = 4
+/** When inside the hour the rebuild lands, in minutes past midnight UTC. */
+const CATALOG_MINUTE_UTC = 20
+/**
+ * How much of the window to leave for the publish itself.
+ *
+ * "Publish before 04:2x" is true but not actionable at 04:18: the tag push, the workflow queue and
+ * npm's own propagation take a few minutes, and a version that lands after the rebuild waits a day.
+ * Half an hour is the honest margin.
+ */
+const PUBLISH_MARGIN_MINUTES = 30
 /** A day minus the catalog's rebuild slack, so one release per day can still catch a rebuild. */
 const MIN_HOURS_BETWEEN_RELEASES = 20
 /** Conventional-commit types that are worth their own version. */
@@ -133,8 +143,11 @@ if (lastTag !== '') {
   hoursSinceRelease = (Date.now() - new Date(releasedAt).getTime()) / 3600000
 }
 
-const nowUtcHour = new Date().getUTCHours()
-const windowOpen = nowUtcHour >= CATALOG_HOUR_UTC
+// The window is *before* the rebuild, not after it: this compared the other way round until
+// 2026-10-29, which reported "wait for tomorrow" at 03:3x UTC — the one moment that catches the
+// same day's rebuild — and "open" immediately afterwards.
+const nowUtcMinutes = new Date().getUTCHours() * 60 + new Date().getUTCMinutes()
+const windowOpen = nowUtcMinutes < CATALOG_HOUR_UTC * 60 + CATALOG_MINUTE_UTC - PUBLISH_MARGIN_MINUTES
 
 let code = 0
 let verdict = ''

@@ -37,6 +37,26 @@ test('the exempt workspace list is repaired rather than trusted', () => {
   assert.deepEqual(normalizeSettings({}).exemptWorkspaces, [])
 })
 
+test('the sync directory is a place or nothing, and the interval keeps zero', () => {
+  // Absolute only: a relative path would resolve against the Host's cwd, and two machines
+  // would silently meet in two different directories.
+  assert.equal(normalizeSettings({ syncDir: '/mnt/nas/todo' }).syncDir, '/mnt/nas/todo')
+  assert.equal(normalizeSettings({ syncDir: '/mnt/nas/todo/' }).syncDir, '/mnt/nas/todo')
+  assert.equal(normalizeSettings({ syncDir: '  /mnt/nas/todo  ' }).syncDir, '/mnt/nas/todo')
+  assert.equal(normalizeSettings({ syncDir: 'relative/dir' }).syncDir, '')
+  assert.equal(normalizeSettings({ syncDir: 42 }).syncDir, '')
+  // A drive root keeps its separator: stripping it would turn "C:\" into a relative "C:".
+  assert.equal(normalizeSettings({ syncDir: 'C:\\' }).syncDir, 'C:\\')
+  // A UNC share is a place too, which is how a Windows machine reaches the NAS.
+  assert.equal(normalizeSettings({ syncDir: '\\\\nas\\share\\todo' }).syncDir, '\\\\nas\\share\\todo')
+  // 0 is a real value here — "only when asked" — so it must not be replaced by the default.
+  assert.equal(normalizeSettings({ syncMinutes: 0 }).syncMinutes, 0)
+  assert.equal(normalizeSettings({ syncMinutes: 7.6 }).syncMinutes, 8)
+  assert.equal(normalizeSettings({ syncMinutes: 99999 }).syncMinutes, 1440)
+  assert.equal(normalizeSettings({ syncMinutes: 'nope' }).syncMinutes, SETTINGS_DEFAULTS.syncMinutes)
+  assert.equal(SETTINGS_DEFAULTS.syncDir, '', 'a machine is on its own until somebody says otherwise')
+})
+
 test('the cooldown bookkeeping keeps the newest sessions and drops junk', () => {
   const asked = { junk: 'nope', '': 5, 'session-old': 1, 'session-new': 100 }
   for (let index = 0; index < 80; index += 1) asked[`session-${index}`] = index

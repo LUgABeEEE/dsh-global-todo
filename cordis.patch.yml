@@ -24,9 +24,9 @@
         # Inject the short usage guidance into every turn. `false` leaves the tools
         # available but stops asking the model to record things on its own.
         guidance: true
-        # Which Agent tools this deployment registers. The ten schemas cost roughly
+        # Which Agent tools this deployment registers. The eleven schemas cost roughly
         # 2k tokens per turn, so a deployment that only wants the panel can shed them:
-        #   all   10 tools (default)
+        #   all   11 tools (default)
         #   core  6 tools: add / list / get / update / note / done
         #   none  no tools; the guidance section is skipped too
         # An unrecognised value is reported and treated as `all`.
@@ -34,3 +34,17 @@
         # Starting point for the panel's built-in folder browser when the shell has
         # no native picker. Empty = home directory, then the Host's cwd.
         browseRoot: ''
+        # Multi-machine: two machines keep their own list and meet in one directory.
+        #
+        # These are **defaults for a headless install**. The panel's Settings → Multi-machine
+        # sync writes `syncDir` / `syncMinutes` into `settings.json`, and a value set there
+        # wins — the path differs per machine, and editing it by hand means restating this
+        # whole `config` block (it is replaced wholesale, not merged).
+        #
+        # Both machines point at the same directory (a NAS share, a synced folder, a git
+        # working tree); a `todos.hub.json` appears there and is folded in both directions.
+        # Empty = this machine is on its own: no timer, no hub file.
+        sync:
+          dir: ''
+          # Minutes between folds. 0 means "only when asked"; unparsable falls back to 5.
+          intervalMinutes: 5
