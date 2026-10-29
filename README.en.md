@@ -621,6 +621,7 @@ The third reports the npm version and nothing else.
 | [1024 Store](https://deepseek1024.com) | catalog entry ([PR #654](https://github.com/imsai-sh/awesome-deepseek-harness-plugins/pull/654), merged) | tracks `0.19.0`; its install line is still the `not_checked` GitHub source — their repository inspection has been down since 2026-09-07 ([#19](https://github.com/imsai-sh/dsh-1024store/issues/19)) |
 | [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) (19.7k★) | one YAML per plugin | merged ([PR #7498](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/7498)) |
 | [bruc3van/awesome-dsh-plugin](https://github.com/bruc3van/awesome-dsh-plugin) (469★) | a `MARKET.md` row | listed, row 656 |
+| [dsh-plugin.shop](https://www.dsh-plugin.shop/) ([22★](https://github.com/losebird/dsh-plugin-market)) | curated JSON entry ([PR #49](https://github.com/losebird/dsh-plugin-market/pull/49), merged) | its install line is the npm spec, not the GitHub source — this is the entry that replaced the auto one pinned to `v0.6.6` |
 | [dsh.pub](https://dsh.pub/en/plugins/dsh-global-todo/) | published page + `dshpub` CLI | live, install pinned to a commit |
 | [DSH-Plugins-Marketplace](https://github.com/bradeGithub/DSH-Plugins-Marketplace) | `registry.json`, collected from the `dsh-plugin` topic | `v0.19.0`, risk tier `safe` |
 | [walkinglabs](https://github.com/walkinglabs/awesome-deepseek-harness-plugins) | source-verified README | merged ([PR #114](https://github.com/walkinglabs/awesome-deepseek-harness-plugins/pull/114)) |

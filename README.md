@@ -515,6 +515,7 @@ npm 是唯一安装源，下面每个地方都只是「能不能被找到」。�
 | [1024 Store](https://deepseek1024.com) | 目录条目（[PR #654](https://github.com/imsai-sh/awesome-deepseek-harness-plugins/pull/654) 已合并） | 版本已跟到 `0.19.0`；安装行仍是 `not_checked` 的 GitHub 源——他们的仓库巡检自 2026-09-07 停摆（[#19](https://github.com/imsai-sh/dsh-1024store/issues/19)） |
 | [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin)（19.7k★） | 每个插件一个 YAML | 已合并（[PR #7498](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/7498)） |
 | [bruc3van/awesome-dsh-plugin](https://github.com/bruc3van/awesome-dsh-plugin)（469★） | `MARKET.md` 表格 | 已收录，第 656 行 |
+| [dsh-plugin.shop](https://www.dsh-plugin.shop/)（[22★](https://github.com/losebird/dsh-plugin-market)） | 人工策展条目（[PR #49](https://github.com/losebird/dsh-plugin-market/pull/49) 已合并） | 安装行是 npm spec `dsh-global-todo`，不再是 GitHub 源——它替掉的正是那个钉死 `v0.6.6` 的自动条目 |
 | [dsh.pub](https://dsh.pub/zh/plugins/dsh-global-todo/) | 目录页 + `dshpub` CLI | 页在，安装命令 pin 到某个 commit |
 | [DSH-Plugins-Marketplace](https://github.com/bradeGithub/DSH-Plugins-Marketplace) | `registry.json`，按 `dsh-plugin` topic 采集 | `v0.19.0`，风险分级 `safe` |
 | [walkinglabs](https://github.com/walkinglabs/awesome-deepseek-harness-plugins) | 带来源核验的 README | 已合并（[PR #114](https://github.com/walkinglabs/awesome-deepseek-harness-plugins/pull/114)） |

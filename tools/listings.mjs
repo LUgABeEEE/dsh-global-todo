@@ -19,17 +19,19 @@
 const NPM = 'dsh-global-todo'
 const REPO = 'LUgABeEEE/dsh-global-todo'
 
-const get = async (url) => {
-  // A registry that cannot answer in 25s is "unknown", not "listed": never let a crawl hang.
+const get = async (url, timeoutMs = 25000) => {
+  // A registry that cannot answer is "unknown", not "listed": never let a crawl hang. The two
+  // registries that answer with megabytes get a longer leash, because a 21 MB JSON over a slow
+  // link is not a broken registry — it is a big file, and the daily deploy can afford the wait.
   const response = await fetch(url, {
     headers: { 'user-agent': 'dsh-global-todo-listings' },
-    signal: AbortSignal.timeout(25000),
+    signal: AbortSignal.timeout(timeoutMs),
   })
   if (!response.ok) throw new Error(response.status + ' ' + url)
   return response
 }
-const json = async (url) => (await get(url)).json()
-const text = async (url) => (await get(url)).text()
+const json = async (url, timeoutMs) => (await get(url, timeoutMs)).json()
+const text = async (url, timeoutMs) => (await get(url, timeoutMs)).text()
 
 const rows = []
 const add = (name, status, detail, href) => rows.push({ name, status, detail, href })
@@ -56,7 +58,11 @@ try {
 } catch (error) { add('dsh.pub', 'error', error.message, 'https://dsh.pub/en/plugins/' + NPM + '/') }
 
 try {
-  const data = await json('https://raw.githubusercontent.com/bradeGithub/DSH-Plugins-Marketplace/main/registry.json')
+  // registry.json is 21 MB. The same data is published gzipped at 3.4 MB next to it, which is
+  // the difference between a probe that answers and one that times out on a slow link.
+  const response = await get('https://raw.githubusercontent.com/bradeGithub/DSH-Plugins-Marketplace/main/registry.json.gz', 60000)
+  const { gunzipSync } = await import('node:zlib')
+  const data = JSON.parse(gunzipSync(Buffer.from(await response.arrayBuffer())).toString('utf8'))
   const list = data.repos || data.plugins || []
   const hit = list.find((entry) => entry.full_name === REPO) || null
   add('DSH-Plugins-Marketplace', hit ? 'live' : 'missing', hit ? 'v' + hit.version + ', risk ' + hit.risk_tier : 'not indexed yet', 'https://github.com/bradeGithub/DSH-Plugins-Marketplace')
@@ -79,17 +85,26 @@ try {
 } catch (error) { add('dsh-xray', 'error', error.message, 'https://unstone.github.io/dsh-xray/p/LUgABeEEE__dsh-global-todo.html') }
 
 try {
-  const readme = await text('https://raw.githubusercontent.com/walkinglabs/awesome-deepseek-harness-plugins/main/README.md')
+  const readme = await text('https://raw.githubusercontent.com/walkinglabs/awesome-deepseek-harness-plugins/main/README.md', 60000)
   add('walkinglabs', readme.includes(NPM) ? 'live' : 'pending', readme.includes(NPM) ? 'in README' : 'PR open', 'https://github.com/walkinglabs/awesome-deepseek-harness-plugins')
 } catch (error) { add('walkinglabs', 'error', error.message, 'https://github.com/walkinglabs/awesome-deepseek-harness-plugins') }
 
 try {
-  const market = await text('https://raw.githubusercontent.com/bruc3van/awesome-dsh-plugin/main/MARKET.md')
+  const market = await text('https://raw.githubusercontent.com/bruc3van/awesome-dsh-plugin/main/MARKET.md', 60000)
   add('bruc3van', market.includes(REPO) ? 'live' : 'pending', market.includes(REPO) ? 'row 656' : 'not listed yet', 'https://github.com/bruc3van/awesome-dsh-plugin')
 } catch (error) { add('bruc3van', 'error', error.message, 'https://github.com/bruc3van/awesome-dsh-plugin') }
 
 try {
-  const site = await text('https://leenkcool.github.io/plugins.zh.html')
+  // dsh-plugin.shop keeps curated entries in the repository and collects the rest from the
+  // topic; a curated file that names the npm package is the difference between "listed" and
+  // "listed with an install line that works".
+  const curated = await json('https://raw.githubusercontent.com/losebird/dsh-plugin-market/main/registry/curated/' + NPM + '.json')
+  const spec = String((curated && curated.spec) || '')
+  add('dsh-plugin.shop', spec === NPM ? 'live' : 'partial', spec === NPM ? 'curated entry, npm spec' : 'spec ' + (spec || 'missing'), 'https://www.dsh-plugin.shop/')
+} catch (error) { add('dsh-plugin.shop', 'error', error.message, 'https://www.dsh-plugin.shop/') }
+
+try {
+  const site = await text('https://leenkcool.github.io/plugins.zh.html', 60000)
   add('Blue-Whale', site.includes(REPO) ? 'live' : 'missing', site.includes(REPO) ? 'in the site index' : 'not listed yet', 'https://leenkcool.github.io/plugins.zh.html')
 } catch (error) { add('Blue-Whale', 'error', error.message, 'https://leenkcool.github.io/plugins.zh.html') }
 
@@ -111,6 +126,7 @@ const NOTES = {
   'dsh-xray': ['能力卡片，每条结论都带 file:line 证据。', 'Capability card; every finding cites a file and line.'],
   walkinglabs: ['带来源核验的列表。', 'Source-verified list.'],
   bruc3van: ['第二个大表，469★。', 'A second large table, 469 stars.'],
+  'dsh-plugin.shop': ['人工策展条目，安装走 npm spec。', 'Hand-curated entry; it installs from the npm spec.'],
   'Blue-Whale': ['中文站点的分区索引。', 'A zone map on a Chinese-language site.'],
   'deepseekserver.com': ['中英各一个资源页；快照偏旧。', 'One resources page per language; the snapshot is old.'],
 }

@@ -368,20 +368,20 @@
           <span class="en" lang="en">Where it is listed</span>
         </p>
         <h2 id="where-title">
-          <span class="zh"><b data-where-live>9</b> 个目录已上线，另有 <b data-where-pending>2</b> 个在审或待确认</span>
-          <span class="en" lang="en"><b data-where-live>9</b> live listings, <b data-where-pending>2</b> more in review</span>
+          <span class="zh"><b data-where-live>10</b> 个目录已上线，另有 <b data-where-pending>2</b> 个在审或待确认</span>
+          <span class="en" lang="en"><b data-where-live>10</b> live listings, <b data-where-pending>2</b> more in review</span>
         </h2>
         <p class="section-lede">
-          <span class="zh">商店只决定「找不找得到」，装到的东西永远来自 npm：<code>dsh plugin add dsh-global-todo</code>。显示旧版本是正常的 —— 各家的爬虫有自己的节奏。这张表最后一次核对是 <time data-where-checked>2026-10-27</time>，<code>node tools/listings.mjs</code> 每次部署前重跑一遍。</span>
-          <span class="en" lang="en">A registry decides whether you find it; what you install always comes from npm: <code>dsh plugin add dsh-global-todo</code>. An older version on a listing is normal — every crawler runs on its own schedule. Verified <time data-where-checked>2026-10-27</time>; <code>node tools/listings.mjs</code> runs again on every deploy.</span>
+          <span class="zh">商店只决定「找不找得到」，装到的东西永远来自 npm：<code>dsh plugin add dsh-global-todo</code>。显示旧版本是正常的 —— 各家的爬虫有自己的节奏。这张表最后一次核对是 <time data-where-checked>2026-10-29</time>，<code>node tools/listings.mjs</code> 每次部署前重跑一遍。</span>
+          <span class="en" lang="en">A registry decides whether you find it; what you install always comes from npm: <code>dsh plugin add dsh-global-todo</code>. An older version on a listing is normal — every crawler runs on its own schedule. Verified <time data-where-checked>2026-10-29</time>; <code>node tools/listings.mjs</code> runs again on every deploy.</span>
         </p>
       </div>
 
-      <div class="where-grid" data-live="9" data-pending="2" data-checked="2026-10-27">
+      <div class="where-grid" data-live="10" data-pending="2" data-checked="2026-10-29">
         <article class="where-card">
           <p class="where-status where-status--live"><span class="zh">已收录</span><span class="en" lang="en">Live</span></p>
           <h3><a href="https://www.npmjs.com/package/dsh-global-todo" rel="noopener">npm</a></h3>
-          <p><code>latest 0.20.0</code></p>
+          <p><code>latest 0.21.0</code></p>
           <p class="where-note"><span class="zh">唯一的安装源，其余都只是入口。</span><span class="en" lang="en">The only install source; the rest are entry points.</span></p>
         </article>
         <article class="where-card where-card--pending">
@@ -390,16 +390,16 @@
           <p><code>install still dsh plugin --profile web add github:LUgABeEEE/dsh-global-todo</code></p>
           <p class="where-note"><span class="zh">条目可搜索；安装行仍指向 GitHub 源，等它自己的 npm 富化。</span><span class="en" lang="en">Searchable; its install line still points at the GitHub source until their npm enrichment runs.</span></p>
         </article>
-        <article class="where-card where-card--pending">
-          <p class="where-status where-status--pending"><span class="zh">无法确认</span><span class="en" lang="en">Unknown</span></p>
-          <h3><a href="https://dsh.pub/en/plugins/dsh-global-todo/" rel="noopener">dsh.pub</a></h3>
-          <p><code>The operation was aborted due to timeout</code></p>
-          <p class="where-note"><span class="zh">页面上线，安装命令钉在一个 commit 上。</span><span class="en" lang="en">Page live; its install command pins a commit.</span></p>
-        </article>
         <article class="where-card">
           <p class="where-status where-status--live"><span class="zh">已收录</span><span class="en" lang="en">Live</span></p>
+          <h3><a href="https://dsh.pub/en/plugins/dsh-global-todo/" rel="noopener">dsh.pub</a></h3>
+          <p><code>page 200, dshpub add</code></p>
+          <p class="where-note"><span class="zh">页面上线，安装命令钉在一个 commit 上。</span><span class="en" lang="en">Page live; its install command pins a commit.</span></p>
+        </article>
+        <article class="where-card where-card--pending">
+          <p class="where-status where-status--pending"><span class="zh">无法确认</span><span class="en" lang="en">Unknown</span></p>
           <h3><a href="https://github.com/bradeGithub/DSH-Plugins-Marketplace" rel="noopener">DSH-Plugins-Marketplace</a></h3>
-          <p><code>v0.19.0, risk safe</code></p>
+          <p><code>The operation was aborted due to timeout</code></p>
           <p class="where-note"><span class="zh">能在 DSH 界面里一键装。</span><span class="en" lang="en">One-click install from inside DSH.</span></p>
         </article>
         <article class="where-card">
@@ -431,6 +431,12 @@
           <h3><a href="https://github.com/bruc3van/awesome-dsh-plugin" rel="noopener">bruc3van</a></h3>
           <p><code>row 656</code></p>
           <p class="where-note"><span class="zh">第二个大表，469★。</span><span class="en" lang="en">A second large table, 469 stars.</span></p>
+        </article>
+        <article class="where-card">
+          <p class="where-status where-status--live"><span class="zh">已收录</span><span class="en" lang="en">Live</span></p>
+          <h3><a href="https://www.dsh-plugin.shop/" rel="noopener">dsh-plugin.shop</a></h3>
+          <p><code>curated entry, npm spec</code></p>
+          <p class="where-note"><span class="zh">人工策展条目，安装走 npm spec。</span><span class="en" lang="en">Hand-curated entry; it installs from the npm spec.</span></p>
         </article>
         <article class="where-card">
           <p class="where-status where-status--live"><span class="zh">已收录</span><span class="en" lang="en">Live</span></p>
