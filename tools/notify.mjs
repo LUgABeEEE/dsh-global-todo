@@ -13,8 +13,10 @@
  *   node tools/notify.mjs ci-failed 39591615478 v0.12.9 "Package shape"
  *   node tools/notify.mjs new-issue 3 "Windows 0.12.6 test sweep"
  *   node tools/notify.mjs --dry-run release 0.12.9   # compose and report the window, send nothing
+ *   node tools/notify.mjs --flush [--max N]           # retry up to N queued messages (default 3)
  *
- * Exit codes: 0 sent, 3 queued in the outbox, 4 lost (send and queue both failed), 2 no channel.
+ * Exit codes: 0 sent (or outbox empty/cleared), 3 queued and still waiting (outbox still holds
+ * messages), 4 lost (send and queue both failed), 2 no channel on this host.
  *
  * @module dsh-global-todo/notify
  */
@@ -34,6 +36,9 @@ const run = promisify(execFile)
 // agent workdir, and an absolute path here is also a path leak in the published repo.
 const HOME = process.env.DSH_HOME ?? path.join(os.homedir(), '.dsh')
 const WORKDIR = process.env.DSH_NOTIFY_WORKDIR ?? path.join(os.homedir(), 'night')
+
+/** How many queued messages one run may send before the token budget is spent. */
+const FLUSH_MAX_DEFAULT = 3
 
 export const DELIVERY = Object.freeze({
   library: path.join(WORKDIR, 'lib', 'delivery.sh'),
@@ -210,9 +215,65 @@ export async function deliver(input) {
   }
 }
 
+/**
+ * Ask delivery.sh to retry the outbox.
+ *
+ * Queueing is only worth doing if something drains the queue; without this the "retried later"
+ * in a queued result is a claim nobody keeps. delivery.sh owns the freshness gate and the
+ * archive rule (`sent/` only after a send succeeded), so this function only calls it and
+ * reports which of the two answers came back.
+ *
+ * @param {{ library?: string, exec?: Function }} [input]
+ * @returns {Promise<{ status: 'flushed' | 'pending' | 'absent', detail: string }>}
+ */
+export async function flush(input = {}) {
+  const library = input.library ?? DELIVERY.library
+  const exec = input.exec ?? run
+  // One inbound WeChat message refreshes one context token, and a burst spends it: on
+  // 2026-10-29 nine of ten queued messages went out in two seconds and the rest answered
+  // http502 delivery-failed until the user spoke again. So a run is capped, not "drain it".
+  const max = Number.isInteger(input.max) && input.max >= 0 ? input.max : FLUSH_MAX_DEFAULT
+  if (!existsSync(library)) return { status: 'absent', detail: `no delivery library at ${library}` }
+  // delivery.sh reports through the caller's log(); echoing it here is what turns "still queued"
+  // into "held 10 messages, window 21.6h old" — the sentence a person needs to decide.
+  const line = (text) => {
+    const lines = String(text ?? '').trim().split('\n').filter((item) => item.trim() !== '')
+    return lines.length === 0 ? '' : lines.at(-1).trim()
+  }
+  try {
+    const done = await exec('bash', [
+      '-c',
+      // Same derivation as deliver(): the library sits at $WORKDIR/night/lib, so three levels
+      // up is the directory that contains night/ — the WORKDIR delivery.sh expects.
+      'WORKDIR=$(dirname "$(dirname "$(dirname "$1")")"); log(){ printf \'%s\\n\' "$*"; }; OUTBOX_FLUSH_MAX="${2:-0}"; . "$1"; outbox_flush',
+      '--',
+      library,
+      String(max),
+    ])
+    return { status: 'flushed', detail: line(done.stdout) || 'outbox empty' }
+  } catch (error) {
+    // outbox_flush exits 1 when something is still queued — that is "try again later", not a
+    // broken tool, so it is a status rather than an exception.
+    const raw = line(error?.stdout ?? error?.stderr ?? error?.message ?? error)
+    return { status: 'pending', detail: raw === '' ? 'still queued' : raw }
+  }
+}
+
 const isMain = process.argv[1] !== undefined && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 if (isMain) {
   const argv = process.argv.slice(2)
+  if (argv[0] === '--flush') {
+    const at = argv.indexOf('--max')
+    const max = at === -1 ? undefined : Number(argv[at + 1])
+    if (at !== -1 && (!Number.isInteger(max) || max < 0)) {
+      process.stderr.write('--max 需要一个非负整数\n')
+      process.exit(1)
+    }
+    const result = await flush({ max })
+    process.stdout.write(`${result.status} (${result.detail})\n`)
+    // 0 cleared (or already empty), 3 still queued, 2 no channel on this host.
+    process.exit(result.status === 'flushed' ? 0 : result.status === 'pending' ? 3 : 2)
+  }
   const dryRun = argv[0] === '--dry-run'
   const [kind = 'text', ...rest] = dryRun ? argv.slice(1) : argv
   try {

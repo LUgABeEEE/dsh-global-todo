@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { compose, deliver, describeAge, windowAgeSeconds, windowState } from '../tools/notify.mjs'
+import { compose, deliver, describeAge, flush, windowAgeSeconds, windowState } from '../tools/notify.mjs'
 
 // Any existing file will do as the "library": the tests inject the exec, so only the
 // existsSync gate matters. fileURLToPath, because the checkout lives under a Chinese path
@@ -123,4 +123,48 @@ test('a failed send is written to the outbox, and lost is reported as lost', asy
     },
   })
   assert.equal(lost.status, 'lost', 'neither sent nor queued is not a success')
+})
+
+test('flush drains the outbox through delivery.sh instead of promising a retry', async () => {
+  const calls = []
+  const flushed = await flush({
+    library: LIBRARY,
+    exec: async (file, args) => {
+      calls.push(args.join(' '))
+      return { stdout: 'OUTBOX 补发成功：20261021-225920.txt\n' }
+    },
+  })
+  assert.equal(flushed.status, 'flushed')
+  assert.match(calls[0], /outbox_flush/, 'the queue is drained by delivery.sh, not reimplemented here')
+  assert.doesNotMatch(calls[0], /outbox_save/, 'a flush does not add to the queue it drains')
+  const argv = calls[0].split(' ')
+  assert.equal(argv.at(-2), LIBRARY, 'the library travels as an argv entry')
+  assert.equal(argv.at(-1), '3', 'a run is capped at the default batch size')
+  assert.match(calls[0], /OUTBOX_FLUSH_MAX=/, 'the cap is handed to delivery.sh, which owns the queue')
+
+  // The cap exists because one inbound message only refreshes one token: on 2026-10-29 a
+  // ten-message burst spent it after the ninth, and everything after answered http502.
+  const wide = []
+  await flush({
+    library: LIBRARY,
+    max: 1,
+    exec: async (file, args) => {
+      wide.push(args.join(' '))
+      return { stdout: 'ok\n' }
+    },
+  })
+  assert.equal(wide[0].split(' ').at(-1), '1', '--max N reaches delivery.sh as the batch size')
+
+  const pending = await flush({
+    library: LIBRARY,
+    exec: async () => {
+      const error = new Error('exit 1')
+      error.stdout = 'OUTBOX 暂停补发 3 条：距用户最后一条微信消息 71.2h\n'
+      throw error
+    },
+  })
+  assert.equal(pending.status, 'pending', 'a backlog is a status, not an exception')
+  assert.match(pending.detail, /71\.2h/, 'the reason delivery.sh gave is carried through')
+
+  assert.equal((await flush({ library: '/nonexistent/delivery.sh' })).status, 'absent', 'no library means no channel, not a fake success')
 })
