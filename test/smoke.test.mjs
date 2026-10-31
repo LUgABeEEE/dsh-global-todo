@@ -147,6 +147,32 @@ function makeReq(options = {}) {
   }
 }
 
+/**
+ * Remove a temporary directory, retrying while the plugin lets go of it.
+ *
+ * The plugin starts work at mount that outlives the test: the 0.22.0 migration writes
+ * `settings.json` once, and a few effects write `recent-session.json` and the store on their own
+ * schedule. A plain `rm` can therefore meet a directory that is still being written to and fail
+ * with ENOTEMPTY — a CI-only flake, because the slower runner gives the write time to land.
+ * Retrying is the honest fix: the test asserts about the list, not about who wins the race to
+ * close a temp directory.
+ *
+ * @param {string} directory
+ */
+async function removeDir(directory) {
+  let last = null
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    try {
+      await rm(directory, { recursive: true, force: true })
+      return
+    } catch (error) {
+      last = error
+      await new Promise((resolve) => setTimeout(resolve, 40 * (attempt + 1)))
+    }
+  }
+  // A directory that will not go away is worth naming; swallowing it would hide a leak.
+  throw last
+}
 /** Wait for the plugin's fire-and-forget bookkeeping to settle. */
 const settle = () => new Promise((resolve) => setTimeout(resolve, 40))
 
@@ -313,7 +339,7 @@ test('the plugin mounts, registers its surfaces, and survives a full round trip'
     // Unmounting must not throw and must release the surfaces.
     for (const label of host.state.effects) assert.equal(typeof label, 'string')
   } finally {
-    await rm(dir, { recursive: true, force: true })
+    await removeDir(dir)
   }
 })
 
@@ -327,7 +353,7 @@ test('with no optional service the plugin still mounts and only loses surfaces',
     assert.equal(host.state.promptSections.length, 0)
     assert.ok(host.state.infos.some((line) => line.includes('已挂载')))
   } finally {
-    await rm(dir, { recursive: true, force: true })
+    await removeDir(dir)
   }
 })
 
@@ -377,7 +403,7 @@ test('the automatic collect switch waits for quiet instead of asking at every tu
     assert.equal(payload.data.autoCollect.error, null)
     assert.equal(payload.data.autoCollect.enabled, true)
   } finally {
-    await rm(dir, { recursive: true, force: true })
+    await removeDir(dir)
   }
 })
 
@@ -453,7 +479,7 @@ test('a conversation is asked once, and only a person re-arms it', async () => {
   } finally {
     globalThis.setInterval = realSetInterval
     Date.now = realNow
-    await rm(dir, { recursive: true, force: true })
+    await removeDir(dir)
   }
 })
 
@@ -546,7 +572,7 @@ test('a failed question is retried after a backoff instead of silencing the conv
   } finally {
     globalThis.setInterval = realSetInterval
     Date.now = realNow
-    await rm(dir, { recursive: true, force: true })
+    await removeDir(dir)
   }
 })
 
@@ -609,7 +635,7 @@ test('a quiet conversation never has its open todos closed for it', async () => 
   } finally {
     globalThis.setInterval = realSetInterval
     Date.now = realNow
-    await rm(dir, { recursive: true, force: true })
+    await removeDir(dir)
   }
 })
 
@@ -675,7 +701,7 @@ test('a turn that already recorded something is not asked again', async () => {
     )
   } finally {
     globalThis.setInterval = realSetInterval
-    await rm(dir, { recursive: true, force: true })
+    await removeDir(dir)
   }
 })
 
@@ -750,7 +776,7 @@ test('an exempted workspace is never asked, and stops being exempt when the list
   } finally {
     globalThis.setInterval = realSetInterval
     Date.now = realNow
-    await rm(dir, { recursive: true, force: true })
+    await removeDir(dir)
   }
 })
 
@@ -822,7 +848,7 @@ test('the exemption still holds after the Host has unloaded the conversation', a
   } finally {
     globalThis.setInterval = realSetInterval
     Date.now = realNow
-    await rm(dir, { recursive: true, force: true })
+    await removeDir(dir)
   }
 })
 
@@ -853,7 +879,7 @@ test('a plugin-written message must not move the current conversation', async ()
     assert.equal(payload.data.target.recentSessionId, 'session-person-2')
     assert.equal(payload.data.target.trackingRecent, true)
   } finally {
-    await rm(dir, { recursive: true, force: true })
+    await removeDir(dir)
   }
 })
 
@@ -893,7 +919,7 @@ test('the tracked conversation survives a restart', async () => {
     await waitFor(async () => (await read(second)) === 'session-person', 'the restart to remember the conversation')
     assert.equal(await read(second), 'session-person', 'the restart must not forget the conversation')
   } finally {
-    await rm(dir, { recursive: true, force: true })
+    await removeDir(dir)
   }
 })
 
@@ -908,7 +934,7 @@ test('a broken tools surface does not stop the web surface from mounting', async
     assert.ok(host.state.warnings.some((line) => line.includes('工具注册失败')))
     assert.equal(host.state.routes.size, 27, 'routes are independent of the tool registry')
   } finally {
-    await rm(dir, { recursive: true, force: true })
+    await removeDir(dir)
   }
 })
 
@@ -930,7 +956,7 @@ test('the store path from config is honoured, and the default is $DSH_HOME', asy
     const written = JSON.parse(await readFile(custom, 'utf8'))
     assert.equal(written.todos.length, 1)
   } finally {
-    await rm(dir, { recursive: true, force: true })
+    await removeDir(dir)
   }
 })
 
@@ -956,7 +982,7 @@ test('without a memory plugin nothing changes: one section, and no memory in the
     const rendered = host.state.tools.get('global_todo_done').output.render({}, done)[0].text
     assert.doesNotMatch(rendered, /mnemon/, 'no tool that does not exist may be named')
   } finally {
-    await rm(dir, { recursive: true, force: true })
+    await removeDir(dir)
   }
 })
 
@@ -978,7 +1004,7 @@ test('with a memory plugin the bridge is one extra section, and one line in a co
     assert.match(rendered, /mnemon_remember/)
     assert.ok(rendered.includes(add.todo.id), 'the memory entry has to be able to name the todo')
   } finally {
-    await rm(dir, { recursive: true, force: true })
+    await removeDir(dir)
   }
 })
 
@@ -1066,7 +1092,7 @@ test('the mounted plugin folds through the shared directory, and /health says wh
     assert.equal(viaTool.ok, true)
     assert.equal(viaTool.total, 2)
   } finally {
-    await rm(dir, { recursive: true, force: true })
+    await removeDir(dir)
   }
 })
 

@@ -1,3 +1,15 @@
+## [Unreleased]
+
+- **Two settings writers can no longer drop each other's field.** `load()` replaced the whole state,
+  and two effects at mount both call it (the settings reader and the 0.22.0 gate migration). A second
+  read that landed after a panel write had changed the state but before it had persisted put the old
+  file back — the toggle somebody just flipped silently returned to off, and the automatic question
+  never fired. The file is now read once per process, and every mutation is serialized behind one
+  chain (`mutate` in `lib/settings.js`), the way `store.update` already was.
+- Tests: a deterministic case for the second-read invariant (it fails without the guard), one for
+  interleaved writes, and the smoke-test cleanup retries instead of racing a write that outlives the
+  test (`ENOTEMPTY` on a slower CI runner).
+
 ## [0.22.0] — 2026-10-30
 
 The list learns to say no — to the agent, not to you.

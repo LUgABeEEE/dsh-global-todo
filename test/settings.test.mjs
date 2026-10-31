@@ -357,3 +357,55 @@ test('the capture weight threshold defaults and clamps', () => {
   assert.equal(normalizeSettings({ captureMinWeight: '0.6' }).captureMinWeight, 0.6)
   assert.equal(normalizeSettings({ captureMinWeight: 'nope' }).captureMinWeight, 0.35)
 })
+
+test('a second load must not undo a write that has not been persisted yet', async () => {
+  // The failure this encodes: two effects at mount both call load() (the settings reader and the
+  // 0.22.0 gate migration). load() replaces the whole state, so when the second read landed after
+  // a panel write had changed the state in memory but before it had persisted, the old file came
+  // back — the toggle somebody just flipped silently returned to off, and the automatic question
+  // never fired. One read per process; after that the only writer is the serialized mutation.
+  const dir = await mkdtemp(path.join(tmpdir(), 'gt-settings-reload-'))
+  const file = path.join(dir, 'settings.json')
+  try {
+    const settings = createSettings({ file })
+    await settings.load()
+
+    // The invariant that makes the race impossible: the file is read once. A second mount-time
+    // call must answer from memory, not re-read — a re-read is what clobbered a write that had
+    // changed the state but had not finished persisting.
+    await writeFile(file, JSON.stringify({ version: 1, autoCollect: true, gateMigratedAt: 999 }), 'utf8')
+    const again = await settings.load()
+    assert.equal(again.autoCollect, false, 'a second load must not adopt a file it did not write')
+    assert.equal(again.gateMigratedAt, 0)
+
+    // ...and a write after it still lands, in memory and on disk.
+    await settings.update({ autoCollect: true, gateMigratedAt: 1234 })
+    assert.equal(settings.get().autoCollect, true)
+    assert.equal(settings.get().gateMigratedAt, 1234)
+    const onDisk = JSON.parse(await readFile(file, 'utf8'))
+    assert.equal(onDisk.autoCollect, true, 'and so did the file')
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('interleaved settings writes keep both fields', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'gt-settings-race-'))
+  const file = path.join(dir, 'settings.json')
+  try {
+    const settings = createSettings({ file })
+    await settings.load()
+    const writers = []
+    for (let index = 0; index < 10; index += 1) {
+      writers.push(settings.update({ autoCollect: true }))
+      writers.push(settings.update({ gateMigratedAt: 1000 + index }))
+    }
+    await Promise.all(writers)
+    assert.equal(settings.get().autoCollect, true)
+    assert.equal(settings.get().gateMigratedAt, 1009)
+    const onDisk = JSON.parse(await readFile(file, 'utf8'))
+    assert.equal(onDisk.autoCollect, true, 'what is on disk matches what the memory says')
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
