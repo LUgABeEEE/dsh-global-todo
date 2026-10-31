@@ -538,7 +538,7 @@ npm 是唯一安装源，下面每个地方都只是「能不能被找到」。�
 
 | 渠道 | 形式 | 状态 |
 |---|---|---|
-| [npm](https://www.npmjs.com/package/dsh-global-todo) | 包本体 | `0.19.0` |
+| [npm](https://www.npmjs.com/package/dsh-global-todo) | 包本体 | `0.22.0` |
 | [dsh.works](https://dsh.works/awesome-dsh-plugins/) | 每日重建的机读索引（21,928 条） | 已收录，跟到 `0.19.0` |
 | [dsh-xray](https://unstone.github.io/dsh-xray/p/LUgABeEEE__dsh-global-todo.html) | 能力卡片 + 可嵌入徽章 | 评级 `C2`。此前被记成 `C3`：`files` 里一条 `!` 让他们的白名单判断整包失效（[#7](https://github.com/unStone/dsh-xray/issues/7)）。他们改用 `npm-packlist` 修正后重新扫描（[#9](https://github.com/unStone/dsh-xray/pull/9)），我们也不再在自己的 `files` 里用取反；`exec_tooling` / `eval_tooling` 仍作为不计分证据留在卡片上 |
 | [1024 Store](https://deepseek1024.com) | 目录条目（[PR #654](https://github.com/imsai-sh/awesome-deepseek-harness-plugins/pull/654) 已合并） | 版本已跟到 `0.19.0`；安装行仍是 `not_checked` 的 GitHub 源——他们的仓库巡检自 2026-09-07 停摆（[#19](https://github.com/imsai-sh/dsh-1024store/issues/19)） |

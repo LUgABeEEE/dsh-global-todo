@@ -183,6 +183,23 @@ for (const file of committableFiles) {
 }
 process.stdout.write(`OK  ${committableFiles.length} committable files carry no credential, no home path and no local artifact\n`)
 
+
+// The version the tree ships is written down in three places that cannot import each other:
+// package.json (what npm publishes), lib/index.js (what the running module reports) and the
+// landing page (what a reader is told). Only the first two were ever compared, and the third
+// drifted: 0.22.0 shipped with "latest 0.21.0" on the site, which is the one surface a person
+// reads before installing. A test cannot reach docs/, so the check does it here.
+{
+  const pkg = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'))
+  const index = await readFile(path.join(root, 'docs', 'index.html'), 'utf8')
+  const match = /<code>latest ([0-9]+\.[0-9]+\.[0-9]+)<\/code>/.exec(index)
+  if (match === null) {
+    fail('docs/index.html does not state a latest version (expected <code>latest X.Y.Z</code>)')
+  } else if (match[1] !== pkg.version) {
+    fail(`docs/index.html says latest ${match[1]}, but this tree is ${pkg.version} — update the card in the same commit as the bump`)
+  }
+}
+
 // The Host's real validator, when a profile is available. Tool schemas that
 // fall outside its subset are rejected at registration and the failure is
 // quiet, so this is worth checking with the genuine article.

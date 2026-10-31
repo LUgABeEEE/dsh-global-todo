@@ -657,7 +657,7 @@ The third reports the npm version and nothing else.
 
 | Registry | Form | State |
 |---|---|---|
-| [npm](https://www.npmjs.com/package/dsh-global-todo) | the package | `0.19.0` |
+| [npm](https://www.npmjs.com/package/dsh-global-todo) | the package | `0.22.0` |
 | [dsh.works](https://dsh.works/awesome-dsh-plugins/) | machine-readable index, rebuilt daily (21,928 rows) | listed, tracking `0.19.0` |
 | [dsh-xray](https://unstone.github.io/dsh-xray/p/LUgABeEEE__dsh-global-todo.html) | capability card + embeddable badge | rated `C2`. It read `C3` because one `!` entry in `files` defeated their allowlist for the whole package ([#7](https://github.com/unStone/dsh-xray/issues/7)); they switched to `npm-packlist` and rescanned ([#9](https://github.com/unStone/dsh-xray/pull/9)), and we stopped using negations in our own `files`. The `exec_tooling` / `eval_tooling` findings stay on the card as non-scoring evidence |
 | [1024 Store](https://deepseek1024.com) | catalog entry ([PR #654](https://github.com/imsai-sh/awesome-deepseek-harness-plugins/pull/654), merged) | tracks `0.19.0`; its install line is still the `not_checked` GitHub source — their repository inspection has been down since 2026-09-07 ([#19](https://github.com/imsai-sh/dsh-1024store/issues/19)) |
