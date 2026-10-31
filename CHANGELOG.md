@@ -1,3 +1,50 @@
+## [0.22.0] — 2026-10-30
+
+The list learns to say no — to the agent, not to you.
+
+- **An agent record without a deadline waits in the inbox.** Measured before the change: 354 of 357
+  records were written by an agent (~16 a day), and 40 of the 86 open ones said 高 with 34 of those
+  having no deadline at all. Three doors were writing with one wide threshold — the per-turn
+  guidance had no gate whatsoever, and the unattended question used the same wording as the manual
+  capture. Now an agent-written record without `dueAt` lands in the inbox (the panel's existing
+  收件箱: 收下 / 丢弃, seven-day sweep), with `inboxReason: 'no-due'` on it. A person's own entry is
+  never gated, and external ingest keeps its own confidence rule.
+- **Eight a day, and the ninth waits instead of disappearing.** A per-day allowance on agent-written
+  records that reach the list, derived from the records themselves rather than a counter — a counter
+  would be a second source of truth a restart, a second Host or a sync would each get wrong. Past
+  the allowance the record is in the inbox with `inboxReason: 'quota'`.
+- **The level comes from the deadline.** No date = P3, within 7 days = P2, within 48 hours = P1,
+  overdue = P0. What the model asked for is kept as `suggestedPriority` (visible in the detail) and
+  no longer decides the order; a person's edit sets `prioritySource: 'human'` and the rule never
+  overrides it again. One migration pass at first start re-levels the active rule-governed records
+  and leaves human-edited ones alone (`settings.json` records that it ran). The same pass applies the
+  gate to what is already there — unfinished agent records with no deadline that nobody has touched
+  move to the inbox — because otherwise only tomorrow's records would be governed while the
+  unscheduled ones written yesterday kept the list unusable. Replayed against this machine's store:
+  68 records into the inbox, 6 levels changed, the list from 87 to 19.
+- **The inbox is outside the list's numbers.** A waiting record is not returned by any list view
+  except the inbox and is not counted by `counts()`, so 全部 / 未完成 now mean the list itself.
+- **A turn that already recorded something is not asked again.** The unattended "anything to follow
+  up?" question is skipped when the agent wrote a todo during that turn (`capturedSince`
+  at `turn/end`); `/health.autoCollect.stats.skippedCaptured` counts how often.
+- **Two questions, not one.** The unattended prompt is now its own, stricter text: at most two
+  records, "nothing to record" is a valid answer, and only waiting-on-someone / dated / promised
+  work qualifies. 抓一下待办 keeps the completeness-leaning wording, because that one you asked for.
+- **The phone targets are measured now, and four of them were short.** A probe that walks outward
+  from each control until the point stops resolving to it found what a stylesheet assertion cannot:
+  the search field was a 20px box inside a 44px frame (a thumb aimed at the frame missed the
+  field), the attachment chips were 22px, the detail's segmented control 29px, and the bare text
+  buttons ("轮换 token") 20px. Fixed, and `npm run check:mobile` now does that measurement in a real
+  browser over the three phone views — deleting one fixing line takes it from green to twelve named
+  failures. Targets that stay visually small (the completion circle, the selection box, the step
+  tick) grow only their hit area, so the list does not read as a column of buttons.
+- **The screenshot baseline is a fixed instant.** The fixtures were rendered against `Date.now()`,
+  so "今天到期" became "截止 11-01 07:18" overnight and every committed PNG drifted while the CSS
+  stood still — a diff that always moves hides the one that matters. `NOW` is now a constant, and
+  two runs produce byte-identical images.
+- Tests: `test/capture-gate.test.mjs` (9 cases: gate, allowance, confirm, ingest exception, dedupe
+  against the inbox, `capturedSince`, migration), the turn-skip smoke case, and contract group L.
+
 ## [0.21.0] — 2026-10-28
 
 One list, two machines — without one of them holding the other's file.

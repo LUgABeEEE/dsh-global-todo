@@ -265,6 +265,8 @@ test('the plugin mounts, registers its surfaces, and survives a full round trip'
       title: '把插件装上',
       description: '先备份 profile',
       links: ['https://example.com/pr', '/tmp/plan.md'],
+      // A deadline, because an agent-written record without one now waits in the inbox.
+      dueAt: '2026-11-30T10:00',
     })
     assert.equal(added.ok, true)
     assert.equal(added.todo.createdBy, 'agent')
@@ -571,7 +573,7 @@ test('a quiet conversation never has its open todos closed for it', async () => 
 
     // A conversation writes a todo that is waiting on somebody else.
     const added = await host.state.tools.get('global_todo_add').execute(
-      { title: '等对方回信', description: '回信还没到，不能算做完' },
+      { title: '等对方回信', description: '回信还没到，不能算做完', dueAt: '2026-11-30T10:00' },
       { agent: { id: 'session-person', session: { header: { cwd: '/repo' } } } },
     )
     assert.equal(added.ok, true)
@@ -607,6 +609,72 @@ test('a quiet conversation never has its open todos closed for it', async () => 
   } finally {
     globalThis.setInterval = realSetInterval
     Date.now = realNow
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+
+test('a turn that already recorded something is not asked again', async () => {
+  // The rule the user asked for on 2026-10-30: if the agent wrote a todo during this turn, the
+  // automatic "anything to follow up on?" question for that turn is pointless — it was answered
+  // by the write itself, and asking anyway is how the list filled with items nobody asked for.
+  const dir = await mkdtemp(path.join(tmpdir(), 'gt-smoke-captured-'))
+  const realSetInterval = globalThis.setInterval
+  const ticks = []
+  try {
+    globalThis.setInterval = (callback) => {
+      ticks.push(callback)
+      return { unref() {} }
+    }
+    await writeFile(
+      path.join(dir, 'settings.json'),
+      JSON.stringify({ version: 1, autoCollect: true, idleMinutes: 5, cooldownMinutes: 5 }),
+      'utf8',
+    )
+    const host = makeHost({ tools: {}, webServer: {}, agents: makeAgents() })
+    apply(host.ctx, { storePath: path.join(dir, 'todos.json'), requireExistingFiles: false })
+    await settle()
+    const session = (id) => ({ id, header: { id, cwd: '/repo' } })
+    const turn = (id, seq) => {
+      host.emit('session/event', session(id), { type: 'turn/start', seq, data: { turn: 1 } })
+      host.emit('session/event', session(id), { type: 'turn/end', seq: seq + 1, data: { turn: 1, reason: { kind: 'completed' } } })
+    }
+
+    // Session A records something itself during its turn.
+    host.emit('session/event', session('session-a'), { type: 'turn/start', seq: 1, data: { turn: 1 } })
+    const added = await host.state.tools
+      .get('global_todo_add')
+      .execute(
+        { title: '这一轮已经记过了', dueAt: '2026-11-30T10:00' },
+        { agent: { id: 'session-a', session: { header: { cwd: '/repo' } } } },
+      )
+    assert.equal(added.ok, true)
+    assert.equal(added.todo.originSessionId, 'session-a')
+    host.emit('session/event', session('session-a'), { type: 'turn/end', seq: 2, data: { turn: 1, reason: { kind: 'completed' } } })
+
+    // Session B does the same thing but records nothing.
+    turn('session-b', 1)
+
+    await waitFor(async () => {
+      const res = makeRes()
+      await host.state.routes.get('/api/global-todo/health').handler(makeReq({ url: '/api/global-todo/health' }), res)
+      return JSON.parse(res.body).data.autoCollect.stats.skippedCaptured >= 1
+    }, 'the captured turn to be dropped from the queue')
+    for (const tick of ticks) tick()
+    await settle()
+
+    const res = makeRes()
+    await host.state.routes.get('/api/global-todo/health').handler(makeReq({ url: '/api/global-todo/health' }), res)
+    const autoCollect = JSON.parse(res.body).data.autoCollect
+    assert.equal(autoCollect.waiting, 1, 'only the conversation that recorded nothing is still a candidate')
+    assert.equal(autoCollect.stats.skippedCaptured, 1)
+    const queueReason = autoCollect.decisions ?? []
+    assert.ok(
+      queueReason.every((entry) => entry.sessionId !== 'session-a'),
+      'the conversation that recorded is not even offered as a candidate',
+    )
+  } finally {
+    globalThis.setInterval = realSetInterval
     await rm(dir, { recursive: true, force: true })
   }
 })
@@ -946,7 +1014,9 @@ test('the mounted plugin folds through the shared directory, and /health says wh
     assert.equal(initial.dir, share)
     assert.equal(initial.last, null, 'nothing has run yet')
 
-    const add = await host.state.tools.get('global_todo_add').execute({ title: '这一条要过一遍共享目录' })
+    const add = await host.state.tools
+      .get('global_todo_add')
+      .execute({ title: '这一条要过一遍共享目录', dueAt: '2026-11-30T10:00' })
     assert.equal(add.ok, true)
 
     const ran = await call('POST', '/sync', {})

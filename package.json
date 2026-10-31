@@ -1,6 +1,6 @@
 {
   "name": "dsh-global-todo",
-  "version": "0.21.0",
+  "version": "0.22.0",
   "icon": "./docs/icon.svg",
   "description": "Cross-session todo list for DeepSeek Harness where an agent\"s \"done\" never settles itself — the record waits in Needs review until a person confirms it. Built for a phone: the panel measures its own width, folds on scroll and keeps 44px touch targets. One JSON file both sides write, numbered step hand-offs, session read-back, and two machines folding one list through a shared directory.",
   "type": "module",
@@ -50,14 +50,21 @@
     "./locale/*.json": "./locale/*.json"
   },
   "files": [
-    "lib",
-    "locale",
+    "CHANGELOG.md",
+    "CODE_OF_CONDUCT.md",
+    "CONTRIBUTING.md",
+    "LICENSE",
+    "README.en.md",
+    "README.md",
+    "README.zh.md",
+    "SECURITY.md",
     "cordis.patch.yml",
     "docs/DESIGN.md",
     "docs/DISTRIBUTION.md",
-    "docs/ROADMAP.md",
-    "docs/QUICKSTART.md",
     "docs/FAQ.md",
+    "docs/QUICKSTART.md",
+    "docs/RELEASING.md",
+    "docs/ROADMAP.md",
     "docs/WINDOWS.md",
     "docs/icon.svg",
     "docs/screenshots/README.md",
@@ -75,16 +82,10 @@
     "docs/screenshots/panel-settings.png",
     "docs/screenshots/panel.png",
     "docs/screenshots/tour.gif",
-    "tools/doctor.mjs",
+    "lib",
+    "locale",
     "tools/doctor-lib.mjs",
-    "LICENSE",
-    "README.md",
-    "README.en.md",
-    "README.zh.md",
-    "CHANGELOG.md",
-    "SECURITY.md",
-    "CONTRIBUTING.md",
-    "CODE_OF_CONDUCT.md"
+    "tools/doctor.mjs"
   ],
   "bin": {
     "dsh-global-todo-doctor": "./tools/doctor.mjs"
@@ -110,7 +111,8 @@
     "market:check": "node tools/market.mjs --check",
     "market:fresh": "node tools/market.mjs --fresh",
     "usage:check": "node tools/usage-check.mjs",
-    "release:check": "node tools/release-check.mjs"
+    "release:check": "node tools/release-check.mjs",
+    "check:mobile": "node tools/check-mobile.mjs"
   },
   "dsh": {
     "manifestVersion": 1,

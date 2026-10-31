@@ -299,9 +299,17 @@ dragged narrow gets the same treatment as a phone, which is what a narrow deskto
 
 What changes below 600px, and why each item is not cosmetic:
 
-- **Controls and inputs become 44px.** The desktop sizes are 28–32px, which is a mouse target.
-  The round checkbox stays *visually* 24px and grows only its hit area through a pseudo-element,
-  or a list of todos would read as a column of giant circles.
+- **Controls and inputs become 44px — and the target is measured, not declared.** The desktop
+  sizes are 28–32px, which is a mouse target. The round checkbox stays *visually* 24px and grows
+  only its hit area through a pseudo-element, or a list of todos would read as a column of giant
+  circles. That pseudo-element is exactly what a stylesheet assertion cannot see, and on 2026-10-31
+  a probe found four controls the CSS had been confidently describing as fine: the search field was
+  a 20px box inside a 44px frame (a thumb aimed at the frame missed the field), the attachment
+  chips were 22px, the detail's segmented control was 29px, and the bare text buttons ("轮换
+  token") were 20px. `npm run check:mobile` now walks the three phone views in a real browser and
+  probes outward from each control's centre until the point stops resolving to it — the measurement
+  a thumb makes, rather than a regex over the stylesheet. Deleting one of those fixes takes it from
+  green to twelve named failures.
 - **The header keeps one line, and the phone keeps two rows of toolbar.** The tagline is a
   desktop introduction; on a phone it was a full line of the first screen spent describing a list
   the sidebar entry already names, so `.gt-sub` steps out and the title shares its line with the
@@ -392,6 +400,11 @@ hooks — `data-mobile`, the wrapped `.gt-btn-label` (so the label can collapse)
 The settings dialog is the one place layout is chosen in JS: below 600px it is anchored to both
 edges with the measured top kept, because a fixed 360px card in a 390px viewport clipped both
 sides.
+
+**The baseline is a fixed instant, not `Date.now()`.** The fixture used to be rendered against
+the clock, so "今天到期" became "截止 11-01 07:18" overnight and every committed screenshot drifted
+while the CSS stood still — a diff that always moves hides the one that matters. `NOW` is now a
+constant (2026-10-30T15:00Z), and two runs produce byte-identical PNGs.
 
 ### Proving it without a phone
 
@@ -917,6 +930,54 @@ items to every turn without the model calling a tool. That is a second package w
 on the memory plugin, and it is deliberately **not** in this repository: this bundle stays
 dependency-free, and a feature that only exists with another plugin installed should not be able to
 break the one that works alone.
+
+## A gate that keeps the list a list
+
+The list stopped being a list. Measured on this machine on 2026-10-30: 357 records over two weeks,
+**354 written by an agent** (99%) at ~16 a day, 263 of them already done. Of the 86 still open, 40
+said 高 — and **34 of those had no deadline at all**. Neither the list nor the level was carrying
+information any more, and the cause was structural rather than a bad prompt:
+
+| Door | Before 0.22.0 |
+|---|---|
+| the per-turn guidance ("record things on your own") | straight to the list, no gate at all |
+| the unattended question when a conversation went quiet | **the same wording** as the manual 「抓一下待办」 |
+| the manual capture you asked for | weight gate, dedupe — the only door with any |
+
+So the gate sits on the two doors that write unattended, and it is one rule: **an agent record
+without a deadline waits in the inbox.** A deadline is the one signal that is expensive to fake and
+cheap to check, and it separates "a thing to do" from "a thought somebody had". Everything else the
+gate does follows from that:
+
+- **The inbox is a place, not a status.** A waiting record is not shown by any list view and is not
+  counted by `counts()` — otherwise the gate would move rows without changing what the person sees.
+  The panel's existing 收件箱 view (收下 / 丢弃, seven-day sweep) is the triage surface, so nothing new
+  had to be invented for it.
+- **An allowance, not a rate limit.** Eight agent-written records may join the list per day. Past
+  that, the record still exists — in the inbox, with `inboxReason: 'quota'` on it. A cap that *drops*
+  would silently lose the one real item in a noisy day.
+- **The level is derived, never trusted.** A model asked for a priority will answer 高; that is not a
+  lie, it is what a language model does with an unanchored adjective. `priorityForDue` answers
+  instead (no date → P3, 7 days → P2, 48 hours → P1, overdue → P0), and the model's choice is kept as
+  `suggestedPriority` so the request stays visible without deciding anything. A person's edit sets
+  `prioritySource: 'human'` and the rule stops touching that record for good — an explicit
+  requirement, not a nicety.
+- **A turn that already recorded is not asked again.** The unattended question exists so a quiet
+  conversation can offer what it has not recorded; a conversation whose agent just wrote a todo has
+  answered it. The check is `capturedSince(sessionId, turnStart)` at `turn/end`, and the candidate is
+  dropped before the timer ever sees it.
+
+Two decisions were rejected on the way:
+
+| Alternative | Why not |
+|---|---|
+| drop low-weight records outright | the noisy day is exactly the day one real item hides in it; an inbox costs one click and loses nothing |
+| learn the gate from deletions | needs labelled feedback the person will not give; a deadline is a fact the record already has |
+| ask the model to be more careful | it had already been told twice, and the data shows which sentence it ignores |
+
+The migration is one pass at first start under 0.22.0: every active record whose level is rule-governed
+gets the level its deadline implies. Records a person edited are left alone, and the pass is recorded
+in `settings.json` (`priorityRuleAt`) so a restart does not redo it.
 
 ## Optional services
 

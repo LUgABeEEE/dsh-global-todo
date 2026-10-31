@@ -71,12 +71,19 @@ test('add records the todo and renders its creation time', async () => {
     assert.equal(value.todo.title, '写 README')
     assert.equal(value.todo.createdBy, 'agent')
     assert.equal(value.todo.links.length, 2)
-    assert.equal(value.todo.priority, 'high')
+    // No deadline: the level falls to 低 by the rule, the model's 高 is kept as a suggestion,
+    // and the record waits in the inbox instead of joining the list.
+    assert.equal(value.todo.priority, 'low')
+    assert.equal(value.todo.suggestedPriority, 'high')
+    assert.equal(value.todo.inbox, true)
+    assert.equal(value.todo.inboxReason, 'no-due')
+    assert.equal(value.todo.captureSource, 'tool')
     assert.equal(typeof value.todo.createdAt, 'number')
     assert.match(value.todo.createdAtIso, /^\d{4}-\d{2}-\d{2}T/)
     assert.equal(rendered[0].type, 'text')
     assert.match(rendered[0].text, /已记入全局待办/)
     assert.match(rendered[0].text, /加入于/)
+    assert.match(rendered[0].text, /收件箱/, 'the model has to know it did not land on the list')
   } finally {
     await env.cleanup()
   }
@@ -97,8 +104,9 @@ test('a rejected write comes back as a normal tool value, not a throw', async ()
 test('list defaults to unfinished work and reports the counts', async () => {
   const env = await harness()
   try {
-    const first = await env.invoke('global_todo_add', { title: '甲' })
-    await env.invoke('global_todo_add', { title: '乙' })
+    // A deadline keeps these on the list: an agent-written record without one waits in the inbox.
+    const first = await env.invoke('global_todo_add', { title: '甲', dueAt: '2026-11-30T10:00' })
+    await env.invoke('global_todo_add', { title: '乙', dueAt: '2026-11-30T10:00' })
     await env.invoke('global_todo_done', { id: first.value.todo.id })
     const { value, rendered } = await env.invoke('global_todo_list', {})
     assert.equal(value.count, 1)
@@ -136,8 +144,9 @@ test('update changes only what was asked and reports the field list', async () =
     const added = await env.invoke('global_todo_add', { title: '原' })
     const id = added.value.todo.id
     const changed = await env.invoke('global_todo_update', { id, title: '新', priority: 'low' })
-    assert.deepEqual(changed.value.changed, ['title', 'priority'])
-    assert.match(changed.rendered[0].text, /已改：title、priority/)
+    // An agent's level change is a suggestion now, and that is what the field list reports.
+    assert.deepEqual(changed.value.changed, ['title', 'suggestedPriority'])
+    assert.match(changed.rendered[0].text, /已改：title、suggestedPriority/)
     const noop = await env.invoke('global_todo_update', { id, title: '新' })
     assert.deepEqual(noop.value.changed, [])
     assert.match(noop.rendered[0].text, /没有字段需要改/)
@@ -367,13 +376,23 @@ test('a document that must exist is refused with a typed reason', async () => {
 test('a capture run does not register what the list already has', async () => {
   const env = await harness()
   try {
-    const first = await env.invoke('global_todo_capture', { items: [{ title: '把 npm 发布跑通' }, { title: '另一个不同的活' }] })
+    const first = await env.invoke('global_todo_capture', {
+      items: [
+        { title: '把 npm 发布跑通', dueAt: '2026-11-30T10:00' },
+        { title: '另一个不同的活', dueAt: '2026-11-30T10:00' },
+      ],
+    })
     assert.equal(first.value.count, 2)
     assert.deepEqual(first.value.skipped, [])
 
     // Same run again: the list has not changed, so nothing new should appear. This is what
     // kept filling the list with near-duplicates on every automatic collect.
-    const second = await env.invoke('global_todo_capture', { items: [{ title: '把 npm 发布跑通' }, { title: '新的一件事' }] })
+    const second = await env.invoke('global_todo_capture', {
+      items: [
+        { title: '把 npm 发布跑通', dueAt: '2026-11-30T10:00' },
+        { title: '新的一件事', dueAt: '2026-11-30T10:00' },
+      ],
+    })
     assert.equal(second.value.count, 1, 'only the genuinely new item is registered')
     assert.equal(second.value.skipped.length, 1)
     assert.match(second.value.skipped[0].error, /已有同名/)

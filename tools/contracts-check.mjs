@@ -272,6 +272,59 @@ const equal = (group, name, actual, expected) =>
   check('K sync', 'the English README names the hub file', en.includes(HUB_FILE))
 }
 
+// ── L. The capture gate: the list stays a list ─────────────────────────────────────────
+{
+  const { priorityForDue, createTodo, applyPatch } = await import('../lib/model.js')
+  const { createService, DAILY_LIST_LIMIT } = await import('../lib/service.js')
+  const { createStore } = await import('../lib/store.js')
+  const { mkdtemp, rm } = await import('node:fs/promises')
+  const { tmpdir } = await import('node:os')
+  const pathMod = (await import('node:path')).default
+
+  const NOW = Date.UTC(2026, 9, 30, 4)
+  equal('L gate', 'no deadline is 低', priorityForDue(null, { now: NOW }), 'low')
+  equal('L gate', 'overdue is 紧急', priorityForDue(new Date(NOW - 1000).toISOString(), { now: NOW }), 'urgent')
+  equal('L gate', '20 hours out is 高', priorityForDue(new Date(NOW + 20 * 3600e3).toISOString(), { now: NOW }), 'high')
+  equal('L gate', '3 days out is 常规', priorityForDue(new Date(NOW + 3 * 86400e3).toISOString(), { now: NOW }), 'normal')
+  equal('L gate', '10 days out is 低', priorityForDue(new Date(NOW + 10 * 86400e3).toISOString(), { now: NOW }), 'low')
+
+  const suggested = createTodo({ title: 'A', priority: 'urgent' }, { now: NOW, by: 'agent' })
+  equal('L gate', 'an agent level is a suggestion', [suggested.priority, suggested.suggestedPriority], ['low', 'urgent'])
+  const locked = createTodo({ title: 'B', priority: 'urgent' }, { now: NOW, by: 'human', prioritySource: 'human' })
+  applyPatch(locked, { dueAt: new Date(NOW + 10 * 86400e3).toISOString() }, { now: NOW, by: 'agent' })
+  equal('L gate', 'a person\'s level survives a deadline change', locked.priority, 'urgent')
+
+  equal('L gate', 'the daily allowance', DAILY_LIST_LIMIT, 8)
+
+  const dir = await mkdtemp(pathMod.join(tmpdir(), 'gt-contract-gate-'))
+  try {
+    const store = createStore({ file: pathMod.join(dir, 'todos.json') })
+    const service = createService({ store, config: { requireExistingFiles: false }, now: () => NOW })
+    const noDue = await service.create({ title: '没有日期' }, { by: 'agent', source: 'tool' })
+    equal('L gate', 'no deadline waits in the inbox', [noDue.inboxReason, noDue.tags.includes('inbox')], ['no-due', true])
+    const list = await service.list({})
+    equal('L gate', 'and it is not on the list', [list.todos.length, list.counts.inbox], [0, 1])
+    const human = await service.create({ title: '人加的' }, { by: 'human', source: 'human' })
+    equal('L gate', 'a person\'s entry is never gated', [human.inboxReason, human.priority], ['', 'normal'])
+    for (let index = 0; index < DAILY_LIST_LIMIT; index += 1) {
+      await service.create({ title: '今天第 ' + index, dueAt: new Date(NOW + 72 * 3600e3).toISOString() }, { by: 'agent', source: 'tool' })
+    }
+    const overflow = await service.create({ title: '第 9 条', dueAt: new Date(NOW + 72 * 3600e3).toISOString() }, { by: 'agent', source: 'tool' })
+    equal('L gate', 'past the allowance it waits, it is not dropped', overflow.inboxReason, 'quota')
+    const after = await service.list({})
+    equal('L gate', 'the list stops at the allowance', after.counts.total, DAILY_LIST_LIMIT + 1)
+    const inbox = await service.list({ tag: 'inbox' })
+    equal('L gate', 'the inbox view has both waiting records', inbox.todos.length, 2)
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+
+  const zh = await readFile(new URL('../README.md', import.meta.url), 'utf8')
+  const en = await readFile(new URL('../README.en.md', import.meta.url), 'utf8')
+  check('L gate', 'the Chinese README documents the gate', zh.includes('收件箱') && zh.includes('8 条'))
+  check('L gate', 'the English README documents the gate', en.includes('inbox') && en.includes('eight'))
+}
+
 const failed = results.filter((result) => !result.ok)
 process.stdout.write(`\n${results.length - failed.length}/${results.length} contract checks passed\n`)
 process.exit(failed.length === 0 ? 0 : Math.min(failed.length, 1))

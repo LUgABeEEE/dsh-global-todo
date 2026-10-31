@@ -55,6 +55,10 @@ host half (`lib/`, plain ESM) and a browser half (`lib/client.js`, classic scrip
 npm run verify   # static checks then the full test suite; run before every commit
 ```
 
+Touching the phone layout? `npm run preview:mobile && npm run check:mobile` measures every target
+in a real browser (44×24 minimum) instead of trusting the stylesheet; `verify` cannot, because it
+needs the borrowed Playwright and the rendered previews.
+
 - `package.json` `version` and `VERSION` in `lib/index.js` must match (a test enforces it).
 - The bundle row id (`global-todo`), the package name, the client `id` and the sidebar slot
   id all have to agree; `test/manifest.test.mjs` and `test/bundle.test.mjs` check this.
@@ -101,6 +105,9 @@ symptom appears.
 Publishing is automated: bump both versions, `npm run verify`, commit, tag `vX.Y.Z`, push, and
 let the `publish` workflow publish over OIDC. Then create the GitHub release from the registry
 tarball. **The release ends there.** A restart is never part of publishing.
+
+**The procedure is `docs/RELEASING.md`** — every command, in order, and the guard each step
+prevents. Follow it rather than reconstructing the steps from memory.
 
 `docs/market/index.json` is the plugin market index the landing page tells readers to add in DSH's
 Discover tab. It is built from the **registry**, so the order is fixed and it is one commit behind

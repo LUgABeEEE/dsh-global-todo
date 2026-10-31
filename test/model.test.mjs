@@ -35,7 +35,9 @@ test('a new todo records who added it and when', () => {
   assert.equal(todo.updatedAt, NOW)
   assert.equal(todo.createdBy, 'agent')
   assert.equal(todo.status, 'open')
-  assert.equal(todo.priority, 'normal')
+  // No deadline, so the level is 低 — the model no longer picks it (0.22.0 rule).
+  assert.equal(todo.priority, 'low')
+  assert.equal(todo.prioritySource, 'rule')
   assert.equal(todo.dueAt, null)
   assert.equal(todo.links.length, 1)
   assert.equal(todo.links[0].kind, 'url')
@@ -199,16 +201,48 @@ test('the origin of a todo survives a round trip through the file', () => {
 
 test('levels run from P0 to P3 and the older values still load', () => {
   assert.deepEqual([...PRIORITIES], ['urgent', 'high', 'normal', 'low'])
+  // An agent asking for 紧急 without a deadline is a suggestion: the level stays 低 and the
+  // request is kept where a person can see it.
   const urgent = createTodo({ title: 'A', priority: 'urgent' }, { now: NOW })
-  assert.equal(urgent.priority, 'urgent')
-  applyPatch(urgent, { priority: 'high' }, { now: NOW })
-  assert.equal(urgent.priority, 'high')
+  assert.equal(urgent.priority, 'low')
+  assert.equal(urgent.suggestedPriority, 'urgent')
+  // With a deadline 20 hours out the rule answers 高, whatever the agent asked for.
+  const soon = createTodo(
+    { title: 'B', priority: 'low', dueAt: new Date(NOW + 20 * 3600 * 1000).toISOString() },
+    { now: NOW },
+  )
+  assert.equal(soon.priority, 'high')
+  assert.equal(soon.suggestedPriority, 'low')
   // A record written before `urgent` existed must still load unchanged.
   for (const legacy of ['high', 'normal', 'low']) {
     assert.equal(normalizeStored({ id: 't-1', title: 'A', priority: legacy }, { activityLimit: 5 }).priority, legacy)
   }
   assert.equal(normalizeStored({ id: 't-1', title: 'A', priority: 'nonsense' }, { activityLimit: 5 }).priority, 'normal')
   assert.equal(PRIORITY_LABELS.urgent, 'P0 紧急')
+})
+
+test('a person\'s level is locked only when they actually change it', () => {
+  // The panel sends the whole draft on every save, so "edited the title" arrives with the level
+  // attached. Locking on presence would pin the level of every record somebody touched, and a
+  // level nobody asked for should keep following the deadline.
+  const todo = createTodo({ title: 'A', dueAt: new Date(NOW + 30 * 24 * 3600 * 1000).toISOString() }, { now: NOW })
+  assert.equal(todo.priority, 'low')
+  assert.equal(todo.prioritySource, 'rule')
+  const changed = applyPatch(todo, { title: 'A 改过', priority: 'low' }, { now: NOW + 1000, by: 'human' })
+  assert.deepEqual(changed, ['title'])
+  assert.equal(todo.prioritySource, 'rule', 'a save that did not touch the level must not lock it')
+
+  // Picking a different level is the decision, and it sticks.
+  const locked = applyPatch(todo, { priority: 'urgent' }, { now: NOW + 2000, by: 'human' })
+  assert.deepEqual(locked, ['priority'])
+  assert.equal(todo.priority, 'urgent')
+  assert.equal(todo.prioritySource, 'human')
+  // From then on neither a deadline change nor an agent suggestion moves it.
+  applyPatch(todo, { dueAt: new Date(NOW + 60 * 24 * 3600 * 1000).toISOString() }, { now: NOW + 3000, by: 'agent' })
+  assert.equal(todo.priority, 'urgent')
+  applyPatch(todo, { priority: 'low' }, { now: NOW + 4000, by: 'agent' })
+  assert.equal(todo.priority, 'urgent', 'an agent level is only a suggestion')
+  assert.equal(todo.suggestedPriority, 'low')
 })
 
 test('notes append, are capped, and survive a round trip', () => {
@@ -400,8 +434,11 @@ test('an item can carry the sentence it came from', () => {
 })
 
 test('the P0–P3 labels the panel prints are accepted on the way in', () => {
-  assert.equal(createTodo({ title: 'a', priority: 'P0' }).priority, 'urgent')
-  assert.equal(createTodo({ title: 'b', priority: ' p3 ' }).priority, 'low')
+  // Accepted and understood — as the agent's suggestion, because the level itself comes from the
+  // deadline. A person's own form is the one that sets the level directly.
+  assert.equal(createTodo({ title: 'a', priority: 'P0' }).suggestedPriority, 'urgent')
+  assert.equal(createTodo({ title: 'b', priority: ' p3 ' }).suggestedPriority, 'low')
+  assert.equal(createTodo({ title: 'a2', priority: 'P0' }, { by: 'human', prioritySource: 'human' }).priority, 'urgent')
   const todo = createTodo({ title: 'c' })
   applyPatch(todo, { priority: 'P1' }, { by: 'human' })
   assert.equal(todo.priority, 'high')

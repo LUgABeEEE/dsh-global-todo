@@ -52,6 +52,14 @@ anyway (`lib/lockfile.js`, `lib/store.js`). A dead holder on the same host is re
 remote one after 30 s. What it cannot cover — older plugin versions, hand edits, a sync client
 writing at an arbitrary moment — is stated in FAQ 9 and DESIGN.
 
+**A gate that keeps the list a list** — an agent-written record without a deadline waits in the
+inbox instead of joining the list; at most eight agent records a day reach the list (the rest wait,
+they are not dropped); the level is derived from the deadline (no date → P3, 7 days → P2, 48 hours →
+P1, overdue → P0) and a person's edit locks it; the unattended question is skipped for a turn whose
+agent already recorded something. Measured before it: 99% of 357 records agent-written, 34 of 40
+open “high” records with no deadline. Tests: `test/capture-gate.test.mjs`, the turn-skip case in
+`test/smoke.test.mjs`, contract group L.
+
 **A phone page that folds, and a fold that is a gesture** — at 600px or less the panel is a touch
 surface: a 44px header line, a three-row toolbar (filters / search / grouping), 66px rows, 44px
 controls and the safe area respected. Scrolling down past 80px folds the search line away, but only

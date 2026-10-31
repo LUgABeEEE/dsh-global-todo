@@ -362,10 +362,10 @@ Your list is not touched by install or uninstall: it lives outside the plugin, a
   「抓一下待办」 runs do not turn the list into a wall of rows. An item with neither an origin
   directory nor a bound conversation (added in the panel) sits under 手动添加. `time` is the
   original overdue / today / soon / later / no-due buckets, `priority` groups by level.
-- **Levels P0–P3** — `P0 urgent / P1 high / P2 normal (default) / P3 low`; the API accepts
-  either the canonical names or the labels (`priority: "P0"` works), with a badge on the
-  row. Records written before levels existed keep their `high/normal/low`, so nothing needed a
-  migration. A conversation group shows the highest level it holds, and a green dot marks a
+- **Levels P0–P3 come from the deadline** — no date = P3, within 7 days = P2, within 48 hours =
+  P1, overdue = P0. What an agent passes (`priority: "P0"` or `"urgent"`) is kept as
+  `suggestedPriority` and no longer decides the order; **editing it in the panel locks the record**
+  (`prioritySource: human`) and the rule leaves it alone. A conversation group shows the highest level it holds, and a green dot marks a
   group with a conversation still running.
 - **Collect from this chat** — one button injects "record what this conversation needs to
   follow up, with `global_todo_capture`" into the conversation you are in, so a chat turns
@@ -417,6 +417,10 @@ each), the list starting at 287px, and 66px per row — about eight rows on the 
   of being clipped; the inline hand-off collapses to its icon (the menu and the detail keep the
   words); keyboard hints are gone; the bottom padding yields to the safe area; text follows the
   mobile page's text-size setting, and inputs stay at 16px or more so iOS does not zoom the page.
+  Those numbers are **measured, not declared**: `npm run check:mobile` probes outward from each
+  control until the point stops resolving to it — which is how, on 2026-10-31, it found the search
+  field to be a 20px box inside a 44px frame, the attachment chips 22px, the detail's segmented
+  control 29px and the text buttons ("轮换 token") 20px.
 - **Nothing else changes**: `dsh-mobile`, DSH and the mobile plugin need no configuration, and the
   desktop keeps its layout.
 
@@ -428,9 +432,9 @@ The three 390×844 baselines: [panel](docs/screenshots/mobile/panel.png) ·
 
 | Tool | Purpose |
 |---|---|
-| `global_todo_add` | Record an item — description, attachments, steps, tags, priority, due time |
+| `global_todo_add` | Record an item — description, attachments, steps, tags, priority, due time. **An agent record without a `dueAt` waits in the inbox** (see “The capture gate”) |
 | `global_todo_note` | Append a progress note — where you are, what blocks you, who must decide |
-| `global_todo_capture` | **Record a batch**: for 「抓一下待办」 or a turn that produced several follow-ups; each entry is validated on its own, and entries scoring below `captureMinWeight` are reported as skipped with their weight instead of being registered |
+| `global_todo_capture` | **Record a batch**: for 「抓一下待办」 or a turn that produced several follow-ups; each entry is validated on its own, entries scoring below `captureMinWeight` are reported as skipped with their weight, and entries without a deadline wait in the inbox |
 | `global_todo_list` | Query by state, tag or text; every row carries its creation time |
 | `global_todo_get` | Read one item in full, including attachments and the last hand-off |
 | `global_todo_update` | Change any field of one item, including `status` (`archived` archives without deleting); `""` clears, `[]` empties |
@@ -472,6 +476,44 @@ Capture is not allowed to become noise. Before an item is written, the same norm
 hours (Dice similarity over character bigrams, 0.8), and the same errand finished in the last 7
 days are all refused with a reason on the record; archived and cancelled rows do not block a
 new one. The rules live in `lib/capture.js` and are tested on their own.
+
+### The capture gate
+
+One rule: **an agent-written record without a deadline waits in the inbox instead of joining the
+list.**
+
+| Door | What happens |
+|---|---|
+| The panel's own form | Always the list — you typed it, and the level is yours |
+| Agent tool / batch capture | With a `dueAt` → the list; without → the inbox, where you 收下 or 丢弃 it |
+| Daily allowance | At most **eight** agent-written records join the list per day; the rest wait in the inbox (not lost) |
+| External ingest | Still its own confidence threshold; the deadline rule does not apply |
+
+Why: across the 357 records written between 2026-10-16 and 10-30, **99% were written by an agent**
+at ~16 a day, and 40 of the 86 open ones said 高 — with **34 of those having no deadline at all**.
+Neither the level nor the list carried information any more.
+
+Three rules come with it:
+
+- **The level is derived from the deadline**, not chosen by the model: no date = P3, within 7 days
+  = P2, within 48 hours = P1, overdue = P0. What the model asked for is kept as
+  `suggestedPriority`; **a person's edit wins and locks the record** (`prioritySource: human`), and
+  a later deadline change no longer overrides it.
+- **The inbox is outside the list's numbers**: a record waiting there does not appear under 全部 /
+  unfinished and is not counted in those chips — so "unfinished" now means the list itself.
+- **A turn that already recorded something is not asked again**: when the agent wrote a todo during
+  the turn, the automatic question for that turn is skipped; `/health` counts it as
+  `autoCollect.stats.skippedCaptured`.
+
+The unattended question also got its own, stricter wording (at most two records, "nothing to record"
+is a valid answer, only waiting-on-someone / dated / promised) — separate from 抓一下待办, which is
+something you asked for and may err towards completeness.
+
+Upgrading to 0.22 does one **one-time sweep** at first start: unfinished agent records with no
+deadline that **nobody has touched** move to the inbox, and the remaining rule-governed levels are
+recomputed. Replayed against this machine's store that is **68 records into the inbox, 6 levels
+changed, and the list going from 87 to 19**. Records a person edited are not touched, and the inbox
+has a bulk 收下 for the ones you want back. Nothing is moved again after that.
 
 ### Dividing the work with a memory plugin (dsh-mnemon)
 
@@ -709,6 +751,10 @@ npm run check:windows    # the same idea on a real filesystem (Windows in CI)
 npm run check:matrix  # the running dsh against engines.dsh, then the manifest,
                       # bundle and tool-schema contracts (no preview writes)
 ```
+
+**Releasing** has its own procedure: [`docs/RELEASING.md`](docs/RELEASING.md) — from
+`release:check` to the public transplant, the GitHub release built from the registry tarball, and
+the market index, with the incident each step prevents.
 
 `engines.dsh` is the one version fact that matters: a Host outside it skips the whole bundle
 instead of warning, so `check:matrix` is the smoke to run before widening the range.

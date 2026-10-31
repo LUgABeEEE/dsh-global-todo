@@ -49,7 +49,19 @@ const MOBILE = { width: 390, height: 844 }
 // kind of drift that made the last release notes outdated.
 const PACKAGE = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'))
 
-const NOW = Date.now()
+/**
+ * The clock the fixture is rendered against — frozen on purpose.
+ *
+ * It was `Date.now()`, which made every render depend on the day it ran: "今天到期" turned into
+ * "截止 11-01 07:18" overnight, and the PNG baselines drifted without a single line of CSS
+ * changing. That defeats the point of a baseline — a diff that always moves hides the one that
+ * matters. A fixed instant makes the committed screenshots reproducible, and the dates inside the
+ * fixtures are written relative to it, so the sample list keeps making sense.
+ *
+ * 2026-10-30T23:00:00+08:00: late evening, which is when a person actually reviews a todo list,
+ * and it puts the "today" bucket where the fixture expects it.
+ */
+const NOW = Date.parse('2026-10-30T15:00:00.000Z')
 const MINUTE = 60 * 1000
 const HOUR = 3600 * 1000
 
@@ -494,7 +506,13 @@ const SCENARIOS = {
   },
   filtered: { todos: [], counts: COUNTS },
   inbox: {
-    todos: TODOS.slice(0, 2).map((todo) => ({ ...todo, tags: [...(todo.tags ?? []), 'inbox'] })),
+    // The two reasons a record waits there, so the row has to name them: a month-old picture of
+    // "inbox" that does not say why is the picture that let the reason stay invisible.
+    todos: TODOS.slice(0, 2).map((todo, index) => ({
+      ...todo,
+      tags: [...(todo.tags ?? []), 'inbox'],
+      inboxReason: index === 0 ? 'no-due' : 'quota',
+    })),
     counts: { ...COUNTS, total: 2, open: 2, doing: 0, done: 0, overdue: 0, inbox: 2 },
   },
   // An agent finished something and the owner has not answered: the row carries the badge
@@ -937,6 +955,16 @@ if (process.argv.includes('--check')) {
   ]) {
     const html = scenarioHtml[name] ?? ''
     if (!html.includes(marker)) failures.push(`${name} state lost its marker (${marker})`)
+  }
+  // The gate explains itself on screen: each inbox row says which of the two reasons applies,
+  // and the detail says whether the level is derived from the deadline or a person's decision.
+  for (const [name, marker] of [
+    ['inbox', '没有截止时间'],
+    ['inbox', '今日额度已满'],
+    ['default', '按截止时间自动定'],
+  ]) {
+    const html = name === 'default' ? detailHtml : (scenarioHtml[name] ?? '')
+    if (!html.includes(marker)) failures.push(`the ${name} state does not say why (${marker})`)
   }
   if (failures.length > 0) {
     console.error('panel render check failed:')
