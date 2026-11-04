@@ -62,9 +62,29 @@ jobs:
       # it was meant for — and it multiplies the "new versions" that automated fetchers pull.
       # The check reads npm's own publish times, not the tag: a release that failed to publish
       # never reached the registry, and the tag alone would understate the gap.
+      # Two runs can target one version. When the cadence hatch is used (`force`), the publish
+      # happens from a dispatch, and the tag that follows a moment later must not publish again —
+      # npm rejects the duplicate and the red X would describe a version that is already live and
+      # correct. Same rule as the sibling package: a version already on the registry is not an
+      # error, it is the end of the job.
+      - name: Is this version already on the registry?
+        id: presence
+        run: |
+          version="$(node -p 'require("./package.json").version')"
+          if npm view "dsh-global-todo@$version" version >/dev/null 2>&1; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::$version is already on the registry; nothing to publish."
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::$version is not on the registry yet; publishing."
+          fi
+
+      # A version that is already out needs no cadence judgement: the rule exists to stop a
+      # second *release*, not to re-litigate one that has been published.
       - name: Check the release cadence
-        if: inputs.force != true
+        if: inputs.force != true && steps.presence.outputs.published == 'false'
         run: node tools/release-check.mjs --registry
 
       - name: Publish with provenance
+        if: steps.presence.outputs.published == 'false'
         run: npm publish --provenance --access public

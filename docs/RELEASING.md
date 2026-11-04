@@ -15,9 +15,28 @@ npm run release:check     # 0 = go, 10 = hold (cadence), 20 = nothing to release
 ```
 
 At most **one release a day**, and publish **before 04:2x UTC** (Beijing 12:2x) — that is when the
-market's catalog rebuilds, so a version published after it waits a full day. The escape hatch is
-`workflow_dispatch` with `force: true`: a data-loss or security fix, or retrying a publish that
-failed.
+market's catalog rebuilds, so a version published after it waits a full day.
+
+The escape hatch is `workflow_dispatch` with `force: true`, and it has exactly three legitimate
+uses. The third was added on 2026-11-04, after it was needed and the rule did not describe it:
+
+| Why | What it looks like |
+|---|---|
+| A **data-loss or security** fix | the fix is worth more than the interval |
+| **Retrying** a publish that failed | the interval is measured from npm's own publish times, and a failed run published nothing |
+| **Retracting a mis-shipped version** | the published version contains something that should never have been public, and leaving it as `latest` for a day is worse than shipping twice — 0.23.1 removed an experimental branch's work that had gone out inside 0.23.0 |
+
+The last one is the case where the interval works *against* the reader: every catalog pins the
+version it lists, so leaving the bad one as `latest` means the 04:2x rebuild promotes it. Publishing
+the correction first is the only way to make the rebuild pick the good one.
+
+Two consequences of using the hatch, both expected:
+
+- **The tag run is not the one that publishes.** A tag push cannot carry `force`, so it runs
+  `release-check` and holds; the version-presence step then skips the publish because the version is
+  already on the registry, so the run ends green with nothing published.
+- **Dispatch from the tagged tree.** `workflow_dispatch` checks out the branch, so push first and
+  dispatch second — otherwise the workflow publishes whatever `package.json` says on the branch.
 
 ## 1. The tree that will be published
 
@@ -121,4 +140,5 @@ git push origin main
 | tree compare | public `main` linearized over an unpublished commit (2026-10-25) |
 | `test -n "$NEW"` | `git push "":refs/heads/main` deleting the default branch (2026-10-23) |
 | tarball size | the release asset being npm's error JSON (0.20.0) |
+| version presence | a forced dispatch followed by its tag publishing the same version twice, or a re-run failing with `E409` |
 | `market:fresh` | an index that offers a version the registry does not have |

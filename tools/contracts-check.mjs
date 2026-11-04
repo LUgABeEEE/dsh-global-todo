@@ -384,6 +384,16 @@ const equal = (group, name, actual, expected) =>
   check('N board', 'the limit is read per call, not captured once', serviceSource.includes('typeof config.listLimit'))
   check('N board', 'the budget stands at the confirm door too', serviceSource.includes('wasInbox && !inInbox(todo)'))
 
+  // The publish workflow is not run by any test: a deleted guard there is invisible until a
+  // release goes wrong at 23:00. Two lines are worth pinning — that a version already on the
+  // registry skips publishing, and that the cadence check honours the same condition.
+  const workflow = await readFile(new URL('../.github/workflows/publish.yml', import.meta.url), 'utf8')
+  check('O publish', 'a version already on the registry is skipped, not published twice', workflow.includes("id: presence"))
+  check('O publish', 'the cadence check is skipped for the same case', workflow.includes("steps.presence.outputs.published == 'false'"))
+  check('O publish', 'and the publish step itself carries the guard', workflow.includes('npm publish --provenance'))
+  const runbook = await readFile(new URL('../docs/RELEASING.md', import.meta.url), 'utf8')
+  check('O publish', 'the force hatch names its three cases', runbook.includes('Retracting a mis-shipped version'))
+
   const zhBoard = await readFile(new URL('../README.md', import.meta.url), 'utf8')
   const enBoard = await readFile(new URL('../README.en.md', import.meta.url), 'utf8')
   check('N board', 'the Chinese README documents the budget', zhBoard.includes('稍后'))
