@@ -132,7 +132,6 @@ test('the route surface is exactly the documented one', async () => {
         'assign',
         'bulk',
         'capture',
-        'chase',
         'create',
         'diagnostics',
         'dirs',
@@ -151,17 +150,14 @@ test('the route surface is exactly the documented one', async () => {
         'report',
         'restore',
         'review',
-        'router/tick',
         'session',
         'settings',
-        'snooze',
         'status',
         'sync',
-        'triage',
         'update',
       ],
     )
-    assert.equal(env.routes.length, 31, 'thirty-one paths; /sync is one registration answering GET and POST')
+    assert.equal(env.routes.length, 27, 'twenty-seven paths; /sync is one registration answering GET and POST')
     const sync = env.routes.find((route) => route.path === `${ROUTE_BASE}/sync`)
     assert.match(sync.method, /GET/)
     assert.match(sync.method, /POST/)
@@ -1121,232 +1117,6 @@ test('no two routes claim the same path', async () => {
     const paths = env.routes.map((route) => route.path)
     const duplicates = paths.filter((value, index) => paths.indexOf(value) !== index)
     assert.deepEqual(duplicates, [], 'the Host cannot hold two routes for one path')
-  } finally {
-    await env.cleanup()
-  }
-})
-
-test('triage is a read-only view: it proposes, and writes nothing', async () => {
-  const env = await harness()
-  try {
-    const decision = await env.service.create({ title: '等你定一下发布顺序' }, { by: 'human' })
-    await env.service.create({ title: '整理备份', tags: ['可自动'] }, { by: 'human', origin: { dir: '/srv/demo' } })
-
-    const response = await env.call('/triage', makeReq({ url: `${ROUTE_BASE}/triage` }))
-    assert.equal(response.statusCode, 200)
-    const data = response.json().data
-    // No settings mounted in this harness: the honest answer is "off", not "observe".
-    assert.equal(data.mode, 'off')
-    assert.equal(data.triage.counts.active, 2)
-    assert.equal(data.triage.buckets.decision, 1)
-    assert.equal(data.triage.buckets.self, 1)
-    // The tagged record is the only one the gate would let through; the other has no tag.
-    assert.deepEqual(data.gate.allowed.map((entry) => entry.title), ['整理备份'])
-    assert.equal(data.gate.budget.used, 0)
-    assert.equal(data.stalled.length, 0)
-
-    assert.equal((await env.service.get(decision.id)).notes.length, 0, 'a read must not write')
-  } finally {
-    await env.cleanup()
-  }
-})
-
-test('a tick writes today note once, and never changes a status', async () => {
-  const state = { routerMode: 'observe', routerDailyCap: 2, routerCooldownDays: 3 }
-  const env = await harness({ settings: { get: () => state } })
-  try {
-    const first = await env.service.create({ title: '等你定一下发布顺序', priority: 'urgent' }, { by: 'human' })
-
-    const tick = await env.call('/router/tick', makeReq({
-      method: 'POST',
-      url: `${ROUTE_BASE}/router/tick`,
-      body: '{}',
-    }))
-    assert.equal(tick.statusCode, 200)
-    const report = tick.json().data
-    assert.equal(report.mode, 'observe')
-    assert.equal(report.skipped, false)
-    assert.equal(report.notes.length, 1)
-
-    const record = await env.service.get(first.id)
-    assert.equal(record.notes.length, 1)
-    assert.match(record.notes[0].text, /^【分诊 \d{4}-\d{2}-\d{2}】今日第 1\/1 条 · 该你一句话/)
-    // Observe means observe: no status moved and the hand-off fields are untouched.
-    assert.equal(record.status, 'open')
-    assert.equal(record.lastDispatch, null)
-
-    const again = await env.call('/router/tick', makeReq({
-      method: 'POST',
-      url: `${ROUTE_BASE}/router/tick`,
-      body: '{}',
-    }))
-    assert.equal(again.json().data.notes.length, 0, 'the note on the record is the ledger')
-    assert.equal((await env.service.get(first.id)).notes.length, 1)
-  } finally {
-    await env.cleanup()
-  }
-})
-
-test('a tick with the mode off reports why it did nothing', async () => {
-  const env = await harness({ settings: { get: () => ({ routerMode: 'off' }) } })
-  try {
-    await env.service.create({ title: '等你定一下发布顺序', priority: 'urgent' }, { by: 'human' })
-    const tick = await env.call('/router/tick', makeReq({
-      method: 'POST',
-      url: `${ROUTE_BASE}/router/tick`,
-      body: '{}',
-    }))
-    assert.equal(tick.statusCode, 200)
-    assert.equal(tick.json().data.skipped, true)
-    assert.match(tick.json().data.reason, /off/)
-  } finally {
-    await env.cleanup()
-  }
-})
-
-test('the health surface reports the daily-triage settings the panel edits', async () => {
-  const state = { routerMode: 'observe', routerDailyCap: 4, routerCooldownDays: 7 }
-  const env = await harness({ settings: { get: () => ({ autoCollect: false, ...state }) } })
-  try {
-    const health = await env.call('/health', makeReq({ url: `${ROUTE_BASE}/health` }))
-    assert.equal(health.statusCode, 200)
-    const data = health.json().data
-    // One object rather than three flat keys: the three values only mean anything together,
-    // and the panel renders them as one group.
-    assert.deepEqual(data.settings.router, { mode: 'observe', dailyCap: 4, cooldownDays: 7 })
-  } finally {
-    await env.cleanup()
-  }
-})
-
-test('the settings route accepts the triage fields, and refuses a typo instead of absorbing it', async () => {
-  let saved = null
-  const env = await harness({
-    settings: {
-      get: () => ({ routerMode: 'off', routerDailyCap: 2, routerCooldownDays: 3 }),
-      update: async (patch) => {
-        saved = patch
-        return { autoCollect: false, idleMinutes: 30, cooldownMinutes: 30, exemptWorkspaces: [], ingestEnabled: false, ingestSources: [], ingestConfirmBelow: 0.8, ingestToken: '', syncDir: '', syncMinutes: 5, routerMode: 'observe', routerDailyCap: 5, routerCooldownDays: 0 }
-      },
-      info: () => ({ file: '', at: 0, source: 'default', error: null }),
-    },
-  })
-  try {
-    const ok = await env.call('/settings', makeReq({
-      method: 'POST',
-      url: `${ROUTE_BASE}/settings`,
-      body: JSON.stringify({ routerMode: 'observe', routerDailyCap: 5, routerCooldownDays: 0 }),
-    }))
-    assert.equal(ok.statusCode, 200)
-    assert.deepEqual(saved, { routerMode: 'observe', routerDailyCap: 5, routerCooldownDays: 0 })
-    assert.deepEqual(ok.json().data.settings.router, { mode: 'observe', dailyCap: 5, cooldownDays: 0 })
-
-    // `normalizeSettings` would read an unknown mode as `off` and answer 200 — the panel would
-    // then show a switch that did nothing. The route refuses it instead.
-    const typo = await env.call('/settings', makeReq({
-      method: 'POST',
-      url: `${ROUTE_BASE}/settings`,
-      body: JSON.stringify({ routerMode: 'obserbe' }),
-    }))
-    assert.equal(typo.statusCode, 400)
-    assert.equal(typo.json().reason, 'invalid-body')
-
-    const outOfRange = await env.call('/settings', makeReq({
-      method: 'POST',
-      url: `${ROUTE_BASE}/settings`,
-      body: JSON.stringify({ routerDailyCap: 11 }),
-    }))
-    assert.equal(outOfRange.statusCode, 400)
-    assert.match(outOfRange.json().error, /0–10/)
-  } finally {
-    await env.cleanup()
-  }
-})
-
-test('every listed row carries its triage bucket, derived on read', async () => {
-  const env = await harness()
-  try {
-    const decision = await env.service.create({ title: '等你定一下发布顺序' }, { by: 'human' })
-    const self = await env.service.create({ title: '整理备份', tags: ['可自动'] }, { by: 'human', origin: { dir: '/srv/demo' } })
-    const external = await env.service.create({ title: '等对方回复邮件' }, { by: 'human' })
-
-    const listed = await env.call('/list', makeReq({ url: `${ROUTE_BASE}/list?status=active` }))
-    assert.equal(listed.statusCode, 200)
-    const byId = new Map(listed.json().data.todos.map((todo) => [todo.id, todo.bucket]))
-    assert.equal(byId.get(decision.id), 'decision')
-    assert.equal(byId.get(self.id), 'self')
-    assert.equal(byId.get(external.id), 'external')
-  } finally {
-    await env.cleanup()
-  }
-})
-
-test('a deferral is a note with a day in it, and the day is validated', async () => {
-  const env = await harness()
-  try {
-    const created = await env.service.create({ title: '等你定一下发布顺序' }, { by: 'human' })
-    const ok = await env.call('/snooze', makeReq({
-      method: 'POST',
-      url: `${ROUTE_BASE}/snooze`,
-      body: JSON.stringify({ id: created.id, days: 3 }),
-    }))
-    assert.equal(ok.statusCode, 200)
-    const data = ok.json().data
-    assert.equal(data.days, 3)
-    assert.match(data.until, /^\d{4}-\d{2}-\d{2}$/)
-
-    const record = await env.service.get(created.id)
-    const note = record.notes.at(-1)
-    assert.equal(note.by, 'human', 'a deferral is the person decision, not the router')
-    assert.match(note.text, /^【推迟 \d{4}-\d{2}-\d{2}】推迟 3 天/)
-
-    // After the mark, the triage excludes it and the gate refuses it.
-    const triage = await env.call('/triage', makeReq({ url: `${ROUTE_BASE}/triage` }))
-    assert.equal(triage.json().data.triage.counts.snoozed, 1)
-    assert.equal(triage.json().data.triage.counts.active, 1)
-    assert.deepEqual(triage.json().data.triage.rows, [])
-
-    for (const bad of [0, 31, 1.5, 'x']) {
-      const rejected = await env.call('/snooze', makeReq({
-        method: 'POST',
-        url: `${ROUTE_BASE}/snooze`,
-        body: JSON.stringify({ id: created.id, days: bad }),
-      }))
-      assert.equal(rejected.statusCode, 400, `days=${bad} should be refused`)
-    }
-  } finally {
-    await env.cleanup()
-  }
-})
-
-test('a chase is a note written by the person, and it dates the wait', async () => {
-  const env = await harness()
-  try {
-    const created = await env.service.create({ title: '等对方回复邮件' }, { by: 'human' })
-    const ok = await env.call('/chase', makeReq({
-      method: 'POST',
-      url: `${ROUTE_BASE}/chase`,
-      body: JSON.stringify({ id: created.id }),
-    }))
-    assert.equal(ok.statusCode, 200)
-    assert.match(ok.json().data.day, /^\d{4}-\d{2}-\d{2}$/)
-
-    const record = await env.service.get(created.id)
-    const note = record.notes.at(-1)
-    assert.equal(note.by, 'human')
-    assert.match(note.text, /^【催办 \d{4}-\d{2}-\d{2}】催了一次$/)
-
-    const triage = await env.call('/triage', makeReq({ url: `${ROUTE_BASE}/triage` }))
-    const row = triage.json().data.triage.rows.find((entry) => entry.id === created.id)
-    assert.equal(row.bucket, 'external')
-    assert.equal(row.chaseDays, 0, 'the chase just written counts as today')
-
-    const missing = await env.call('/chase', makeReq({
-      method: 'POST',
-      url: `${ROUTE_BASE}/chase`,
-      body: JSON.stringify({}),
-    }))
-    assert.equal(missing.statusCode, 400)
   } finally {
     await env.cleanup()
   }

@@ -977,31 +977,6 @@ function checkRenderedPanel(html, detail, select) {
   for (const label of ['工作区', '时间', '待办等级']) {
     expect(html.includes(`>${label}</button>`), `the ${label} grouping button is missing`)
   }
-  // Today's three sit above the list, with the budget and the four bucket words. They are
-  // the reason the panel exists as a "what now" surface rather than a filing cabinet, so a
-  // render that lost them is a regression, not a cosmetic change.
-  expect(html.includes('今日注意力'), 'the triage strip is missing')
-  expect(html.includes('派发 1/2'), 'the triage strip lost its budget line')
-  expect(html.includes('该你一句话'), 'the triage strip lost its bucket labels')
-  expect(html.includes('gt-triage-stall'), 'a stalled hand-off is not surfaced on the strip')
-  // The manual tick is reachable from the strip it belongs to.
-  expect(html.includes('现在跑一次'), 'the triage strip lost its manual run button')
-  // Each of the day's three can be handed over without opening it, and the strip says what
-  // the gate would allow — the two facts that make it a "what now" surface rather than a note.
-  expect(html.includes('gt-triage-hand'), 'a triage row cannot be handed off from the strip')
-  expect(html.includes('本来会派 1 条'), 'the strip does not report what the gate would allow')
-  // The four counts double as filters; a chip you cannot click is a legend, not a control.
-  expect(html.includes('gt-triage-chip'), 'the bucket counts are not clickable filters')
-  expect(html.includes('该你一句话 1'), 'a bucket chip lost its count')
-  // Deferred records are out of the three but counted, and the deferral control sits in the row.
-  expect(html.includes('推迟 1 条'), 'the strip does not report how many records are deferred')
-  expect(html.includes('aria-label="推迟"'), 'a triage row lost its deferral menu')
-  // The external row says when it was last chased — the one fact that keeps 「等外部」 honest.
-  expect(html.includes('还没催过'), 'an external row does not say when it was last chased')
-  // The weekly report keeps both halves of the question: what moved, and what is piling up.
-  expect(reportHtml.includes('分诊（此刻）'), 'the report lost its triage block')
-  expect(reportHtml.includes('该你一句话 1'), 'the report triage block lost the bucket counts')
-  expect(reportHtml.includes('3 条「该你一句话」已经挂了两周以上'), 'the report hides the decision backlog')
   // The scroll contract: the panel clips and the list scrolls. A flex item defaults to
   // min-height:auto, which silently made the column grow past the slot so nothing scrolled
   // and the host hid the rest of the list. Assert the two declarations that prevent it.
@@ -1041,11 +1016,6 @@ function checkMobileRender(mobile) {
   expect(/class="gt-btn gt-btn-quiet gt-dispatch"[\s\S]{0,240}?aria-label=/.test(list), 'the icon-only hand-off button has no accessible name')
   expect(list.includes('gt-meta-by'), 'the creator attribution has no removable class')
   expect(list.includes('gt-chip-dir'), 'the directory chip has no removable class')
-  // The strip stays on the phone (it is the day's three) but the reasons fold away: the
-  // title is what a thumb chooses by, and a second ellipsis column costs the width for it.
-  expect(list.includes('gt-triage'), 'the triage strip is missing from the phone render')
-  expect(list.includes('gt-triage-hand'), 'the phone strip lost its hand-off button')
-  expect(/gt-root\[data-mobile="1"\]\s*\.gt-triage-row\s*\{[^}]*min-height:\s*44px/.test(css), 'the triage row is not a 44px touch target on the phone')
   // Touch: the controls a thumb has to hit are 44px, and the density styles that were
   // right for a mouse are switched off rather than left on with smaller type.
   expect(/\[data-mobile="1"\][^{]*\{[^}]*min-height:\s*44px/.test(css), 'no 44px touch target for mobile controls')
@@ -1089,10 +1059,6 @@ function checkMobileRender(mobile) {
   // sheet, because its toolbar hides them; both have to render there.
   expect(settings.includes('gt-context-fields'), 'the settings sheet carries no dispatch context')
   expect(settings.includes('gt-auto-idle'), 'the settings sheet carries no auto-collect idle field')
-  // The daily-triage settings used to be API-only; the sheet is where a person would look
-  // for the switch, so losing them here is losing the switch.
-  expect(settings.includes('每日分诊'), 'the settings sheet carries no daily-triage group')
-  expect(settings.includes('gt-router-cap'), 'the settings sheet carries no hand-off budget field')
   // The 上下文 button keeps its own label: a settings title once reused `settings.context`
   // and silently renamed it (caught here, and by the duplicate-key test).
   expect(list.includes('>上下文<'), 'the 上下文 button lost its label')

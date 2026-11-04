@@ -1,3 +1,17 @@
+## [0.23.1] — 2026-11-04
+
+Corrects 0.23.0, which shipped an exploration layer that does not belong on the main line.
+
+- **The triage layer is gone from the package.** `lib/{gate,triage,router,watchdog,marks}.js`, the
+  daily 09:45 tick, four routes (`/triage`, `/snooze`, `/chase`, `/router/tick`) and the
+  「今日注意力」 panel came from the `super-agent` branch and travelled inside 0.23.0 only because
+  they were uncommitted in the working tree when that release was cut. They are removed from
+  `main` and stay on that branch; the package is the shipped product again.
+- Nothing else changed. The claims / 陈旧 / budget work in 0.23.0 is untouched.
+- 27 routes, 414 tests, 131 contract checks, three phone views green.
+
+Upgrade if you installed 0.23.0: that version exposes a panel section and four API routes this one
+does not, so a reader following the docs would find surfaces that were never meant to be public.
 ## [0.23.0] — 2026-11-04
 
 - **The triage layer and the daily router ship in the same tarball.** Not written in this session:

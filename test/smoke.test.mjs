@@ -279,7 +279,7 @@ test('the plugin mounts, registers its surfaces, and survives a full round trip'
 
     // Surfaces
     assert.equal(host.state.tools.size, 11, 'all eleven tools must register')
-    assert.equal(host.state.routes.size, 31, 'all thirty-one routes must register')
+    assert.equal(host.state.routes.size, 27, 'all twenty-seven routes must register')
     assert.equal(host.state.promptSections.length, 1)
     assert.equal(host.state.promptSections[0].name, 'dsh-global-todo:guidance')
     assert.ok(host.state.warnings.length === 0, `no warnings expected, got: ${host.state.warnings.join('; ')}`)
@@ -932,7 +932,7 @@ test('a broken tools surface does not stop the web surface from mounting', async
     }
     assert.doesNotThrow(() => apply(host.ctx, { storePath: path.join(dir, 'todos.json') }))
     assert.ok(host.state.warnings.some((line) => line.includes('工具注册失败')))
-    assert.equal(host.state.routes.size, 31, 'routes are independent of the tool registry')
+    assert.equal(host.state.routes.size, 27, 'routes are independent of the tool registry')
   } finally {
     await removeDir(dir)
   }
