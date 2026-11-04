@@ -167,9 +167,10 @@ HTML（不依赖宿主、零依赖），再以 1280×720 拍进 `docs/screenshot
 
 ## 环境要求
 
-- DeepSeek Harness `0.2.x`（按 `0.2.1-rc.2` 开发与验证，`0.2.1-rc.3` 的变更已逐项核对——它新增的
-  侧栏「更多」菜单不影响本插件的入口注册；`engines.dsh` 是 `>=0.2.0-rc.1 <0.3.0`，区间外的宿主会
-  **整层跳过**这个 bundle，不是警告）
+- DeepSeek Harness `0.2.x`（开发在 `0.2.1-rc.2`，并在 **`0.2.1-rc.5`** 上起了一个独立实例逐项验过：
+  插件加载、11 个工具注册、路由、面板、手机档与折叠手势全部正常；`0.2.1-rc.3`、`0.2.1-rc.4` 的
+  变更同样核对过——它们动的是侧栏与界面细节，不影响本插件的入口注册。`engines.dsh` 是
+  `>=0.2.0-rc.1 <0.3.0`，区间外的宿主会**整层跳过**这个 bundle，不是警告）
 - Node.js `>= 22.19.0`（Web profile 本身的要求）
 - **Web 客户端**：面板由宿主的 web server 提供。headless / ACP / SDK 只有 Agent 工具、没有面板；
   Electron 式桌面端（file:// + IPC）暂不支持
@@ -376,6 +377,39 @@ dsh plugin --profile <profile> remove dsh-global-todo
 
 自动获取的提问另写了一句更严的（一次最多 2 条、没有就直说没有、只记「等别人 / 有截止 / 答应过的」），和「抓一下待办」那句分开——后者是你主动要的，宁可多记。
 
+### 精简：清单有预算，还有「稍后」
+
+一个只看“有没有过期”的清单是管不住的。这台机器 2026-11-04 的实测：**98 条未完成，典型一天关 3 条，
+24 小时内到期的只有 4 条，而且没有一条是“放着不管”的——最老的一条 14 天前还在被改**。所以问题不是
+“僵尸该删”，是**进的比出的快**：按那个速度，清单是一个月的工作量，而一个月的工作量等于没人看。
+
+三条规则，都**不判定任何事做完了**：
+
+- **清单有预算**：未完成最多 **20 条**（设置里可改，`0` = 不限）。满了之后，Agent 写的记录**先进收件箱**
+  并写明「清单已满 20 条」，关掉一条再收下——不丢、不删、也不偷偷多收。**人自己加的不受这个限制**：
+  清单是人的，拿上限挡主人是插件在跟主人吵架。
+- **「稍后」是一等公民**：勾选 → **移到稍后**，记录离开清单、离开所有计数，但状态仍是未完成、什么都没
+  被决定。想让它回来：筛选「稍后」→ **提到清单**。它和「收件箱」是两个不同的问题——收件箱问“这条
+  要不要进清单”，稍后说“这周先不看”。
+- **清单头上显示 `18 / 20`**，满的时候才变色。一个永远在喊的数字，等于没人看的数字。
+
+为什么不用“超过 N 天自动归档”：因为实测没有一条是陈旧的——它们都是这周在写的东西。年龄治不了
+“写太多”，预算可以。
+### 陈旧：三周没人碰的，问一句「还算数吗？」
+
+清单真正的腐烂不是"记多了"，是**记了却不结**。这台机器 2026-11-04 的实测：**106 条未完成，一条都没派发过**——
+也就是说「派发后自动收尾」这条路径对它们**一次都没生效过**。所以除了「完成」的自动化，还需要一个**不假装完成**的出口。
+
+一条记录**未完成、且三周没被碰过**（按 `updatedAt` 算，不是创建时间；收件箱里的不算，它已经在问你了），会出现在筛选栏的
+**「陈旧 N」**里。这个视图只做一件事：解释「还算数吗」，然后让你勾选 → **一次归档**（不删除，可恢复）。
+
+它**永远不会**替你判定完成。「不做了」和「做完了」是两个不同的答案，只有人知道是哪一个。
+
+顺手一提，两条**正向证据**也会替你递一条声明（不是完成，仍然进「待确认」）：
+
+- **步骤全勾完**（Agent 勾的）——你排的计划做完了，那就是一句声明；
+- **这一轮改动了这条待办挂着的那个文件**——文件真的变了，这是证据，不是"会话安静了"。
+
 升级到 0.22 后第一次启动会做一次**一次性清理**：把还没完成、没有截止时间、而且**你从没动过**的 Agent 记录移进收件箱，
 再按截止时间重算剩下的级别。这台机器上回放的结果是 **68 条移入收件箱、6 条改了级别，清单从 87 条降到 19 条**。
 你亲手改过的记录一条都不动；收件箱里可以多选「收下」把它们放回清单。之后不再自动动它们。
@@ -452,6 +486,68 @@ dsh plugin --profile <profile> remove dsh-global-todo
 - `updatedAt` 是各机器自己的墙上时间，时钟跑快的那台更容易「赢」；
 - 不传附件本身：附件是**路径**，两台机器上要各自可达（同一份 NAS 路径就行）。
 
+### 每日分诊：今天该动哪三条
+
+清单一直知道**还有什么没做**，却不知道**为什么还没做**——而这一句才决定下一步该谁动。
+每日分诊回答三件事：今天最该动的三条是哪三条、每一条是「谁的事」、以及能不能交给 Agent。
+它不改清单，只把答案写成一条进展记录。
+
+| 桶 | 面板标签 | 怎么判 | 该谁动 |
+|---|---|---|---|
+| `decision` | 该你一句话 | 带「需决策」标签，或文字里出现「确认」「二选一」「你定」「等你」「请用户」「决定」等 | 只能是你 |
+| `self` | 可自决 | 带「可自动」标签，或出现「整理」「复核」「复跑」「同步」「归档」「清点」等维护类动词 | Agent 可以自己做 |
+| `external` | 等外部 | 带「等外部」标签，或出现「等回复」「等对方」「等证书」「到账」「上游」等 | 谁都动不了，等外部 |
+| `unknown` | 待判 | 以上都不像 | 没人判过——这个数要照实留着，不能藏成百分比 |
+
+**标签优先于文字**：写了「确认」的记录打上「可自动」就以标签为准，反过来也一样；判定顺序同样是规则——
+能者优先归「该你一句话」，其次「等外部」，最后才是维护类。关键词表是从早先只读的 `triage.py` 原样搬
+过来的，所以每天早上的桶计数还能和昨天比。
+
+分数排出今天的前三名：逾期加 3（随后天数最多再加 2.8，「逾期 N 天」）、三天内到期加 2（当天是「今天
+到期」）、级别加分（`urgent` 3 / `high` 2 / `low` -1）、静置超过 14 天加 1、有未完成步骤加 0.5、
+三天内刚派过**减 2**（免得劝你把一个还活着的活再派一次）。每个加减都带一句能被反驳的理由，面板显示的
+就是这些话；收件箱记录**只计数**（`counts.inbox`）、永远不分诊，待确认（`review.pending`）另行计。
+
+**派发预算**（`lib/gate.js`，也是纯函数）回答「今天还能不能派」。放行要同时满足：带 `可自动`
+标签；记录是 `open` / `doing`、不在收件箱、有来源目录（`originDir`）；目录不是存储/系统根目录
+（默认按前缀拒绝 `/pool0` 与 `/mnt/nas`，**家目录只拒绝它本身**——这台部署的整个工作区就在家目录下，
+前缀规则会拒掉所有真实项目）；绑定的会话没在跑；这条记录和这个目录在 `routerCooldownDays` 天内
+都没派过；今天派出的条数没到 `routerDailyCap`。拒绝给的是机器码（`inbox` / `not-active` /
+`no-tag` / `no-dir` / `dir-unsafe` / `already-live` / `cooldown` / `dir-cooldown` / `daily-cap`），
+`allowed` 的意思是「**会**放行」，不是「已派发」。预算按本地日历日从每条记录自己的
+`lastDispatch` 数出来，不另立计数器——代价是同一条一天内派两次只算一次，对预算来说这是
+少算的方向，安全。
+
+**看门狗**管另一种沉默：`lastDispatch.ok` 为真、超过 24 小时、之后没有任何 note 或活动记录
+（派发本身留下的那两条不算进展）的记录会被点名，连同「会话还在 / 已不在」一起。
+
+**观察，而不是自动。** 宿主进程里每 5 分钟检查一次，过了 09:45 就每天只跑一遍（重启后会补跑），
+把今天的 3 条各写一条 `【分诊 YYYY-MM-DD】` 的 note，看门狗给停滞项另写
+`【看门狗 YYYY-MM-DD】`。**这些 note 就是账本**：
+带 7 天内分诊 note 的记录不会再被念一遍，看门狗 note 比上次派发新才算已经通知过。所以手动调一次
+`/router/tick`、定时器再调一次，也只会写一次；重启、或者另一台机器合并同一份清单，得到的都是
+同一个答案。它**从不派发**，只把「本来会派哪几条」放进 `wouldDispatch`——这也是 DeepSeek 那套
+Super-agent 架构里 Router 的一半：没有常驻会话、没有模型调用，先用确定性规则（0 token）算出答案，
+一天只写一次 note，派发开关先关着，看完两周再谈打开。
+
+**打开它**：设置卡片里有「每日分诊」一组（模式 `关闭` / `观察`、每天最多派几条、冷却天数），
+改完立刻生效；也可以直接写接口：
+
+```sh
+curl -X POST http://127.0.0.1:3080/api/global-todo/settings \
+  -H 'content-type: application/json' \
+  -d '{"routerMode":"observe","routerDailyCap":2,"routerCooldownDays":3}'
+```
+
+`routerMode` 只接受 `off` / `observe`（`auto` 是有意没实现的：不在人回路里的派发是另一个决定，要单独
+定预算），写错是 `400`，不会悄悄当成 `off`；关掉就是 `{"routerMode":"off"}`。列表上方那条
+「今日注意力」不改清单，只做三件事：**看**（预算 used/cap、停滞数、观察模式下「本来会派 N 条」）、
+**动**（每条右侧「交给」直接开一个新对话，走的是和详情卡同一个 `POST /dispatch`）、**筛**（四桶计数是可以点的：
+点「该你一句话 54」列表就只剩这 54 条，再点一次取消；分桶是从记录上现算出来的，跟着 `GET /list` 一起回来）、
+**催**（「等外部」的条目在菜单里多一项「记一次催办」，写了就在行上显示「N 天前催过 / 还没催过」）、**推**（每条右侧「推迟」：明天 / 三天后 / 一周后，写一条带日期的 note，不走新字段）、以及**立刻跑一次**
+（观察模式下手动触发 tick，和定时器共用同一本 note 账，不会重复）。点击行本身仍然是打开对应记录；
+模式关闭时多一行说明。它和列表一起拉取，每次轮询一起刷新。
+
 ### HTTP 接口
 
 面板通过这些路由读写宿主。有 connection 服务时走宿主的连接围栏，没有时退化为严格的
@@ -469,21 +565,25 @@ dsh plugin --profile <profile> remove dsh-global-todo
 | POST | `/api/global-todo/capture` | `{ sessionId? }`（请当前对话把要跟进的事抓进清单） |
 | POST | `/api/global-todo/bulk` | `{ ids, status?, addTags?, removeTags? }`——一次改一整批；失效的 id 进 `unmatched`，不会让整批失败 |
 | POST | `/api/global-todo/ingest` | `{ items: [{ title, source: { kind }, confidence }], dryRun? }`，带 `Authorization: Bearer <settings.ingestToken>`——外部条目；置信度低于 `ingestConfirmBelow` 的先进收件箱 |
-| GET | `/api/global-todo/health` | —（数据位置、统计、派发能力，以及**工具注册状态**与**自动收尾观察者是否挂上**——这两种失败是静默的，所以必须能查；还有 `metrics`：派发成功率、工具调用次数、清单增长；`autoCollect`：每个候选对话**为什么被问/没被问**、计次，以及设置文件是怎么加载进来的） |
+| GET | `/api/global-todo/health` | —（数据位置、统计、派发能力，以及**工具注册状态**与**自动收尾观察者是否挂上**——这两种失败是静默的，所以必须能查；还有 `metrics`：派发成功率、工具调用次数、清单增长；`autoCollect`：每个候选对话**为什么被问/没被问**、计次，以及设置文件是怎么加载进来的；`settings.router`：分诊模式、日上限与冷却天数，面板设置卡读的就是它） |
 | POST | `/api/global-todo/create` | `{ title, description?, links?, steps?, tags?, priority?, dueAt? }` |
 | POST | `/api/global-todo/update` | `{ id, ...字段, by?: human\|agent }` |
 | POST | `/api/global-todo/status` | `{ id, status, by?: human\|agent }` |
 | POST | `/api/global-todo/remove` | `{ id }` |
 | POST | `/api/global-todo/restore` | `{ todo }` —— 原样还原被删除的记录（撤销） |
 | POST | `/api/global-todo/review` | `{ id, decision: confirm\|reject }` —— 回答 Agent 的完成声明 |
-| GET | `/api/global-todo/report?days=7` | 这段时间里 Agent 完成了什么、触及了哪些文件 |
+| GET | `/api/global-todo/report?days=7` | 这段时间里 Agent 完成了什么、触及了哪些文件；另带 `triage` 块：此刻四桶、本周与上周各自新增的桶分布、以及「该你一句话」挂了两周以上的条数与最久天数 |
+| GET | `/api/global-todo/triage` | `top?`——今日分诊（**只读**）：四个桶的计数、今天的 3 条、派发闸门的 `budget` / `allowed` / `refused`、派发后沉默的 `stalled`，以及 `mode`（`off` / `observe`）与 `policy` |
+| POST | `/api/global-todo/chase` | `{ id }`——给「等外部」的条目记一次催办：写一条 `【催办 YYYY-MM-DD】` 的 note，分诊条上就显示「N 天前催过 / 还没催过」 |
+| POST | `/api/global-todo/snooze` | `{ id, days }`——把一条「推迟」掉：写一条 `【推迟 YYYY-MM-DD】` 的 note（`days` 1–30），分诊当天起就不再把它算进今日三条，闸门也拒绝派它；`days` 是「共藏几天」，所以 1 天 = 明天回来；重复点会延长，以最新一条为准 |
+| POST | `/api/global-todo/router/tick` | 跑一次每日分诊：把今天的 3 条与停滞项写成进展 note，返回 `counts` / `buckets` / `today` / `notes` / `wouldDispatch` / `stalled` / `budget`；同一天再调不会重复写（note 就是账本），`mode` 是 `off` 时返回 `skipped` 与原因 |
 | GET | `/api/global-todo/session?id=` | 绑定的会话最后说了什么（`tail` / `alive` / `dir`） |
 | POST | `/api/global-todo/relink` | `{ id, index, value }`——把失效附件重新指向（新值仍须是该类型的合法绝对路径/网址） |
 | GET | `/api/global-todo/asset?id=&index=` | 读**图片附件**的字节（路径只从待办记录里取，不接受请求传路径；≤8MB，png/jpg/jpeg/webp/gif/avif） |
 | POST | `/api/global-todo/link` | `{ id, add?: [...], remove?: [值 或 下标] }` |
 | POST | `/api/global-todo/dispatch` | `{ id, mode?: auto\|bound\|new\|current, sessionId?, dir? }` |
 | POST | `/api/global-todo/assign` | `{ ids, items?, target?, dir? }`——一次把多条交给 Agent；配不上的 id 原样报回，不擅自送到别处 |
-| POST | `/api/global-todo/settings` | `{ autoCollect?, idleMinutes?, cooldownMinutes?, exemptWorkspaces?, captureMinWeight? }`——自动获取的开关与阈值；`captureMinWeight`（0–1，默认 0.35）是批量抓取的权重下限，低于它的候选只在 `skipped` 里报出、不登记 |
+| POST | `/api/global-todo/settings` | `{ autoCollect?, idleMinutes?, cooldownMinutes?, exemptWorkspaces?, captureMinWeight? }`——自动获取的开关与阈值；`captureMinWeight`（0–1，默认 0.35）是批量抓取的权重下限，低于它的候选只在 `skipped` 里报出、不登记。另有每日分诊的三项：`routerMode`（`off` / `observe`，默认 `off`）、`routerDailyCap`（0–10，默认 2）、`routerCooldownDays`（0–30，默认 3），回来时在 `settings.router`；面板的「每日分诊」组读写的就是这三项，接口和面板是同一条写入路径 |
 | POST | `/api/global-todo/diagnostics` | `{ scope, status?, reason?, message?, url? }`——面板自己上报的错误 |
 | GET | `/api/global-todo/sync` | ——（`configured`、`dir`、`last`、`error`：多端同步现在是什么状态） |
 | POST | `/api/global-todo/sync` | `{ dryRun? }`——立刻合并一次并写回两边；没配置共享目录时 `sync-not-configured` |
@@ -628,6 +728,10 @@ lockfile.js    那把锁：wx 独占建文件、pid/host 判活、过期接管
   markdown.js    Markdown 导出与容错导入
   report.js      从完成记录推出来的周报
   reminders.js   到点提醒的判定规则
+  triage.js      每日分诊：四个桶、打分与今天的 3 条（纯函数）
+  gate.js        派发闸门：标签 / 预算 / 冷却 / 目录（纯函数）
+  watchdog.js    派发后多久没新进展算停滞（纯函数）
+  router.js      一天一次的 tick：只写 note，从不派发
   settings.js    宿主侧开关与自动获取策略
   metrics.js     /health 里的进程内计数
   diagnostics.js 有上限的面板错误日志

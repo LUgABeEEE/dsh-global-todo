@@ -20,9 +20,9 @@ import { Readable } from 'node:stream'
 
 import { createSettings, SETTINGS_DEFAULTS } from '../lib/settings.js'
 import { createRoutes, ROUTE_BASE } from '../lib/routes.js'
-import { createService } from '../lib/service.js'
+import { createService, FILTERS } from '../lib/service.js'
 import { createStore } from '../lib/store.js'
-import { createTodo, isValidDue, LIMITS, normalizeDue } from '../lib/model.js'
+import { createTodo, isStale, isValidDue, LIMITS, normalizeDue, STALE_DAYS } from '../lib/model.js'
 import { createTools, selectTools, TOOL_GROUPS } from '../lib/tools.js'
 import { DEFAULT_MIN_WEIGHT, scoreItem } from '../lib/weight.js'
 import { findDuplicate } from '../lib/capture.js'
@@ -323,6 +323,71 @@ const equal = (group, name, actual, expected) =>
   const en = await readFile(new URL('../README.en.md', import.meta.url), 'utf8')
   check('L gate', 'the Chinese README documents the gate', zh.includes('收件箱') && zh.includes('8 条'))
   check('L gate', 'the English README documents the gate', en.includes('inbox') && en.includes('eight'))
+}
+
+// ── M. Closing a record nobody handed over ────────────────────────────────────────────
+{
+  const now = Date.UTC(2026, 10, 4)
+  const day = 86_400_000
+  const base = { status: 'open', tags: [], createdAt: now - 60 * day, updatedAt: now - STALE_DAYS * day }
+  equal('M stale', 'three weeks untouched is stale', isStale(base, now), true)
+  equal('M stale', 'one day short is not', isStale({ ...base, updatedAt: now - (STALE_DAYS - 1) * day }, now), false)
+  equal('M stale', 'a record touched yesterday is not stale', isStale({ ...base, updatedAt: now - day }, now), false)
+  equal('M stale', 'a finished record is not a question', isStale({ ...base, status: 'done' }, now), false)
+  equal('M stale', 'the inbox is already a question', isStale({ ...base, tags: ['inbox'] }, now), false)
+  equal('M stale', 'the window is stated as one constant', STALE_DAYS, 21)
+  check('M stale', 'and it is a filter the API accepts', FILTERS.includes('stale'))
+
+  // The two positive signals are pinned by their guards rather than by their whole bodies:
+  // the behaviour lives in test/claims.test.mjs, what matters here is that each bound the
+  // design promised is still in the source.
+  const completion = await readFile(new URL('../lib/completion.js', import.meta.url), 'utf8')
+  check('M claims', 'a turn that changed a named file can file a claim', completion.includes('openAuthoredBy'))
+  check('M claims', 'only the conversation that wrote it is eligible', completion.includes('openAuthoredBy(sessionId)'))
+  check('M claims', 'a turn that stated its own verdict is left alone', completion.includes('if (buffer.decided) return'))
+  check('M claims', 'a failed turn files nothing', completion.includes("buffer.reason !== 'completed'"))
+  const serviceSource = await readFile(new URL('../lib/service.js', import.meta.url), 'utf8')
+  check('M claims', 'every step ticked is a claim', serviceSource.includes("changed.includes('steps')"))
+  check('M claims', 'and a person tick is not one', serviceSource.includes("by === 'agent' &&"))
+
+  const zh = await readFile(new URL('../README.md', import.meta.url), 'utf8')
+  const en = await readFile(new URL('../README.en.md', import.meta.url), 'utf8')
+  check('M stale', 'the Chinese README documents the stale view', zh.includes('陈旧'))
+  check('M stale', 'the English README documents it too', en.includes('Stale'))
+}
+
+// ── N. Keeping the board short ────────────────────────────────────────────────────────
+{
+  const { boardSize, LIST_LIMIT } = await import('../lib/service.js')
+  const { counts, isSomeday, SOMEDAY_TAG } = await import('../lib/model.js')
+
+  equal('N board', 'the budget is twenty by default', LIST_LIMIT, 20)
+  equal('N board', 'parking is a tag, matched case-insensitively', isSomeday({ tags: ['Someday'] }), true)
+  equal('N board', 'and a record without it is on the board', isSomeday({ tags: [] }), false)
+
+  const shape = { status: 'open', createdAt: 1, updatedAt: 1, links: [], steps: [], notes: [] }
+  const parked = { ...shape, id: 't-1', title: 'parked', tags: [SOMEDAY_TAG] }
+  const board = { ...shape, id: 't-2', title: 'board', tags: [] }
+  const waiting = { ...shape, id: 't-3', title: 'waiting', tags: ['inbox'] }
+  equal('N board', 'a parked record is not on the board', boardSize([parked, board, waiting]), 1)
+  const summary = counts([parked, board, waiting])
+  equal('N board', 'and it is counted in its own bucket', summary.someday, 1)
+  equal('N board', 'the board count describes the board only', summary.total, 1)
+  equal('N board', 'the inbox keeps its own bucket', summary.inbox, 1)
+
+  const clientSource = await readFile(new URL('../lib/client.js', import.meta.url), 'utf8')
+  check('N board', 'the panel offers one click to park', clientSource.includes("addTags: ['someday']"))
+  check('N board', 'and one click back', clientSource.includes("removeTags: ['someday']"))
+  check('N board', 'the budget is shown before it bites', clientSource.includes('gt-budget'))
+  const serviceSource = await readFile(new URL('../lib/service.js', import.meta.url), 'utf8')
+  check('N board', 'a full board sends the record to the inbox, never away', serviceSource.includes("'list-full'"))
+  check('N board', 'the limit is read per call, not captured once', serviceSource.includes('typeof config.listLimit'))
+  check('N board', 'the budget stands at the confirm door too', serviceSource.includes('wasInbox && !inInbox(todo)'))
+
+  const zhBoard = await readFile(new URL('../README.md', import.meta.url), 'utf8')
+  const enBoard = await readFile(new URL('../README.en.md', import.meta.url), 'utf8')
+  check('N board', 'the Chinese README documents the budget', zhBoard.includes('稍后'))
+  check('N board', 'the English README documents it too', enBoard.includes('Later'))
 }
 
 const failed = results.filter((result) => !result.ok)

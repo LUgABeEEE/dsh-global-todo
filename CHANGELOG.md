@@ -1,4 +1,194 @@
-## [Unreleased]
+## [0.23.0] — 2026-11-04
+
+- **The triage layer and the daily router ship in the same tarball.** Not written in this session:
+  `lib/triage.js`, `lib/gate.js`, `lib/router.js`, `lib/watchdog.js` and `lib/marks.js` answer the
+  question the list never could — *why* is this still open, and whose move is it — with rules rather
+  than a model call per record per day. They were in this working tree when the release was cut, are
+  covered by `test/{triage,gate,router,watchdog}.test.mjs`, and the router defaults to `off`;
+  `observe` only writes a note, never a dispatch. Flagging it here because a release that quietly
+  contains a subsystem nobody announced is worse than one that says so.
+- **The board has a budget, and there is a 「稍后」.** Measured before this: 98 unfinished records,
+  ~3 closed on a typical day, 4 due within 24 hours, and **not one record older than 14 days
+  untouched** — the list was not rotting, it was growing faster than it drained, and a board that
+  takes a month to clear is a board nobody opens. Three rules, and none of them decides that any
+  work is done: a cap of **20 unfinished records** (`settings.listLimit`, `0` disables) after which
+  an agent-written record waits in the inbox with the reason instead of joining; a **park** action
+  that takes a record off the board without answering anything about it (`someday`, one bulk call
+  in each direction, outside every board count, one filter away); and **`18 / 20`** beside the
+  counts, coloured only when full. A person's own entries are never refused by the cap — the list
+  belongs to its owner.
+- **The budget also stands at the second door.** Measured after the fact: the 0.22.0 sweep moved 68
+  records into the inbox on 2026-10-30, and **37 of them were confirmed back onto the board within
+  six days** — so intake to the board had halved (14.5 → 7.8 a day) while the board stayed at ~93.
+  Confirming a record out of the inbox now trips the same budget, with a `409 list-full` for an
+  agent. A person is still never blocked: their click takes the board over budget and the counter
+  says so, because a limit that refuses its owner is the plugin arguing with its owner.
+- **An agent-written record can now be closed without a hand-off.** Measured before this change:
+  106 open records, and **not one of them had ever been dispatched** — so the hand-off watcher, the
+  only automatic path, had never fired for a single record. Two positive signals are added, and
+  neither is the "the conversation went quiet" heuristic 0.21.0 removed (DESIGN.md keeps that story):
+  **every step ticked by an agent**, and **a clean turn that changed a file the record names** in the
+  conversation that wrote it. Both only ever file a **claim** — the record moves to 待确认, so a wrong
+  one costs a click instead of hiding unfinished work.
+- **Stale: a filter for what nobody has touched in three weeks.** Unfinished, `updatedAt` older than
+  21 days, inbox excluded. The view asks one question — still a thing? — and offers a bulk **archive**,
+  never a completion: "not doing this" and "already did this" are different answers. Counted in
+  `counts.stale`, filterable as `status=stale` from the API and `global_todo_list`.
+- Guidance says it plainly: closing is **the same turn's** job, and the file-evidence claim is a
+  backstop, not the plan.
+
+- **A note belongs to whoever wrote it.** `POST /note` passed `by: 'human'` no matter who called
+  it, so a note an agent wrote through the HTTP surface was filed under the person's name — and took
+  `todo.updatedBy` and the activity entry with it. `status` and `update` already read the actor from
+  the body (reopening is `status: 'open'` on the same route, so it was covered too); `note` and
+  `restore` were the two routes that did not. Both now go through the same `actorOf`. The panel sends
+  no `by` and `actorOf` defaults to `human`, so browser behaviour is unchanged; an unknown actor is
+  refused with 400 `invalid-body` instead of being absorbed. Tests cover the three note cases (an
+  agent's note, the panel's default, a rejected typo) and a restore attributed to the agent.
+
+- **Fixed after a review pass: five real defects, each with a regression test.**
+  - **CI would have failed.** Three tests asserted `+08` calendar dates against the local-day
+    helpers; `ubuntu-latest` is UTC. The suite now passes under `UTC`, `America/Los_Angeles`,
+    `Asia/Shanghai` and `Pacific/Kiritimati`.
+  - **The watchdog was hiding its own stall.** `findStalled` counted *any* later note as progress,
+    including the `【分诊 …】` line the tick itself writes, so a record the triage once mentioned
+    could never be reported as stalled. Bookkeeping marks (`【分诊`, `【看门狗`, `【推迟`, `【催办`)
+    are now recognised by `lib/marks.js` and excluded from "progress".
+  - **「明天再看」 hid two days.** `until` was `now + days` while `isSnoozed` compares
+    "until >= today", so one day of snooze meant two days off. The mark now names the last day
+    off (`now + days - 1`): one day brings the record back tomorrow.
+  - **Select-all reached records a filter had hidden.** The batch bar read `state.todos` while the
+    list showed a bucket-filtered subset, so 「全选」 selected invisible records; it now uses the
+    visible set and changing the bucket clears the selection.
+  - **A tick whose notes all failed looked done.** `runTick` reports `failed`, and the 09:45 timer
+    leaves the day open when nothing was written, so the next check retries instead of skipping a
+    day silently.
+
+- **「等外部」 now knows when it was last chased.** `POST /chase` writes a `【催办 YYYY-MM-DD】` note
+  and the triage reads the newest mark, so an external row says "chased 2 days ago" or "never
+  chased" instead of leaving the question to memory. The action is an item in the row's existing
+  menu and appears only for the external bucket, because a nudge has no recipient for work that is
+  nobody else's to unblock. Same ledger rule as the deferral: the note is the fact.
+- **Tests.** Three more: the chase parser (newest mark wins, absent means never), that only the
+  external bucket carries an age, and the route (author is the person, the note shape, a chase just
+  written reads as today, and a missing id is a 400).
+
+- **The weekly report answers "is it piling up", not only "what moved".** `GET /report` gained a
+  `triage` block: the four buckets as they stand, what arrived this week versus the week before
+  (split by bucket, so a decision backlog and a waiting-on-the-world list stop looking the same in
+  a bare "created N" count), and how many decisions are older than two weeks with the age of the
+  oldest. All of it is derived from the same `classify`/`buildTriage` the daily tick uses, so the
+  panel, the report and the strip cannot disagree. The report card renders the block above the
+  finished list.
+- **Tests.** Five report tests: the bucket shape, a deferred record counting as neither backlog nor
+  today's work, the week-over-week split (including that two weeks back is outside both windows),
+  the decision age, and an empty list answering with zeros.
+
+- **A record can be deferred without touching its deadline.** Each row of the triage strip has a
+  deferral menu (tomorrow, three days, a week); `POST /snooze` appends a `【推迟 YYYY-MM-DD】` note,
+  and the triage reads the newest mark. A deferred record is counted as active but kept out of the
+  day's three, the dispatch gate refuses it (`snoozed`), and nothing has to clear it — the date
+  passing is the clear. It is a note rather than a field on purpose: the notes are already the
+  ledger, and a column would need a migration, a sync rule and a tools-schema change to say the
+  same sentence.
+- **Tests.** The triage tests pin the parser (newest mark wins, the day after it ends the
+  deferral) and the exclusion; the gate test pins the refusal; the route test pins the note's
+  author (`human`, not the router), the 1–30 range, and that a deferred record leaves the rows.
+
+- **The four bucket counts became filters.** `GET /list` now carries a derived `bucket` on every
+  row (computed at read time from the same rules as the triage route, never stored), and the strip's
+  four chips narrow the list to one bucket — click again to clear. A chip clicked while the done tab
+  is open switches the view to active first, because buckets only describe active records; a bucket
+  that matches nothing in the current view says so instead of leaving a blank list.
+- **The phone measurement viewport went from 2400 to 3200px.** The taller detail card pushed its
+  last two controls below the measure viewport, which reported as a 1x1 hit area — a harness
+  artifact, not a real target. The constant exists to keep every control on screen; it grew with the
+  content instead of the check being weakened.
+
+- **The day's three can be acted on where they are read.** Each row of the triage strip carries a
+  Hand off button that opens a new conversation for that record through the same `POST /dispatch`
+  the detail card calls — no gate shortcut, no new route, and a refusal lands in the panel's error
+  banner with the gate's reason rather than being swallowed. The strip also reports what the gate
+  would allow today (`本来会派 N 条`), capped by what is left of the hand-off budget, because a
+  silently empty gate is indistinguishable from a broken one. Two buttons in one row means the row
+  is no longer a button wrapping a button: the title is one control and the hand-off is another.
+- **The phone header had to be rebuilt for it**: the strip header now wraps — label and run button
+  on one line, the numbers on the next — instead of breaking words mid-way at 390px. The hand-off
+  button is a 44px target there.
+
+- **The triage settings moved from the API into the settings sheet.** Three controls — mode
+  (`off` / `observe`), hand-offs per day (0–10) and cool-down days (0–30) — read and write the
+  same `POST /settings` path the route already exposed, so the panel and a script cannot
+  disagree. `GET /health` now reports them under `settings.router`, one object rather than three
+  flat keys, because the three only mean anything together.
+- **A manual "run now" on the strip, next to the budget.** It calls `POST /router/tick` and is
+  safe for the same reason the timer is: the record's own notes are the ledger, so a manual tick
+  and the 09:45 pass cannot both announce the same three records. It exists because "what would
+  it say today" is the first question after flipping the switch.
+- **Tests.** Two route tests pin the new surface: `/health` reports the triage settings, and
+  `POST /settings` accepts the three fields while refusing a misspelled mode (a 400, not a silent
+  `off`) and an out-of-range budget. The render check asserts the settings group and the run
+  button, and the phone pass asserts both are still reachable at 390px.
+
+- **Daily triage: the list's three most urgent records, without a model call.** Four buckets —
+  `decision` (该你一句话), `self` (可自决), `external` (等外部) and `unknown` (待判) — classified by an
+  explicit tag first and by the keyword lists ported from the read-only `triage.py` second, then
+  scored by deadline (overdue, due within three days), level, idle time, unfinished steps and a
+  recent hand-off, each contribution carrying the sentence that explains it. The inbox is counted
+  and never triaged; waiting reviews are counted on their own. Pure: no clock, no I/O, so the
+  panel, the tick and the tests arrive at the same answer (`lib/triage.js`).
+- **A dispatch gate that says no first.** The `可自动` tag, a daily cap (default 2, 0–10), a
+  cool-down per record and per directory (default 3 days, 0–30), and directories a worker may not
+  be started in (`/pool0` and `/mnt/nas` by prefix; the home directory exactly, because this
+  deployment works under home). A refusal is a code, not a sentence — `inbox`, `not-active`,
+  `no-tag`, `no-dir`, `dir-unsafe`, `already-live`, `cooldown`, `dir-cooldown`, `daily-cap` — and
+  `allowed` means "would be allowed". The budget is counted from `lastDispatch` by local calendar
+  day, one per record, so a record handed over twice in a day counts once: an under-count, which
+  is the safe direction (`lib/gate.js`).
+- **A watchdog for hand-offs that went quiet, and a tick that writes notes and nothing else.**
+  `findStalled` names a dispatched record older than 24 hours whose own trail gained no note or
+  activity after the hand-off — the dispatch's own two entries do not count as progress. The tick
+  runs in-process every five minutes and acts once per local day after 09:45, with catch-up after
+  a restart, and only when `settings.routerMode` is `observe`; it writes `【分诊 YYYY-MM-DD】` and
+  `【看门狗 YYYY-MM-DD】` notes and **never dispatches**. Those notes are the ledger: a triage note
+  younger than seven days keeps the record quiet, a watchdog note only while it is newer than the
+  last hand-off — so a manual tick and the timer cannot both announce the same three, and a restart
+  or a second machine folding the same list reaches the same answer (`lib/watchdog.js`,
+  `lib/router.js`).
+- **Observe only, and off by default.** `routerMode` (`off` | `observe`) leaves the feature silent
+  until a person asks for it; `auto` is deliberately not implemented, because dispatching without a
+  person in the loop is a separate decision with its own budget. `routerDailyCap` and
+  `routerCooldownDays` are written through `POST /settings` — there is no panel control for the
+  three yet, so the route is the only door and the README says so — and come back under
+  `settings.router`; a mode that is not one of the two is a `400` rather than being read as `off`.
+  New routes: `GET /triage` (read-only, writes nothing) and `POST /router/tick` (idempotent through
+  the notes). The panel shows a read-only 今日注意力 / Today strip above the list — the budget
+  (`used/cap`), the day's three with their bucket chip and reasons, a stalled count, and one line
+  of explanation while the mode is off — fetched next to the list on every poll, with `triage.*`
+  keys in both dictionaries.
+- Tests: `test/triage.test.mjs` (a tag overrides the text, the decision → external → self order,
+  the scoring rules and the cap, the inbox counted but never triaged, the day's three stable on
+  ties), `test/gate.test.mjs` (every refusal code, the home directory refused exactly while a
+  project below it is allowed, the local-day budget, clamping a hand-edited policy),
+  `test/watchdog.test.mjs` (threshold, the hand-off's own trail not counting, later notes and
+  activity counting, a failed hand-off excluded), `test/router.test.mjs` (a second tick the same
+  day writes nothing, one announcement per stall, observe proposes only within the budget, one
+  unreadable record does not cost the others their note), and the route cases in
+  `test/routes.test.mjs` (a read must not write; a tick writes one note and never moves a status;
+  mode off reports why), plus the route-count assertions in `test/routes.test.mjs` and
+  `test/smoke.test.mjs`, which now expect twenty-nine paths.
+
+- **Verified on DSH 0.2.1-rc.5, in a separate instance.** A clean `DSH_HOME` with only this
+  plugin added (no theme, no memory plugin, no other bundle): the profile loads it, all eleven tools
+  register, `/health` answers, the panel renders and the sidebar entry appears, every route answers
+  (including the one-path/two-verb `/sync`), the phone tier engages at a 334px panel inside a 390px
+  window, the fold gesture works both ways, and the tool schemas are accepted by rc.5's own validator
+  (22/22). The theme of the change: **nothing in the plugin declaration moved** —
+  `dsh-client-modules` and `dsh-hmr` are byte-identical to rc.2 apart from an embedded source commit
+  id, and `engines.dsh` still matches with `includePrerelease`. The one internal change worth naming
+  is that `dsh-client-ui-slots` was folded into `dsh-cordis-client-runner`; the `slots` **service
+  name** is unchanged, which is why the panel still mounts — and why this repository never imports an
+  `@deepseek-ai/*` package in the first place.
 
 - **Two settings writers can no longer drop each other's field.** `load()` replaced the whole state,
   and two effects at mount both call it (the settings reader and the 0.22.0 gate migration). A second

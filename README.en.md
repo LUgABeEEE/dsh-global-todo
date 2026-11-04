@@ -192,10 +192,11 @@ What each file shows, and when it is regenerated, is indexed in
 
 ## Requirements
 
-- DeepSeek Harness `0.2.x` (developed and verified against `0.2.1-rc.2`; the `0.2.1-rc.3` changes
-  were checked item by item — its new sidebar **More** menu does not touch how this plugin registers
-  its entry; `engines.dsh` is `>=0.2.0-rc.1 <0.3.0`, and a Host outside it skips the bundle instead
-  of warning)
+- DeepSeek Harness `0.2.x` (developed on `0.2.1-rc.2`, and verified item by item on **`0.2.1-rc.5`**
+  in a separate instance: the plugin loads, all eleven tools register, the routes answer, the panel
+  renders, and the phone tier and its fold gesture behave. `0.2.1-rc.3` and `rc.4` were checked the
+  same way — they moved the sidebar and interface details, not how this plugin registers its entry.
+  `engines.dsh` is `>=0.2.0-rc.1 <0.3.0`, and a Host outside it skips the bundle instead of warning)
 - Node.js `>= 22.19.0` (the Web profile's own requirement)
 - A **Web** client: the panel is served by the Host's web server. Headless / ACP / SDK keep the
   agent tools but have no panel; an Electron-style desktop client (file:// + IPC) is not
@@ -509,6 +510,52 @@ The unattended question also got its own, stricter wording (at most two records,
 is a valid answer, only waiting-on-someone / dated / promised) — separate from 抓一下待办, which is
 something you asked for and may err towards completeness.
 
+### Keeping it short: the board has a budget, and there is a Later
+
+A list sorted only by “is it overdue” cannot be kept readable. Measured on this machine on
+2026-11-04: **98 unfinished records, ~3 closed on a typical day, 4 due within 24 hours — and not
+one record was neglected**: the oldest had been edited 14 days ago. The problem was never “delete
+the zombies”; it is that **things arrive faster than they leave**. At that ratio the board is a
+month of work, and a month of work is a board nobody opens.
+
+Three rules, and none of them decides that any work is finished:
+
+- **The board has a budget**: at most **20 unfinished records** (a setting; `0` turns it off).
+  When it is full, an agent-written record waits in the **inbox** with “the board is full” as the
+  reason — close one and it joins. Nothing is dropped, nothing is silently over-admitted. **A
+  person's own entries are never refused**: the list belongs to its owner, and a limit that argues
+  with them is the plugin arguing with its owner.
+- **Later is a first-class place**: tick records → **Park for later**; they leave the board and every
+  board count while staying unfinished and undecided. Bring them back with the **Later** filter and
+  **Back to the board**. It answers a different question from the inbox: the inbox asks “should this
+  join the list at all”, Later says “not this week”.
+- **The board shows `18 / 20`** beside the counts, and only changes colour when full. A number that
+  always shouts is a number nobody reads.
+
+Why not “auto-archive anything older than N days”: measured, nothing was old — it was all written
+this week. Age cannot fix over-writing; a budget can.
+### Stale: three weeks untouched, one question
+
+What rots a list is not over-recording but **recording without ever closing**. Measured on this
+machine on 2026-11-04: **106 open records, not one of them ever dispatched** — so the "close it
+after the hand-off" path had never fired for a single one. Automation of *done* therefore needs a
+companion that does not pretend.
+
+A record that is **unfinished and has not been touched for three weeks** (measured from `updatedAt`,
+not creation; inbox records are excluded — they are already a question) appears in the filter bar as
+**Stale N**. The view does one thing: it asks *still a thing?*, and lets you tick records and
+**archive them in one go** (archived, not deleted; restorable).
+
+It will **never** decide a record is finished for you. "Not doing this" and "already did this" are
+different answers, and only a person knows which one they mean.
+
+Two **positive** signals do file a claim for you — a claim, not a completion; it still lands in
+Review for your answer:
+
+- **every step ticked** (by an agent) — the plan you laid out is done, which is a statement;
+- **this turn changed a file the record names** — the file really changed, which is evidence, not
+  evidence that "the conversation went quiet".
+
 Upgrading to 0.22 does one **one-time sweep** at first start: unfinished agent records with no
 deadline that **nobody has touched** move to the inbox, and the remaining rule-governed levels are
 recomputed. Replayed against this machine's store that is **68 records into the inbox, 6 levels
@@ -600,6 +647,81 @@ and that looks like "delete is broken".
 - trust the clocks: `updatedAt` is each machine's wall clock, so a fast clock wins more often;
 - carry attachment **bytes**: an attachment is a path, and it has to be reachable on both machines.
 
+### Daily triage: the three things to move today
+
+The list always knew *what* is still open; it never knew *why* it is still open, and that is the
+sentence that decides who has to move next. Daily triage answers three questions: which three
+records deserve attention today, whose job each one is, and whether it may be handed to an agent.
+It changes nothing on the list; it writes the answer as a progress note.
+
+| Bucket | Panel label | How it is decided | Whose move |
+|---|---|---|---|
+| `decision` | Needs you | a `需决策` tag, or words such as `确认`, `二选一`, `你定`, `等你`, `请用户`, `决定` | only yours |
+| `self` | Agent can do it | a `可自动` tag, or maintenance verbs such as `整理`, `复核`, `复跑`, `同步`, `归档`, `清点` | the agent may take it |
+| `external` | Waiting outside | a `等外部` tag, or phrases such as `等回复`, `等对方`, `等证书`, `到账`, `上游` | nobody here can move it |
+| `unknown` | Unjudged | none of the above | nobody has judged it - keep that count honest, never hide it behind a percentage |
+
+**A tag outranks the text**: a record that says `确认` but carries `可自动` is the agent's, and the
+reverse holds too. The order is part of the rule - a record needing a person is never filed as
+waiting, maintenance comes last - and the keyword lists are ported verbatim from the read-only
+`triage.py`, so the morning bucket counts stay comparable day to day.
+
+Scoring picks the day's three: overdue adds 3 and up to 2.8 more with age; due within three days
+adds 2; level adds 3 for `urgent`, 2 for `high` and -1 for `low`; idle past 14 days adds 1; an
+unfinished step adds 0.5; and a hand-off inside the last three days **subtracts 2**, so a live task
+is not dispatched again. Every contribution carries a sentence a person could argue with, which is
+what the panel shows instead of a bare number; inbox records are counted (`counts.inbox`) and never
+triaged, and `review.pending` is counted separately.
+
+**The dispatch budget** (`lib/gate.js`, also pure) answers "may anything be handed over today". A
+record passes only when it carries the `可自动` tag, is `open` / `doing`, is not in the inbox, has an
+`originDir`, and that directory is not a storage or system root (the default denies `/pool0` and
+`/mnt/nas` as prefixes, and **the home directory exactly** - this deployment works under home, so a
+prefix rule for it would refuse every real project); the bound session is not running; neither this
+record nor this directory was handed over inside `routerCooldownDays`; and today's hand-offs are
+below `routerDailyCap`. A refusal is a code (`inbox`, `not-active`, `no-tag`, `no-dir`,
+`dir-unsafe`, `already-live`, `cooldown`, `dir-cooldown`, `daily-cap`), and `allowed` means it
+**would** be allowed. The budget counts today by the local calendar day from each record's own
+`lastDispatch` instead of keeping a counter - a record handed over twice in one day counts once,
+which under-counts and is the safe direction for a budget.
+
+**The watchdog** names the other silence: `lastDispatch.ok`, older than 24 hours, with no note or
+activity after the hand-off (the dispatch's own two entries are not progress). Its finding travels
+with whether the session is still alive.
+
+**Observe, not auto.** An in-process check every five minutes acts once per local day after 09:45,
+with catch-up after a restart, writes one `【分诊 YYYY-MM-DD】` note per record among the day's
+three, and the watchdog writes `【看门狗 YYYY-MM-DD】` for a stalled hand-off. **Those notes are the
+ledger**: a record carrying a triage note younger than seven days is not announced again, and a
+watchdog note counts as announced only while it is newer than the last hand-off. A manual
+`/router/tick` and the timer therefore cannot both announce the same three, and a restart - or a
+second machine folding the same list - reaches the same answer. It **never dispatches**; "what would
+have gone out" lands in `wouldDispatch`. This is the Router half of DeepSeek's published Super-agent
+architecture: no resident session, no model call, deterministic rules first (0 tokens), one note a
+day, and dispatch left switched off until it has been watched.
+
+**Turning it on**: the settings sheet has a Daily triage group (mode `Off` / `Observe`, hand-offs
+per day, cool-down days) that writes through the same code path as this route, so either works:
+
+```sh
+curl -X POST http://127.0.0.1:3080/api/global-todo/settings \
+  -H 'content-type: application/json' \
+  -d '{"routerMode":"observe","routerDailyCap":2,"routerCooldownDays":3}'
+```
+
+`routerMode` accepts only `off` and `observe` (`auto` is deliberately unimplemented: dispatching
+without a person in the loop is a separate decision with its own budget), and a bad mode is a `400`
+instead of being read as `off`; turning it off is `{"routerMode":"off"}`. The 今日注意力 / Today
+strip above the list changes nothing by itself: it shows the budget (hand-offs used/cap), the
+stalled count and, in observe mode, how many records the gate would allow. The four bucket counts
+are also filters — clicking 「该你一句话 54」 narrows the list to those records and clicking again
+clears it, and the bucket travels on each `GET /list` row because it is derived from the record at
+read time. Each of the day's three
+carries a Hand off button that opens a new conversation through the same `POST /dispatch` the detail
+card uses, each row also carries a deferral menu (tomorrow, three days, a week) that writes a dated note, and observe mode adds a Run now button for the manual tick. Clicking a row still opens
+that record; in `off` mode the strip adds one line of explanation. It is fetched next to the list
+and refreshed on every poll, with `triage.*` keys in both dictionaries.
+
 ### HTTP API
 
 The panel talks to the host over these routes. They are fenced by the host connection
@@ -617,21 +739,25 @@ fence when that service is present, and by a strict loopback check otherwise.
 | POST | `/api/global-todo/capture` | `{ sessionId? }` — ask the current conversation to collect its follow-ups |
 | POST | `/api/global-todo/bulk` | `{ ids, status?, addTags?, removeTags? }` — one change across a selection; a stale id lands in `unmatched` instead of failing the batch |
 | POST | `/api/global-todo/ingest` | `{ items: [{ title, source: { kind }, confidence }], dryRun? }` with `Authorization: Bearer <settings.ingestToken>` — external items; below `ingestConfirmBelow` they wait in the inbox |
-| GET | `/api/global-todo/health` | — (store location, counts, dispatch capabilities, plus **tool registration** and **whether the completion watcher attached** — both fail quietly, so both are reported — and `metrics`: dispatch success rate, agent tool calls, list growth; `autoCollect`: why each waiting conversation was or was not asked, counters, and how the settings file loaded; `version` is the running module and `packageVersion`/`stale` say whether the installed package is newer than the running one; `review.items` names the finished todos that still wait for a person, so a check does not have to drive the panel) |
+| GET | `/api/global-todo/health` | — (store location, counts, dispatch capabilities, plus **tool registration** and **whether the completion watcher attached** — both fail quietly, so both are reported — and `metrics`: dispatch success rate, agent tool calls, list growth; `autoCollect`: why each waiting conversation was or was not asked, counters, and how the settings file loaded; `settings.router` is the triage mode, hand-off cap and cool-down the settings sheet reads; `version` is the running module and `packageVersion`/`stale` say whether the installed package is newer than the running one; `review.items` names the finished todos that still wait for a person, so a check does not have to drive the panel) |
 | POST | `/api/global-todo/create` | `{ title, description?, links?, steps?, tags?, priority?, dueAt? }` |
 | POST | `/api/global-todo/update` | `{ id, ...fields, by?: human\|agent }` |
 | POST | `/api/global-todo/status` | `{ id, status, by?: human\|agent }` |
 | POST | `/api/global-todo/remove` | `{ id }` |
 | POST | `/api/global-todo/restore` | `{ todo }` — put a removed record back verbatim (undo) |
 | POST | `/api/global-todo/review` | `{ id, decision: confirm\|reject }` — answer an agent's completion |
-| GET | `/api/global-todo/report?days=7` | what the agents finished in the window, and the files it touched |
+| GET | `/api/global-todo/report?days=7` | what the agents finished in the window, and the files it touched; a `triage` block carries the four buckets now, what arrived this week versus last (split by bucket), and how many decisions are older than two weeks |
+| GET | `/api/global-todo/triage` | `top?` — today's triage (**read-only**): the four bucket counts, the day's three, the gate's `budget` / `allowed` / `refused`, the `stalled` hand-offs, and `mode` (`off` / `observe`) with `policy` |
+| POST | `/api/global-todo/chase` | `{ id }` — logs one nudge for a record waiting on somebody else: a `【催办 YYYY-MM-DD】` note, which the strip reads back as "chased N days ago" or "never chased" |
+| POST | `/api/global-todo/snooze` | `{ id, days }` — defers one record by writing a `【推迟 YYYY-MM-DD】` note (`days` 1–30). The triage leaves it out of the day's three until that date and the dispatch gate refuses it; `days` counts the days off, so one day brings it back tomorrow; clicking again extends it, newest mark wins |
+| POST | `/api/global-todo/router/tick` | run the daily triage once: write the day's three and the stalled records as progress notes, and return `counts` / `buckets` / `today` / `notes` / `wouldDispatch` / `stalled` / `budget`; a second call the same day writes nothing (the note is the ledger), and `mode: off` returns `skipped` with the reason |
 | GET | `/api/global-todo/session?id=` | what a bound conversation last said (`tail`, `alive`, `dir`) |
 | POST | `/api/global-todo/relink` | `{ id, index, value }` — re-point a dead attachment (the value must still be a valid absolute path or URL of that kind) |
 | GET | `/api/global-todo/asset?id=&index=` | the bytes of an **image** attachment (path read from the store, never from the request; ≤8 MB, png/jpg/jpeg/webp/gif/avif) |
 | POST | `/api/global-todo/link` | `{ id, add?: [...], remove?: [value \| index] }` |
 | POST | `/api/global-todo/dispatch` | `{ id, mode?: auto\|bound\|new\|current, sessionId?, dir? }` |
 | POST | `/api/global-todo/assign` | `{ ids, items?, target?, dir? }` — hand several todos over in one call; an id that matches nothing comes back instead of being sent elsewhere |
-| POST | `/api/global-todo/settings` | `{ autoCollect?, idleMinutes?, cooldownMinutes?, exemptWorkspaces?, captureMinWeight? }` — the Host-side switches behind automatic collect; `captureMinWeight` (0–1, default 0.35) is the floor below which a batch-capture candidate is reported as skipped instead of registered |
+| POST | `/api/global-todo/settings` | `{ autoCollect?, idleMinutes?, cooldownMinutes?, exemptWorkspaces?, captureMinWeight? }` — the Host-side switches behind automatic collect; `captureMinWeight` (0–1, default 0.35) is the floor below which a batch-capture candidate is reported as skipped instead of registered. Three more drive the daily triage: `routerMode` (`off` / `observe`, default `off`), `routerDailyCap` (0–10, default 2) and `routerCooldownDays` (0–30, default 3); they come back under `settings.router`, and the panel's Daily triage group reads and writes exactly these through the same path |
 | POST | `/api/global-todo/diagnostics` | `{ scope, status?, reason?, message?, url? }` — the panel's own error report |
 | GET | `/api/global-todo/sync` | — (`configured`, `dir`, `last`, `error`: what the multi-machine sync is doing) |
 | POST | `/api/global-todo/sync` | `{ dryRun? }` — fold now and write both sides; `sync-not-configured` when no share is set |
@@ -790,6 +916,10 @@ lockfile.js    the cross-process lock: exclusive create, pid/host liveness, stal
   markdown.js    Markdown export and tolerant import
   report.js      the weekly aggregate over completion records
   reminders.js   the due rule behind the reminder strip
+  triage.js      daily triage: four buckets, scoring and the day's three (pure)
+  gate.js        the dispatch gate: tag, budget, cool-down, directory (pure)
+  watchdog.js    how long a hand-off may stay silent before it is stalled (pure)
+  router.js      the once-a-day tick: writes notes, never dispatches
   settings.js    host-side switches and the automatic-collect policy
   metrics.js     in-memory counters reported by /health
   diagnostics.js the bounded client error log

@@ -499,6 +499,74 @@ starting it cheap. Scheduled execution belongs in a scheduler plugin.
 **Rejected: `agents.create` without a preset.** It looks simpler and produces a session
 that can do nothing.
 
+### Triage, the gate and the watchdog: rules before a model
+
+`lib/triage.js`, `lib/gate.js` and `lib/watchdog.js` answer three questions about the same record —
+who has to move, whether a hand-off is affordable, and whether a hand-off that started went
+anywhere. All three are **pure** in the way that matters here: the clock is an argument (`now`),
+and the only ambient facts are the home directory (`homedir()`, a constant for the process and a
+parameter the tests override) and the machine's own calendar day, because 「今天派了几条」 is a
+question a person asks in a timezone. Nothing touches the filesystem, the network or the store. The
+09:45 tick, `GET /triage` and the tests must reach the same verdict from the same record, or the
+bucket counts become three opinions about one list. `lib/router.js` is the only module in the group
+that touches the store, and it writes **notes only** — never a status, never a dispatch. A tick
+that changed state would be a decision made without the person who owns the list, which is exactly
+what `observe` is not.
+
+**The marks live in one module.** `lib/marks.js` owns the four note prefixes (`【推迟`, `【催办`,
+`【分诊`, `【看门狗`) because three modules have to agree on them: the triage reads two, the router
+writes two, and the watchdog has to tell "a person worked on this" from "the plugin wrote a line
+about it". A literal per module is how a rename becomes a mark nothing reads.
+
+**A chase is the same shape.** 「等外部」 rots without anyone being wrong, so the useful fact is
+when the record was last chased; `POST /chase` writes `【催办 YYYY-MM-DD】`, `lastChase` reads the
+newest one, and only the external bucket carries the age (a nudge has no recipient for work that is
+nobody else's). Both marks live in the notes for the same reason: one ledger, one sync rule, one
+way to read the record's history.
+
+**A deferral is a note, not a column.** "Not today" is a decision about a record, which is
+exactly what the notes already record; storing it as a field would need a model migration, a sync
+rule, a tools schema change and a panel control to say the same thing. So `POST /snooze` appends
+`【推迟 YYYY-MM-DD】…`, `snoozeOf` reads the newest mark, and `isSnoozed` compares its day with the
+local calendar day — the same "until the end of that day" rule the budget uses. The triage counts
+a deferred record as active but leaves it out of the three, and the gate refuses it: a person who
+said "not today" should not be overruled by a rule. Nothing clears the mark; the date passing is
+the clear.
+
+**The notes are the ledger.** Whether today's announcement already happened is answered by the
+record's own notes (prefixes `【分诊 YYYY-MM-DD】` and `【看门狗 YYYY-MM-DD】`), not by a state file
+of this module's own. A note replicates through the existing sync, is visible in the panel, and
+survives a restart or a second machine without becoming a second source of truth. A triage note
+younger than seven days keeps the record quiet; a watchdog note only keeps quiet while it is newer
+than the last hand-off, because a record that stalls *again* deserves its own line.
+
+**Home is refused exactly; deny directories are prefixes.** `isUnsafeDir` matches each `denyDirs`
+entry (default `/pool0`, `/mnt/nas`) as a prefix — a project under `/mnt/nas/x` is refused with it.
+Home is compared for equality only: this deployment's whole workspace lives under `~`, so a prefix
+rule for home would refuse every real project and be switched off within a day. What it protects is
+the directory itself, where one stray recursive delete is not recoverable, while a named project
+below it is exactly where a worker is supposed to run. A drive root (`C:`) and `/` count as "the
+whole computer" and are refused too.
+
+**The gate codes are part of the wire contract** (`GATE_CODES`; the panel localises them):
+
+| Code | Meaning |
+|---|---|
+| `inbox` | still waiting in the inbox; nothing is dispatched before a person confirms it |
+| `not-active` | the status is not `open` / `doing` |
+| `no-tag` | no `可自动` tag — nobody said an agent may take it |
+| `no-dir` | no `originDir`; a worker would pick its own place |
+| `dir-unsafe` | the directory is a storage root, the home directory itself, or a drive root |
+| `already-live` | the bound session is still running |
+| `cooldown` | this record was handed over inside `routerCooldownDays` |
+| `dir-cooldown` | this directory was handed over inside `routerCooldownDays` |
+| `daily-cap` | today's hand-offs already reached `routerDailyCap` |
+| `allowed` | would be allowed — the gate never dispatches |
+
+`budgetOf` counts today's hand-offs from `lastDispatch` by local calendar day, one per record. A
+record handed over twice in one day therefore counts once; that under-counts, which is the safe
+direction for a budget, and it is stated rather than hidden.
+
 ## Undo, not "are you sure?"
 
 Deleting a todo is the one destructive action in the panel, and a modal
@@ -877,6 +945,65 @@ net is wanted back it has to come from a positive signal — an explicit "an age
 one" mark on the todo, defaulting to *not* finished — rather than from a conversation going quiet.
 The regression test is `test/smoke.test.mjs`, "a quiet conversation never has its open todos closed
 for it".
+
+### What came back, ten days later
+
+The gap that survived the removal was measured on 2026-11-04: **106 open records, and not one of
+them had ever been dispatched**. So the hand-off watcher — the only automatic path — had never fired
+for a single record, and in practice "done" came from the model remembering a tool call or from a
+person clicking. That is not a mechanism either.
+
+Two signals were added, and both satisfy the condition above: neither is silence, and both only ever
+file a **claim** (the record moves to 待确认, so a wrong one costs a click rather than hiding
+unfinished work).
+
+- **Every step ticked, by an agent.** The plan was written and then completed; that is a statement
+  the record already contains. A person's tick is deliberately not one — in the panel, ticking boxes
+  is how you track progress, and 完成 is a separate button.
+- **A clean turn that changed a file the record names.** The evidence is that a named path actually
+  changed. Three bounds make it safe: the turn must be the one that *wrote* the record
+  (`originSessionId`), the file must be one the record attaches, and the turn must have ended
+  `completed`. A turn that already stated its own verdict (`global_todo_done`, a note, a reopen) is
+  left alone.
+
+What still does not exist, on purpose, is any path that makes a record disappear without an answer:
+stale records get a **filter and a bulk archive** ("not doing this" is an answer only a person can
+give), never a completion.
+
+## A board that grows faster than it drains
+
+0.22.0 put a gate on *admission*: no deadline, no list. That was necessary and not sufficient. On
+2026-11-04 the numbers said what was still wrong:
+
+| | |
+|---|---|
+| unfinished records | 98 |
+| closed on a typical day | ~3 |
+| due within 24 hours | 4 |
+| untouched for more than 14 days | **0** |
+
+The last row is the one that matters. Every instinct — "sweep the zombies", "archive anything older
+than N days" — depends on there being zombies, and there were none: the whole list had been written
+that week. The list was not rotting, it was **arriving faster than it drained**, and at three closes
+a day a 98-item board is a month of work. A month of work is a board nobody opens, which is how a
+todo list dies: not by being wrong, by being unread.
+
+So the fix could not be about age, or about what counts as done. It had to be about **attention**:
+
+- **A budget** (`settings.listLimit`, default 20). When the board is full, an agent-written record
+  waits in the inbox with `list-full` as its reason — the same shape as `no-due` and `quota`,
+  because a person reading "why is this here" deserves the same answer whichever gate caught it. A
+  person's own entry is never refused: the list belongs to its owner, and a limit that argues with
+  its owner is the plugin arguing with its owner. Going over budget is *shown*, not prevented.
+- **Later** (`someday`). The inbox answers "should this join the list at all?"; Later answers "not
+  this week". Both keep the record out of the board's counts, and both are one click back. The tag
+  is deliberately not a status: parking says nothing about whether the work is finished, which is
+  the only question this plugin refuses to guess.
+- **The number, visible** (`18 / 20` beside the counts). Quiet until it is full — a number that
+  always shouts is a number nobody reads.
+
+None of the three decides that any work is done. That is the line this repository has held since
+the quiet heuristic was removed, and a shrinking board was never a reason to cross it.
 
 ## Where the human and the agent meet
 

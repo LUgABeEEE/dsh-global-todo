@@ -63,11 +63,13 @@ const PACKAGE = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8')
  */
 const NOW = Date.parse('2026-10-30T15:00:00.000Z')
 const MINUTE = 60 * 1000
+const DAY = 24 * 60 * MINUTE
 const HOUR = 3600 * 1000
 
 const TODOS = [
   {
     id: 't-1a2b3c4d',
+    bucket: 'decision',
     title: '把dsh-global-todo发到 npm，并在 README 里补上截图',
     description: '先把版本号对齐 package.json 与 VERSION，再跑一遍 npm run verify。\n发布走 Trusted Publishing，不需要 token。',
     status: 'doing',
@@ -102,6 +104,7 @@ const TODOS = [
   },
   {
     id: 't-5e6f7a8b',
+    bucket: 'self',
     title: '等交换机到货后重测内网吞吐',
     description: '',
     status: 'open',
@@ -168,7 +171,9 @@ const TODOS = [
   },
 ]
 
-const COUNTS = { total: 4, open: 2, doing: 1, done: 1, cancelled: 0, overdue: 1 }
+// `stale` is one of the four fixture records: the chip only renders when it is non-zero, so a
+// missing entry here would silently drop the whole view from the preview.
+const COUNTS = { total: 4, open: 2, doing: 1, done: 1, cancelled: 0, overdue: 1, stale: 1, someday: 1 }
 
 // ------------------------------------------------------------------ runtime
 
@@ -426,6 +431,47 @@ const FAKE_WORKSPACES = {
   ],
   archivedSessionIds: ['session-aaaa0000-1111-2222-3333-444455556666'],
 }
+// A stale record, so the 陈旧 view has something to show: unfinished, and untouched for four
+// weeks. The fixture clock is frozen (NOW), which is what makes this reproducible at all.
+// A parked record, so the Later view has something to show and the board count excludes it.
+TODOS.push({
+  id: 't-parked001',
+  title: '稍后再说：换掉宿舍那台交换机',
+  description: '',
+  status: 'open',
+  priority: 'low',
+  dueAt: null,
+  tags: ['someday'],
+  links: [],
+  createdAt: NOW - 2 * DAY,
+  createdBy: 'agent',
+  updatedAt: NOW - 2 * DAY,
+  doneAt: null,
+  sessionId: '',
+  sessionAlive: false,
+  sessionDir: '',
+  lastDispatch: null,
+  captureSource: 'tool',
+})
+TODOS.push({
+  id: 't-9a8b7c6d',
+  title: '三周没人碰的一条（陈旧）',
+  description: '',
+  status: 'open',
+  priority: 'low',
+  dueAt: null,
+  tags: [],
+  links: [],
+  createdAt: NOW - 40 * DAY,
+  createdBy: 'agent',
+  updatedAt: NOW - 28 * DAY,
+  doneAt: null,
+  sessionId: '',
+  sessionAlive: false,
+  sessionDir: '',
+  lastDispatch: null,
+  captureSource: 'tool',
+})
 TODOS.push({
   id: 't-3f4a5b6c',
   title: '手动记一条：等交换机到货',
@@ -499,7 +545,10 @@ const requestedUrl = []
 // Scenarios let one harness photograph states the panel can only reach by clicking:
 // an empty list, a filter that matches nothing, the inbox, and a due reminder.
 const SCENARIOS = {
-  default: { todos: TODOS, counts: COUNTS },
+  // What the Host would actually answer for `status=active`: the parked fixture is in TODOS so the
+  // Later view can be rendered, but the service keeps it off the board, and a preview that showed it
+  // there would teach the wrong rule.
+  default: { todos: TODOS.filter((todo) => (todo.tags ?? []).includes('someday') !== true), counts: COUNTS },
   empty: {
     todos: [],
     counts: { total: 0, open: 0, doing: 0, done: 0, cancelled: 0, archived: 0, overdue: 0, inbox: 0 },
@@ -540,11 +589,75 @@ const SCENARIOS = {
     },
   },
 }
+/**
+ * Today's three, as `GET /triage` answers them.
+ *
+ * A fixture rather than a computed value on purpose: the panel must render the host's numbers
+ * as given, and a preview that recomputed them would hide a disagreement between the two.
+ */
+const TRIAGE = {
+  mode: 'observe',
+  generatedAt: NOW,
+  triage: {
+    generatedAt: NOW,
+    counts: { active: TODOS.length, overdue: 2, inbox: 0, review: 0, snoozed: 1 },
+    buckets: { decision: 1, self: 1, external: 1, unknown: 0 },
+    rows: [],
+    today: [
+      { id: TODOS[0].id, seq: 1, title: TODOS[0].title, bucket: 'decision', score: 7.35, why: ['逾期 11 天', '优先级 high'] },
+      { id: TODOS[1].id, seq: 2, title: TODOS[1].title, bucket: 'self', score: 5.2, why: ['有未完成步骤'] },
+      { id: TODOS[2].id, seq: 3, title: TODOS[2].title, bucket: 'external', score: 4.1, why: ['静置 16 天'] },
+    ],
+  },
+  // One record the gate would allow: the strip must say so ("本来会派 1 条") rather than
+  // looking broken on a list where nothing carries the 可自动 tag.
+  gate: {
+    budget: { day: '2026-10-30', used: 1, byDir: {} },
+    allowed: [{ id: TODOS[0].id, title: TODOS[0].title, code: 'allowed', reason: '可以派' }],
+    refused: [],
+  },
+  stalled: [{ id: TODOS[3].id, title: TODOS[3].title, hours: 30, live: false }],
+  policy: { tag: '可自动', dailyCap: 2, cooldownDays: 3 },
+}
+
 let scenario = 'default'
 
 globalThis.fetch = async (url) => {
   requestedUrl.push(url)
   const active = SCENARIOS[scenario] ?? SCENARIOS.default
+  // The triage route is asked next to the list; answering it with the *list* payload would
+  // render the strip as "nothing today" and hide a broken contract behind a plausible one.
+  if (url.includes('/triage') && active.triage === undefined) {
+    return { status: 200, json: async () => ({ ok: true, data: TRIAGE }) }
+  }
+  if (url.includes('/report')) {
+    return {
+      status: 200,
+      json: async () => ({
+        ok: true,
+        data: {
+          report: {
+            since: NOW - 7 * 24 * 60 * 60 * 1000,
+            days: 7,
+            finished: [
+              { id: TODOS[1].id, seq: 2, title: TODOS[1].title, at: NOW - 5 * HOUR, by: 'agent', summary: '换了模板并跑了一遍', sessionId: 'session-1', reviewPending: false, artifacts: [], artifactCount: 0 },
+            ],
+            created: 4,
+            sessions: 2,
+            files: [{ path: '/home/me/projects/demo/report.md', count: 2, titles: [TODOS[1].title] }],
+            fileCount: 1,
+            pendingReview: 1,
+            triage: {
+              counts: { active: 3, overdue: 1, inbox: 0, review: 1, snoozed: 1 },
+              buckets: { decision: 1, self: 1, external: 1, unknown: 0 },
+              incoming: { now: { decision: 1, self: 2, external: 0, unknown: 0 }, prev: { decision: 0, self: 0, external: 1, unknown: 0 } },
+              decisionBacklog: { stale: 3, oldestDays: 26 },
+            },
+          },
+        },
+      }),
+    }
+  }
   const payload = url.includes('/health')
     ? {
         ok: true,
@@ -560,6 +673,9 @@ globalThis.fetch = async (url) => {
             autoCollect: true,
             cooldownMinutes: 30,
             exemptWorkspaces: ['/home/me/projects/dorm-network'],
+            // The panel shows these three in Settings; the fixture keeps the mode in `observe`
+            // so the render proves the switch and the "run now" button, not the off state.
+            router: { mode: 'observe', dailyCap: 2, cooldownDays: 3 },
           },
           autoCollect: { enabled: true, asking: false, lastAsk: null, error: null },
           ...(active.reminders === undefined ? {} : { reminders: active.reminders }),
@@ -683,6 +799,14 @@ for (const effect of settingsFirst.effects) effect()
 await new Promise((resolve) => setTimeout(resolve, 20))
 const settingsTree = runtime.mount(registered.get('main'), { ...previewProps, initialSettingsOpen: true })
 const settingsHtml = render(settingsTree.tree)
+// The weekly report card: it is a dialog like the settings sheet, and it now carries the
+// triage block, so it gets its own render instead of being reachable only by a click.
+runtime.reset()
+const reportFirst = runtime.mount(registered.get('main'), { ...previewProps, initialReportOpen: true })
+for (const effect of reportFirst.effects) effect()
+await new Promise((resolve) => setTimeout(resolve, 20))
+const reportTree = runtime.mount(registered.get('main'), { ...previewProps, initialReportOpen: true })
+const reportHtml = render(reportTree.tree)
 // The four states that used to have no baseline at all: an empty list, a filter that
 // matches nothing, the inbox, and a due reminder. Each mounts its own scenario and is
 // photographed by tools/screenshot.mjs, so a regression shows up as a changed image.
@@ -747,6 +871,7 @@ writeFileSync(OUT, panelHtml)
 writeFileSync(OUT.replace(/\.html?$/, '') + '-detail.html', detailHtml)
 writeFileSync(OUT.replace(/\.html?$/, '') + '-select.html', selectHtml)
 writeFileSync(OUT.replace(/\.html?$/, '') + '-settings.html', settingsHtml)
+writeFileSync(OUT.replace(/\.html?$/, '') + '-report.html', reportHtml)
 for (const [name, html] of Object.entries(scenarioHtml)) {
   writeFileSync(OUT.replace(/\.html?$/, '') + '-' + name + '.html', html)
 }
@@ -852,6 +977,31 @@ function checkRenderedPanel(html, detail, select) {
   for (const label of ['工作区', '时间', '待办等级']) {
     expect(html.includes(`>${label}</button>`), `the ${label} grouping button is missing`)
   }
+  // Today's three sit above the list, with the budget and the four bucket words. They are
+  // the reason the panel exists as a "what now" surface rather than a filing cabinet, so a
+  // render that lost them is a regression, not a cosmetic change.
+  expect(html.includes('今日注意力'), 'the triage strip is missing')
+  expect(html.includes('派发 1/2'), 'the triage strip lost its budget line')
+  expect(html.includes('该你一句话'), 'the triage strip lost its bucket labels')
+  expect(html.includes('gt-triage-stall'), 'a stalled hand-off is not surfaced on the strip')
+  // The manual tick is reachable from the strip it belongs to.
+  expect(html.includes('现在跑一次'), 'the triage strip lost its manual run button')
+  // Each of the day's three can be handed over without opening it, and the strip says what
+  // the gate would allow — the two facts that make it a "what now" surface rather than a note.
+  expect(html.includes('gt-triage-hand'), 'a triage row cannot be handed off from the strip')
+  expect(html.includes('本来会派 1 条'), 'the strip does not report what the gate would allow')
+  // The four counts double as filters; a chip you cannot click is a legend, not a control.
+  expect(html.includes('gt-triage-chip'), 'the bucket counts are not clickable filters')
+  expect(html.includes('该你一句话 1'), 'a bucket chip lost its count')
+  // Deferred records are out of the three but counted, and the deferral control sits in the row.
+  expect(html.includes('推迟 1 条'), 'the strip does not report how many records are deferred')
+  expect(html.includes('aria-label="推迟"'), 'a triage row lost its deferral menu')
+  // The external row says when it was last chased — the one fact that keeps 「等外部」 honest.
+  expect(html.includes('还没催过'), 'an external row does not say when it was last chased')
+  // The weekly report keeps both halves of the question: what moved, and what is piling up.
+  expect(reportHtml.includes('分诊（此刻）'), 'the report lost its triage block')
+  expect(reportHtml.includes('该你一句话 1'), 'the report triage block lost the bucket counts')
+  expect(reportHtml.includes('3 条「该你一句话」已经挂了两周以上'), 'the report hides the decision backlog')
   // The scroll contract: the panel clips and the list scrolls. A flex item defaults to
   // min-height:auto, which silently made the column grow past the slot so nothing scrolled
   // and the host hid the rest of the list. Assert the two declarations that prevent it.
@@ -891,6 +1041,11 @@ function checkMobileRender(mobile) {
   expect(/class="gt-btn gt-btn-quiet gt-dispatch"[\s\S]{0,240}?aria-label=/.test(list), 'the icon-only hand-off button has no accessible name')
   expect(list.includes('gt-meta-by'), 'the creator attribution has no removable class')
   expect(list.includes('gt-chip-dir'), 'the directory chip has no removable class')
+  // The strip stays on the phone (it is the day's three) but the reasons fold away: the
+  // title is what a thumb chooses by, and a second ellipsis column costs the width for it.
+  expect(list.includes('gt-triage'), 'the triage strip is missing from the phone render')
+  expect(list.includes('gt-triage-hand'), 'the phone strip lost its hand-off button')
+  expect(/gt-root\[data-mobile="1"\]\s*\.gt-triage-row\s*\{[^}]*min-height:\s*44px/.test(css), 'the triage row is not a 44px touch target on the phone')
   // Touch: the controls a thumb has to hit are 44px, and the density styles that were
   // right for a mouse are switched off rather than left on with smaller type.
   expect(/\[data-mobile="1"\][^{]*\{[^}]*min-height:\s*44px/.test(css), 'no 44px touch target for mobile controls')
@@ -934,6 +1089,10 @@ function checkMobileRender(mobile) {
   // sheet, because its toolbar hides them; both have to render there.
   expect(settings.includes('gt-context-fields'), 'the settings sheet carries no dispatch context')
   expect(settings.includes('gt-auto-idle'), 'the settings sheet carries no auto-collect idle field')
+  // The daily-triage settings used to be API-only; the sheet is where a person would look
+  // for the switch, so losing them here is losing the switch.
+  expect(settings.includes('每日分诊'), 'the settings sheet carries no daily-triage group')
+  expect(settings.includes('gt-router-cap'), 'the settings sheet carries no hand-off budget field')
   // The 上下文 button keeps its own label: a settings title once reused `settings.context`
   // and silently renamed it (caught here, and by the duplicate-key test).
   expect(list.includes('>上下文<'), 'the 上下文 button lost its label')

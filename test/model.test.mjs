@@ -161,7 +161,21 @@ test('counts summarise a list', () => {
   ]
   setStatus(todos[1], 'done', { now: NOW })
   const summary = counts(todos, NOW)
-  assert.deepEqual(summary, { total: 2, open: 1, doing: 0, done: 1, cancelled: 0, archived: 0, overdue: 1, inbox: 0, review: 0 })
+  // The record created at NOW is not stale (isStale needs STALE_DAYS untouched); the failing
+  // one is overdue, which is a different question with a different answer.
+  assert.deepEqual(summary, {
+    total: 2,
+    open: 1,
+    doing: 0,
+    done: 1,
+    cancelled: 0,
+    archived: 0,
+    overdue: 1,
+    inbox: 0,
+    someday: 0,
+    stale: 0,
+    review: 0,
+  })
 })
 
 test('loading tolerates damage: bad rows and bad attachments are dropped, the rest survives', () => {

@@ -279,6 +279,13 @@ missing-file chip instead of rendering a broken frame. `lib/links.js`, `lib/rout
   are list items, filter buttons report `aria-pressed`, and every icon-only button carries a
   name (`test/a11y.test.mjs` guards all of it).
 
+### 8. Controlled dispatch, after observation
+
+`observe` already computes what the gate would allow and records it once a day; the next step is
+letting that short list actually be dispatched (`auto` in `routerMode`), and only after two weeks
+of watched proposals have shown the buckets and the budget agree with what a person would have
+chosen. No date is set, because the observation is the gate.
+
 ### Landed after this list was written
 
 Due reminders (0.5.2), batch completion and tagging (`/bulk`), archive instead of

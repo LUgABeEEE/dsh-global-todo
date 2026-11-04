@@ -88,6 +88,7 @@ function satisfies(version, rangeText) {
 // `^0.2.1` would refuse both 0.2.1-rc.2 and 0.2.1-rc.3. Do not narrow it.
 assert.equal(satisfies("0.2.1-rc.2", ">=0.2.0-rc.1 <0.3.0"), true)
 assert.equal(satisfies("0.2.1-rc.3", ">=0.2.0-rc.1 <0.3.0"), true)
+assert.equal(satisfies("0.2.1-rc.5", ">=0.2.0-rc.1 <0.3.0"), true)
 assert.equal(satisfies("0.3.0", ">=0.2.0-rc.1 <0.3.0"), false)
 assert.equal(satisfies("0.2.0-rc.1", ">=0.2.0-rc.1"), true)
 assert.equal(satisfies("0.2.0-alpha.5", ">=0.2.0-rc.1"), false)

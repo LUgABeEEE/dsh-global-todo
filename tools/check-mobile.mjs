@@ -39,7 +39,10 @@ const VIEWPORT = { width: 390, height: 844 }
  * Tall enough that every control is on screen: `elementFromPoint` answers null outside the
  * viewport, which would read as "no hit area" and is not what we measure.
  */
-const MEASURE_HEIGHT = 2400
+// Raised from 2400 on 2026-11-03: the triage strip (chips + hand-off buttons) made the
+// detail card taller, and its last controls were clipped by the measure viewport, which read
+// as "1x1 hit area" instead of "below the fold". Still a proxy for a phone, not a phone.
+const MEASURE_HEIGHT = 3200
 
 /** The three phone views, and what each one is for. */
 const VIEWS = [
@@ -92,8 +95,8 @@ const PROBE = () => {
   const sheet = document.querySelector('.gt-settings')
   const scope = sheet ?? document
   for (const element of scope.querySelectorAll('button, a[href], input, select, textarea, [role="button"], label')) {
-    const box = element.getBoundingClientRect()
-    if (box.width < 1 || box.height < 1) continue
+    // Zero-sized entries are display artefacts, not controls.
+    if (element.getBoundingClientRect().width < 1 || element.getBoundingClientRect().height < 1) continue
     const style = getComputedStyle(element)
     if (style.display === 'none' || style.visibility === 'hidden') continue
     // A small checkbox inside its label is the documented pattern: the label is the target.
@@ -104,6 +107,16 @@ const PROBE = () => {
     const key = element.tagName + '|' + element.className + '|' + name
     if (seen.has(key)) continue
     seen.add(key)
+    // Bring the control into view before probing it.
+    //
+    // `elementFromPoint` answers null outside the viewport, and the phone layout scrolls in
+    // two directions on purpose: the page scrolls down, and the chip rail scrolls sideways. A
+    // control parked past the right edge of that rail is reachable — a thumb swipes the rail —
+    // but the point at its centre resolves to nothing, which the probe would report as a 1x1
+    // target. That is the mistake this checker exists to catch, one level up: measuring the
+    // position instead of the reach.
+    element.scrollIntoView({ block: 'nearest', inline: 'center' })
+    const box = element.getBoundingClientRect()
     const owns = (x, y) => {
       const hit = document.elementFromPoint(x, y)
       return hit !== null && (hit === element || element.contains(hit))

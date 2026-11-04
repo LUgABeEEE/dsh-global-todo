@@ -124,7 +124,9 @@ async function main() {
       Array.isArray(todo.links) &&
       Array.isArray(todo.tags) &&
       typeof todo.createdAt === 'number' &&
-      ['open', 'doing', 'done', 'cancelled'].includes(todo.status)
+      // `archived` belongs here: the panel lists that view, and leaving it out reported a
+      // perfectly good archived record as malformed the first time one existed in a test store.
+      ['open', 'doing', 'done', 'cancelled', 'archived'].includes(todo.status)
     check(shaped, `${todo.id} has the fields the panel reads`)
   }
 }
