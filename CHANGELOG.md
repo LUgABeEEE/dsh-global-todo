@@ -1,4 +1,4 @@
-## [Unreleased]
+## [0.23.2] — 2026-11-05
 
 - **把「交给 Superagent」的契约写进文档并钉在测试里** (`docs/SUPERAGENT.md`).
   The integration works through three moves that each belong to a different party —
@@ -10,9 +10,6 @@
   to touch it again.** That is the loop stop, not a side effect — without it a worker
   replying to a ticket dispatches itself forever.
   `test/superagent-contract.test.mjs` holds the three assertions the document depends on.
-
-## [0.23.2] — 2026-11-05
-
 - **Finished records leave the file after 21 days** (`doneRetentionDays`, 0 keeps everything).
   Measured before this: 434 records of which 385 were finished, while the panel showed six — three
   weeks of history carried by every fold. Removals leave a tombstone, like a manual one.
