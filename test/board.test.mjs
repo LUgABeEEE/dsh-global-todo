@@ -110,7 +110,8 @@ test('0 disables the cap, so a deployment can opt out', async () => {
   // `0` is the escape hatch, and it must not quietly re-enable itself through the normalizer.
   // The daily allowance is a different gate and still applies — that is why this asserts on the
   // reason rather than on "nothing ever waits".
-  const env = await harness({ listLimit: 0 })
+  // Both ceilings off: they are separate rules and the point of this case is the board one.
+  const env = await harness({ listLimit: 0, dailyRecordLimit: 0 })
   try {
     for (let index = 0; index < 12; index += 1) {
       const todo = await env.service.create({ title: 'row ' + index, dueAt: deadline }, { by: 'agent', source: 'tool' })
@@ -195,6 +196,67 @@ test('confirming out of the inbox cannot walk past a full board', async () => {
     const third = await env.service.create({ title: 'C' }, { by: 'agent', source: 'tool' })
     await env.service.update(third.id, { tags: [] }, { by: 'agent' })
     assert.equal((await env.service.get(third.id)).tags.includes('inbox'), false)
+  } finally {
+    await env.cleanup()
+  }
+})
+
+test('a finished record leaves the file after the retention window', async () => {
+  // The store is a work list, not an archive: measured 2026-11-05 it held 434 records of which
+  // 375 were finished. The panel showed six.
+  const env = await harness({ requireExistingFiles: false })
+  try {
+    const old = await env.service.create({ title: '很久以前做完的', dueAt: deadline }, { by: 'agent', source: 'tool' })
+    await env.service.complete(old.id, { summary: '做完了' }, { by: 'human' })
+    const fresh = await env.service.create({ title: '刚做完的', dueAt: deadline }, { by: 'agent', source: 'tool' })
+    await env.service.complete(fresh.id, { summary: '刚做完' }, { by: 'human' })
+
+    // Age the first one past the window by rewriting its completion stamp.
+    const doc = await env.store.read()
+    const record = doc.todos.find((todo) => todo.id === old.id)
+    record.doneAt = Date.now() - 30 * 86_400_000
+    record.updatedAt = record.doneAt
+    await env.store.write(doc)
+
+    const result = await env.service.purgeFinished({ days: 21 })
+    assert.equal(result.removed, 1, 'only the one past the window')
+    const after = await env.store.read()
+    assert.equal(after.todos.some((todo) => todo.id === old.id), false, 'gone from the file')
+    assert.equal(after.todos.some((todo) => todo.id === fresh.id), true, 'the recent one stays')
+    assert.equal(after.trash.some((mark) => mark.id === old.id), true, 'and it left a tombstone, or a fold puts it back')
+  } finally {
+    await env.cleanup()
+  }
+})
+
+test('0 days keeps everything', async () => {
+  const env = await harness()
+  try {
+    const todo = await env.service.create({ title: '做完也不删', dueAt: deadline }, { by: 'agent', source: 'tool' })
+    await env.service.complete(todo.id, { summary: 'done' }, { by: 'human' })
+    assert.deepEqual(await env.service.purgeFinished({ days: 0 }), { removed: 0 })
+    assert.equal((await env.store.read()).todos.some((item) => item.id === todo.id), true)
+  } finally {
+    await env.cleanup()
+  }
+})
+
+test('the day has a writing allowance, and refusing is the point', async () => {
+  const env = await harness({ dailyRecordLimit: 2, listLimit: 0 })
+  try {
+    await env.service.create({ title: 'A', dueAt: deadline }, { by: 'agent', source: 'tool' })
+    await env.service.create({ title: 'B' }, { by: 'agent', source: 'tool' })
+    // The inbox used to be a place records could pile up without limit: the list allowance only
+    // counted what joined the list, so an agent could file sixteen and have eight wait here.
+    await assert.rejects(
+      () => env.service.create({ title: 'C', dueAt: deadline }, { by: 'agent', source: 'tool' }),
+      (error) => error.code === 'capture-quota',
+      'past the day allowance the answer is no, not another inbox entry',
+    )
+    assert.equal(await env.service.recordedToday(), 2)
+    // A person is never refused: the allowance is about what an agent files on their behalf.
+    const mine = await env.service.create({ title: '我自己加的' }, { by: 'human', source: 'human' })
+    assert.equal(mine.title, '我自己加的')
   } finally {
     await env.cleanup()
   }

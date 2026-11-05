@@ -1,3 +1,12 @@
+## [Unreleased]
+
+- **Finished records leave the file after 21 days** (`doneRetentionDays`, 0 keeps everything).
+  Measured before this: 434 records of which 385 were finished, while the panel showed six — three
+  weeks of history carried by every fold. Removals leave a tombstone, like a manual one.
+- **Ten records a day, all doors** (`dailyRecordLimit`, 0 disables). The old cap counted only what
+  joined the list, so an agent could write sixteen and leave eight in the inbox with nothing
+  limiting them. Past the allowance the write is refused with `429 capture-quota` — the right
+  answer to "one more" is to work through what is there. A person's entries are never refused.
 ## [0.23.1] — 2026-11-04
 
 Corrects 0.23.0, which shipped an exploration layer that does not belong on the main line.

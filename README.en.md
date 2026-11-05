@@ -510,6 +510,21 @@ The unattended question also got its own, stricter wording (at most two records,
 is a valid answer, only waiting-on-someone / dated / promised) — separate from 抓一下待办, which is
 something you asked for and may err towards completeness.
 
+### Forgetting: finished records leave, and writing has a ceiling
+
+The list is a workbench, not an archive. Measured on 2026-11-05: **the file held 434 records, 385 of
+them finished**, while the screen showed six — three weeks of history that every cross-machine fold
+carried along.
+
+- **Finished records leave the file**: done or cancelled for more than **21 days**
+  (`doneRetentionDays`; 0 keeps everything) is removed and tombstoned — the same rule a manual
+  removal follows, so a fold from another machine cannot bring it back. Twenty-one days because the
+  weekly report compares this week with the previous one, and a shorter window empties its numbers.
+- **Ten records a day, all doors** (`dailyRecordLimit`; 0 disables). The old cap only counted what
+  joined the list, so an agent could write sixteen and leave eight waiting in the inbox forever.
+  Past the allowance the write is **refused** with the reason (HTTP 429), because the right answer
+  to "one more thing" is to work through what is already there. A person's own entries are never
+  refused.
 ### Keeping it short: the board has a budget, and there is a Later
 
 A list sorted only by “is it overdue” cannot be kept readable. Measured on this machine on
