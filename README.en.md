@@ -29,7 +29,7 @@ Three things it does that a session-local plan cannot — the first is the one i
 dsh plugin add dsh-global-todo
 ```
 
-[Live page](https://lugabeeee.github.io/dsh-global-todo/) (22-second typographic demo) · [中文](https://github.com/LUgABeEEE/dsh-global-todo/blob/main/README.md#zh) · [5-minute quickstart](docs/QUICKSTART.md) · [FAQ](docs/FAQ.md) · [Every state has a baseline image](#screenshots) · [Design notes](docs/DESIGN.md)
+[Live page](https://lugabeeee.github.io/dsh-global-todo/) (22-second typographic demo) · [中文](https://github.com/LUgABeEEE/dsh-global-todo/blob/main/README.md#zh) · [5-minute quickstart](docs/QUICKSTART.md) · [FAQ](docs/FAQ.md) · [Every state has a baseline image](#screenshots) · [Design notes](docs/DESIGN.md) · [Handing work to Superagent](docs/SUPERAGENT.md)
 
 ---
 

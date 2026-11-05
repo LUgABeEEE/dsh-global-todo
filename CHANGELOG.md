@@ -1,5 +1,18 @@
 ## [Unreleased]
 
+- **把「交给 Superagent」的契约写进文档并钉在测试里** (`docs/SUPERAGENT.md`).
+  The integration works through three moves that each belong to a different party —
+  a person tags a record, the worker replies with a note, the person confirms. The
+  document states what the list guarantees (a record is a request only when a person
+  wrote it, it has an `originDir`, it is not in the inbox, and no session is alive),
+  what attribution a note carries, and the one non-obvious rule:
+  **a reply takes the record out of the request set, so re-running it needs a person
+  to touch it again.** That is the loop stop, not a side effect — without it a worker
+  replying to a ticket dispatches itself forever.
+  `test/superagent-contract.test.mjs` holds the three assertions the document depends on.
+
+## [0.23.2] — 2026-11-05
+
 - **Finished records leave the file after 21 days** (`doneRetentionDays`, 0 keeps everything).
   Measured before this: 434 records of which 385 were finished, while the panel showed six — three
   weeks of history carried by every fold. Removals leave a tombstone, like a manual one.
@@ -7,6 +20,16 @@
   joined the list, so an agent could write sixteen and leave eight in the inbox with nothing
   limiting them. Past the allowance the write is refused with `429 capture-quota` — the right
   answer to "one more" is to work through what is there. A person's entries are never refused.
+- **A question is not a todo, and waiting is not today's work.** Measured over the 434 records this
+  list had held: 40 (9%) were shaped like a decision for the person, 29 more were waiting on
+  somebody else, and all three classes lived about as long — work 98 h, waiting 108 h, decisions
+  70 h. What looked like a backlog of tasks was three queues on one screen. The rule is now the
+  next move: yours → a todo; the person's → a question, asked in the conversation; somebody
+  else's → `someday` with a date, so it comes back when it matters.
+- **The tool message says which inbox reason applied** (no deadline / the day's allowance / a full
+  board). It used to say "没有截止时间" for all three, which is the same class of lie as a "done"
+  nobody agreed to.
+
 ## [0.23.1] — 2026-11-04
 
 Corrects 0.23.0, which shipped an exploration layer that does not belong on the main line.

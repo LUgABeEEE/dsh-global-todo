@@ -24,7 +24,7 @@
 dsh plugin add dsh-global-todo
 ```
 
-[在线主页](https://lugabeeee.github.io/dsh-global-todo/)（22 秒排版演示）· [English](https://github.com/LUgABeEEE/dsh-global-todo/blob/main/README.md#english) · [5 分钟上手](docs/QUICKSTART.md) · [常见问题](docs/FAQ.md) · [每个条件状态都有基线图](#截图) · [设计说明](docs/DESIGN.md)
+[在线主页](https://lugabeeee.github.io/dsh-global-todo/)（22 秒排版演示）· [English](https://github.com/LUgABeEEE/dsh-global-todo/blob/main/README.md#english) · [5 分钟上手](docs/QUICKSTART.md) · [常见问题](docs/FAQ.md) · [每个条件状态都有基线图](#截图) · [设计说明](docs/DESIGN.md) · [交给 Superagent](docs/SUPERAGENT.md)
 
 ---
 
