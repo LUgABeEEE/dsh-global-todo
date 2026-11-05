@@ -393,6 +393,13 @@ const equal = (group, name, actual, expected) =>
   check('O publish', 'and the publish step itself carries the guard', workflow.includes('npm publish --provenance'))
   const runbook = await readFile(new URL('../docs/RELEASING.md', import.meta.url), 'utf8')
   check('O publish', 'the force hatch names its three cases', runbook.includes('Retracting a mis-shipped version'))
+  // The list grew because everything that needed a decision was recorded as work.
+  // The rule that keeps it short is a prompt rule, so it is pinned where the model reads it.
+  const guidance = await readFile(new URL('../lib/index.js', import.meta.url), 'utf8')
+  const toolsSource = await readFile(new URL('../lib/tools.js', import.meta.url), 'utf8')
+  check('P capture', 'a question is not a todo', guidance.includes('询问类不要记'))
+  check('P capture', 'and the tool says so at the call site', toolsSource.includes('别把问题记成待办'))
+  check('P capture', 'waiting on somebody goes to later, not to today', guidance.includes('等待类挂「稍后」'))
 
   const zhBoard = await readFile(new URL('../README.md', import.meta.url), 'utf8')
   const enBoard = await readFile(new URL('../README.en.md', import.meta.url), 'utf8')
