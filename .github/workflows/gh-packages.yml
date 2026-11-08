@@ -1,0 +1,43 @@
+name: publish to GitHub Packages
+
+# 同一个包除了 npmjs，再发一份到 GitHub Packages（github.com/LUgABeEEE?tab=packages）。
+# GitHub Packages 的 npm 只收「带作用域」的包名，所以只在 runner 上把 name 改成
+# @lugabeee/<原名>，仓库里的 package.json 一个字都不动。
+# 只在手动触发或发布 release 时跑，平时不占 CI。
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          registry-url: "https://npm.pkg.github.com"
+
+      - name: Publish scoped copy
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          base=$(node -p "require('./package.json').name")
+          version=$(node -p "require('./package.json').version")
+          scoped="@lugabeee/${base##*/}"
+          echo "→ ${scoped}@${version}"
+          npm pkg set "name=$scoped"
+          npm pkg set "repository.url=https://github.com/${GITHUB_REPOSITORY}"
+          npm pkg delete publishConfig.registry || true
+          if npm view "$scoped@$version" version >/dev/null 2>&1; then
+            echo "::notice::${scoped}@${version} 已在 GitHub Packages 上，跳过"
+            exit 0
+          fi
+          npm publish
