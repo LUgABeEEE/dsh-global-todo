@@ -41,4 +41,6 @@ jobs:
             echo "::notice::${scoped}@${version} 已在 GitHub Packages 上，跳过"
             exit 0
           fi
-          npm publish --registry https://npm.pkg.github.com
+          # prepack/prepublishOnly 是发布前体检，已经在 npmjs 的发布流程里跑过；这里再跑一遍
+          # 只会因为包名被改写成 @Owner/ 而失败（那些脚本会校验 name）。镜像副本直接发。
+          npm publish --registry https://npm.pkg.github.com --ignore-scripts
