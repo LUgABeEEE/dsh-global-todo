@@ -68,6 +68,50 @@ global `user.name`.
 The public repository is the trusted publisher; the private one is where work happens. A transplant
 pushes one tree as a single new commit, so the two histories are unrelated and can drift silently.
 
+**The public default branch has been protected since 2026-11-08** (rulesets `protect-default-branch`
+and `require-ci`): direct pushes are refused with `push declined due to repository rule violations`,
+and the three `verify` jobs must pass before anything can land. The transplant therefore goes
+through a branch and a squash-merged PR — a push to `main` is no longer an option, and that is why
+the shape below differs from older releases:
+
+```sh
+# build the transplanted commit exactly as before (one tree, one parent = current public main)
+NEW=$(git -c user.name=LUgABeEEE -c user.email=LUgABeEEE@users.noreply.github.com commit-tree \
+  HEAD^{tree} -p "$(git rev-parse refs/remotes/public/main)" -F /tmp/public-commit.txt)
+test -n "$NEW" || { echo "empty sha, refusing"; exit 1; }
+git push pub "$NEW:refs/heads/release/X.Y.Z"        # a branch, not main
+~/.local/bin/gh pr create --repo LUgABeEEE/dsh-global-todo \
+  --base main --head release/X.Y.Z --title "release: X.Y.Z — <one line>" --body-file /tmp/pr-body.md
+~/.local/bin/gh pr checks <n> --repo LUgABeEEE/dsh-global-todo      # three verify jobs
+~/.local/bin/gh pr merge <n> --squash --delete-branch \
+  --subject "release: X.Y.Z — <one line>"
+```
+
+Squash keeps public history one commit per release, and the tree survives the squash: check
+`git rev-parse refs/remotes/public/main^{tree}` against `git rev-parse "$NEW"^{tree}` before tagging.
+
+**Tag the merged commit, not the private one.** A tag pushed from the private history drags that
+history's commit object into the public repository and points the release page at a commit that
+public `main` does not contain — that happened on 0.23.3, and the fix is a delete + retag:
+
+```sh
+git fetch pub main:refs/remotes/public/main
+git tag -f -a vX.Y.Z "$(git rev-parse refs/remotes/public/main)" -F /tmp/tag-message.txt
+git push pub vX.Y.Z
+```
+
+`git tag -a` needs the identity flags too; without them it fails with
+`unable to auto-detect email address`, leaves the *old* tag in place, and the following
+`git push pub vX.Y.Z` silently pushes the wrong object. Check `git rev-parse vX.Y.Z^{commit}`
+against the public `main` sha before pushing.
+
+**Public-only merges must come back into the private tree first.** PRs merged directly on the
+public repository (the GitHub Packages workflow, the README FAQ sentence) exist only there; a
+transplant would delete them, because it pushes one tree. Pull them in — usually by copying the
+files or the one-line edit — and commit `chore(sync): ...` before Transplating. That is what the
+tree compare above is for: after the sync, `git diff --stat refs/remotes/public/main main` should
+list only this release's changes, with no deletions of files the private tree lacks.
+
 ```sh
 PUBLIC=https://github.com/LUgABeEEE/dsh-global-todo
 git fetch "$PUBLIC" main:refs/remotes/public/main
@@ -95,6 +139,16 @@ The tag push triggers `publish.yml` (OIDC, no token). `gh run list --repo LUgABe
 shows it; a red run means nothing was published.
 
 ## 4. Wait for the registry, then build the release asset from it
+
+**`npm publish` may answer `E409 Cannot publish over previously staged version`.** Newer npm stages
+a publish instead of putting it live immediately (the version is invisible on the registry, and the
+staged entry carries the running workflow's OIDC identity). A cancelled or overlapping run leaves
+one behind, and the next run's publish collides with it. Observed on 0.23.3: the staged version
+became public about two minutes later, with no maintainer approval, and the run that "failed" was
+the redundant one. So: **check the registry for two to three minutes before deciding anything.** If
+the version appears, the release happened — say so and leave the red run alone (`npm view
+dsh-global-todo version`). Only if it stays invisible for ~20 minutes is there something for a
+maintainer to approve on npmjs.com, and only they can do it.
 
 Metadata can appear minutes before the tarball, and the tarball is what the release must carry:
 
