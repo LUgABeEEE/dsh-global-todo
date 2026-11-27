@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 
+import { createTodo } from '../lib/model.js'
 import { createService } from '../lib/service.js'
 import { createStore } from '../lib/store.js'
 
@@ -495,5 +496,55 @@ test('annotateLinks flags a dead image as well as a dead document', async () => 
   } finally {
     await env.cleanup()
     await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('every tab counts what it lists, including a record closed before it was admitted (#18 / #19)', async () => {
+  const env = await harness()
+  try {
+    // Exactly the record 0.23.2 left behind: admitted to the inbox for having no deadline, then
+    // completed by an agent before a person ever answered, with the tag still on it. The panel
+    // counted it under 完成 / 待确认 and listed it in neither tab.
+    const legacy = createTodo({ id: 't-legacy', title: '在收件箱里被勾掉的' }, { now: 1 })
+    await writeFile(
+      path.join(env.dir, 'todos.json'),
+      JSON.stringify({
+        version: 2,
+        todos: [
+          {
+            ...legacy,
+            status: 'done',
+            doneAt: 2,
+            review: { pending: true, at: 2, by: 'agent' },
+            tags: ['inbox'],
+            inboxReason: 'no-due',
+          },
+        ],
+        trash: [],
+      }),
+    )
+
+    const done = await env.service.list({ status: 'done' })
+    assert.equal(done.todos.length, 1, 'a completed record is listed under 完成')
+    assert.equal(done.counts.done, 1)
+    assert.equal(done.counts.review, 1, 'and it is still waiting for a person')
+    const inbox = await env.service.list({ status: 'active', tag: 'inbox' })
+    assert.equal(inbox.todos.length, 0)
+    assert.equal(inbox.counts.inbox, 0, 'nothing waits in the inbox once it is closed')
+
+    // The invariant behind the whole fix: no tab may count a row it does not list.
+    for (const [filter, key] of [
+      ['all', 'total'],
+      ['open', 'open'],
+      ['doing', 'doing'],
+      ['done', 'done'],
+      ['cancelled', 'cancelled'],
+      ['archived', 'archived'],
+    ]) {
+      const page = await env.service.list({ status: filter })
+      assert.equal(page.todos.length, page.counts[key], `${filter}: the number matches the rows`)
+    }
+  } finally {
+    await env.cleanup()
   }
 })

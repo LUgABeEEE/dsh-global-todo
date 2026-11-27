@@ -1,3 +1,22 @@
+## [0.23.3] — 2026-11-27
+
+- **收件箱里的记录被勾成完成后，不再从所有视图里消失** (#18 / #19).
+  `counts()` asked "tagged and still active" while the list filter asked "tagged", so a record
+  completed before anyone admitted it was counted under 完成 / 待确认 and listed in neither — a
+  number with no rows under it, and the one gate this plugin exists to enforce became unreachable
+  for exactly the records that had never been admitted. Both readers now ask one predicate
+  (`waitingInInbox` / `parkedForLater`); closing a record takes `inbox` / `someday` off in the same
+  write, with an `unparked` entry in the trail; and a store written by 0.23.2 is repaired on read
+  (tags only — `updatedAt` is left alone, because a repair is not an edit). A regression test
+  asserts what the reports asked for: every tab counts what it lists.
+- **展开一条待办不再让整个面板崩掉** (#14).
+  `TodoItem` read `ctx?.uiWorkspace` from a scope where `ctx` was never bound, and optional chaining
+  does not rescue an unbound identifier: opening a row whose conversation read-back had content
+  threw `ReferenceError`, and the panel boundary replaced the whole panel with its fallback. The
+  item receives `ctx` through props now, and `test/bundle.test.mjs` mounts the panel, opens a row,
+  runs the read-back effect and re-renders — the failure is caught in CI instead of in someone's
+  panel.
+
 ## [0.23.2] — 2026-11-05
 
 - **把「交给 Superagent」的契约写进文档并钉在测试里** (`docs/SUPERAGENT.md`).

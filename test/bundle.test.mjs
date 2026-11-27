@@ -22,6 +22,7 @@ import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import test from 'node:test'
 import { fileURLToPath } from 'node:url'
+import { createTodo } from '../lib/model.js'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -92,7 +93,12 @@ function createRuntime() {
     },
     useEffect(effect) {
       const index = cursor++
-      if (hooks[index] === undefined) hooks[index] = { effect }
+      // The closure is replaced on every render, the way React replaces it: the
+      // test decides *when* an effect runs, not which render's closure it runs.
+      // Keeping the first closure made an effect see the props of the mount that
+      // first rendered it — a stale `open: false` — which is precisely the state
+      // a regression test is trying to leave behind.
+      hooks[index] = { effect }
     },
   }
 
@@ -170,6 +176,27 @@ function textsOf(node, out = []) {
   return out
 }
 
+/**
+ * The first element in a rendered tree whose props include `name`.
+ *
+ * A test that has to press something in the panel cannot address it by name, so
+ * it addresses it by the prop the call site passed to that component.
+ *
+ * @returns {object|undefined}
+ */
+function firstWithProp(node, name) {
+  if (node === null || node === undefined || typeof node !== 'object') return undefined
+  if (Array.isArray(node)) {
+    for (const child of node) {
+      const hit = firstWithProp(child, name)
+      if (hit !== undefined) return hit
+    }
+    return undefined
+  }
+  if (node.props !== undefined && node.props[name] !== undefined) return node
+  return firstWithProp(node.children ?? [], name)
+}
+
 /** @returns {string[]} every className in a rendered tree */
 function classesOf(node, out = []) {
   if (node === null || node === undefined || typeof node !== 'object') return out
@@ -216,6 +243,11 @@ function loadBundle(documentStub) {
         entry = registration
       },
     },
+    // The panel subscribes to `resize` while a row is expanded. A render test
+    // that opens a row runs that effect, so the double has to accept a listener
+    // and hand back nothing when it is removed.
+    addEventListener() {},
+    removeEventListener() {},
   }
   const run = new Function('window', 'document', 'navigator', source) // eslint-disable-line no-new-func
   run(windowStub, documentStub, { language: 'zh-CN' })
@@ -386,6 +418,71 @@ test('a panel crash is contained and reported instead of blanking the entry', ()
   assert.match(texts, /面板出错了/)
   assert.match(texts, /boom/)
   assert.equal(typeof healthy.retry, 'function', 'the fallback must offer a retry')
+})
+
+test('expanding a row renders its details without an unbound identifier', async () => {
+  // Regression (issue #14): the readback block was guarded by
+  // `ctx?.uiWorkspace?.openSession`, but `TodoItem` never received `ctx` — it was
+  // neither destructured from props nor passed at the call site. Optional chaining
+  // cannot rescue an unbound identifier, so opening any row threw `ReferenceError`
+  // and the boundary replaced the whole panel with its fallback. A handful of
+  // hook state is enough to reproduce it: mount, let the first load land, then
+  // press the row.
+  const runtime = createRuntime()
+  const { registered } = mountPlugin(runtime.React)
+  const panel = registered.get('main').component
+  const todo = { ...createTodo({ title: 'expand me', description: 'a row that opens' }), sessionId: 'sess-1' }
+
+  const originalFetch = globalThis.fetch
+  globalThis.fetch = async (url) => {
+    const target = String(url)
+    return {
+      status: 200,
+      json: async () => ({
+        ok: true,
+        data: target.includes('/session')
+          ? { session: { alive: true, tail: { at: Date.now(), text: 'the agent said something' } } }
+          : {
+              todos: [todo],
+              counts: { total: 1, open: 1, doing: 0, done: 0, cancelled: 0, overdue: 0, stale: 0, inbox: 0, review: 0 },
+            },
+      }),
+    }
+  }
+  const disposers = []
+  const runEffects = (mounted) => {
+    for (const effect of mounted.effects) {
+      const dispose = effect()
+      if (typeof dispose === 'function') disposers.push(dispose)
+    }
+  }
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 0))
+  try {
+    // 1. empty panel: the load effect fills the hook store the runtime keeps for it.
+    runEffects(runtime.mount(panel, {}))
+    await settle()
+
+    // 2. the record is on the board now; press it.
+    const loaded = runtime.mount(panel, {})
+    const row = firstWithProp(loaded.tree, 'onToggleOpen')
+    assert.ok(row !== undefined, 'a loaded record renders as a row')
+    row.props.onToggleOpen(todo.id)
+
+    // 3. open: the detail renders and asks the host for the conversation tail.
+    const opened = runtime.mount(panel, {})
+    assert.match(textsOf(opened.tree).join(' '), /会话回读/, 'the row is open, so its detail section has to render')
+    runEffects(opened)
+    await settle()
+    // 4. the tail arrives: the readback now renders the button that needs `ctx`.
+    let settled
+    assert.doesNotThrow(() => {
+      settled = runtime.mount(panel, {})
+    }, 'the readback must not throw on an identifier the item never received')
+    assert.match(textsOf(settled.tree).join(' '), /the agent said something/, 'the tail is on screen')
+  } finally {
+    for (const dispose of disposers) dispose()
+    globalThis.fetch = originalFetch
+  }
 })
 
 test('a hot reload replaces the previous stylesheet instead of reusing it', () => {
