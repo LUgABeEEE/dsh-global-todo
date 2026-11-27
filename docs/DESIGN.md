@@ -1080,6 +1080,12 @@ gate does follows from that:
   counted by `counts()` — otherwise the gate would move rows without changing what the person sees.
   The panel's existing 收件箱 view (收下 / 丢弃, seven-day sweep) is the triage surface, so nothing new
   had to be invented for it.
+- **Waiting is something a record does while it is unfinished.** Closing a record (done / cancelled /
+  archived) takes the `inbox` and `someday` tags off in the same write, with an `unparked` entry in
+  the trail, and both readers ask one predicate (`waitingInInbox` / `parkedForLater`) instead of
+  each deciding for itself. Two readers answering the same question differently is what made a
+  completed record counted but unlisted (0.23.3, issues #18 / #19) — the tab's number and the rows
+  under it must come from one answer.
 - **An allowance, not a rate limit.** Eight agent-written records may join the list per day. Past
   that, the record still exists — in the inbox, with `inboxReason: 'quota'` on it. A cap that *drops*
   would silently lose the one real item in a noisy day.

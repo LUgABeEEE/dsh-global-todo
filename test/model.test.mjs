@@ -19,6 +19,8 @@ import {
   normalizeDue,
   normalizeStored,
   normalizeTags,
+  parkedForLater,
+  waitingInInbox,
   pushActivity,
   recordDispatch,
   removeLink,
@@ -497,4 +499,63 @@ test('a date-only deadline is local midnight, not UTC midnight', () => {
   // A date with a time keeps its own meaning.
   assert.equal(parseDueText('2026-11-01T10:00').iso, new Date(2026, 10, 1, 10, 0).toISOString())
   assert.equal(parseDueText('2026-11-01T10:00:00Z').iso, '2026-11-01T10:00:00.000Z')
+})
+
+test('a closed record stops waiting in the inbox, and the counts say so (#18 / #19)', () => {
+  // The tag used to outlive the close: `counts()` read "tagged and still active" while the list
+  // filter read "tagged", so a record completed before anyone admitted it was counted under
+  // 完成 / 待确认 and listed in neither tab. Both halves of the rule are asserted here — the
+  // predicate every reader asks, and the write that takes the tag off.
+  const todo = createTodo({ title: '在收件箱里被勾掉的' }, { now: NOW })
+  todo.tags = ['inbox', '工作']
+  todo.inboxReason = 'no-due'
+  assert.equal(waitingInInbox(todo), true)
+  const before = counts([todo], NOW)
+  assert.equal(before.inbox, 1)
+  assert.equal(before.done, 0)
+
+  completeTodo(todo, { summary: '做完了' }, { now: NOW + 1000, by: 'agent' })
+
+  assert.deepEqual(todo.tags, ['工作'], 'the waiting-room tags come off with the close')
+  assert.equal(todo.inboxReason, '')
+  assert.equal(todo.activity.at(-1).kind, 'unparked', 'and the trail says it left')
+  assert.equal(waitingInInbox(todo), false)
+  const after = counts([todo], NOW + 1000)
+  assert.equal(after.inbox, 0, 'nothing is waiting in the inbox once it is closed')
+  assert.equal(after.done, 1)
+  assert.equal(after.review, 1, 'the completion still awaits a person')
+})
+
+test('a stored record with a stale tag is repaired on load, without pretending it was edited', () => {
+  const legacy = {
+    id: 't-legacy',
+    title: '旧记录',
+    status: 'done',
+    tags: ['inbox', 'someday'],
+    inboxReason: 'no-due',
+    createdAt: NOW,
+    updatedAt: NOW,
+  }
+  const loaded = normalizeStored(legacy)
+  assert.deepEqual(loaded.tags, [], 'a closed record is not waiting anywhere')
+  assert.equal(loaded.inboxReason, '')
+  assert.equal(loaded.updatedAt, NOW, 'a repair is not an edit, and the fold must not see one')
+  // The predicate answers from the status, so even an un-normalised record is read correctly.
+  assert.equal(waitingInInbox(legacy), false)
+  assert.equal(parkedForLater(legacy), false)
+})
+
+test('every door that closes a record takes the waiting-room tags off', () => {
+  const changes = [
+    (todo) => setStatus(todo, 'cancelled', { now: NOW + 1 }),
+    (todo) => applyPatch(todo, { status: 'archived' }, { now: NOW + 1 }),
+    (todo) => completeTodo(todo, {}, { now: NOW + 1 }),
+  ]
+  for (const change of changes) {
+    const todo = createTodo({ title: 'x' }, { now: NOW })
+    todo.tags = ['inbox', 'someday', 'keep']
+    change(todo)
+    assert.deepEqual(todo.tags, ['keep'], 'both waiting rooms let go at once')
+    assert.equal(todo.inboxReason, '')
+  }
 })
